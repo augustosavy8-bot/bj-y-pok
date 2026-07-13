@@ -38,6 +38,13 @@ export async function POST(req: Request, { params }: { params: { codigo: string 
         ? body.orden_banca
         : ordenDefault;
 
+    // Banca fija: guardar el jugador designado; si no es 'fija', limpiarlo.
+    if (update.rotacion_banca === "fija") {
+      update.banca_fija_jugador_id = body.banca_fija_jugador_id ?? null;
+    } else if (update.rotacion_banca !== undefined) {
+      update.banca_fija_jugador_id = null;
+    }
+
     const { data, error } = await admin
       .from("bj_configuracion_sesion")
       .update(update)

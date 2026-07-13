@@ -33,10 +33,12 @@ export function ConfigBlackjack({
   codigo,
   authUid,
   config,
+  jugadores = [],
 }: {
   codigo: string;
   authUid: string;
   config: BJConfig | null;
+  jugadores?: { id: string; nombre: string }[];
 }) {
   const [f, setF] = useState({
     cantidad_mazos: config?.cantidad_mazos ?? 6,
@@ -47,6 +49,7 @@ export function ConfigBlackjack({
     permite_surrender: config?.permite_surrender ?? true,
     permite_insurance: config?.permite_insurance ?? true,
     rotacion_banca: config?.rotacion_banca ?? "cada_5",
+    banca_fija_jugador_id: config?.banca_fija_jugador_id ?? "",
     max_split_hands: config?.max_split_hands ?? 4,
     apuesta_min: config?.apuesta_min ?? 10,
     apuesta_max: config?.apuesta_max ?? 500,
@@ -66,7 +69,13 @@ export function ConfigBlackjack({
       const res = await fetch(`/api/blackjack/${codigo}/configurar`, {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ auth_uid: authUid, ...f }),
+        body: JSON.stringify({
+          auth_uid: authUid,
+          ...f,
+          // uuid o null (nunca "")
+          banca_fija_jugador_id:
+            f.rotacion_banca === "fija" ? f.banca_fija_jugador_id || null : null,
+        }),
       });
       const data = await res.json();
       setMsg(res.ok ? "Configuración guardada ✓" : data?.error ?? "Error");
@@ -115,8 +124,21 @@ export function ConfigBlackjack({
             <option value="cada_5" className="text-black">Cada 5 manos</option>
             <option value="cada_10" className="text-black">Cada 10 manos</option>
             <option value="hasta_fundirse" className="text-black">Hasta fundirse</option>
+            <option value="fija" className="text-black">Fija (sin rotación)</option>
           </select>
         </Campo>
+        {f.rotacion_banca === "fija" && (
+          <Campo label="Banca fija" tip="Este jugador es la banca en todas las rondas; si se funde, recompra pero no cede el rol.">
+            <select value={f.banca_fija_jugador_id}
+              onChange={(e) => set("banca_fija_jugador_id", e.target.value)}
+              className="w-full rounded-lg bg-white/10 p-2">
+              <option value="" className="text-black">— elegir jugador —</option>
+              {jugadores.map((j) => (
+                <option key={j.id} value={j.id} className="text-black">{j.nombre}</option>
+              ))}
+            </select>
+          </Campo>
+        )}
         <Campo label="Máx. manos de split" tip={TIP.max_split_hands}>
           <input type="number" min={1} max={4} value={f.max_split_hands}
             onChange={(e) => set("max_split_hands", Number(e.target.value))}

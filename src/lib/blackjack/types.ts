@@ -19,7 +19,12 @@ export type EstadoManoBJ =
 export type ResultadoBJ = "gana" | "pierde" | "empate" | "blackjack" | "rendido";
 export type Soft17Regla = "dealer_para" | "dealer_pide";
 export type BlackjackPago = "3_a_2" | "6_a_5";
-export type RotacionBanca = "por_mano" | "cada_5" | "cada_10" | "hasta_fundirse";
+export type RotacionBanca =
+  | "por_mano"
+  | "cada_5"
+  | "cada_10"
+  | "hasta_fundirse"
+  | "fija";
 export type AccionBJ = "hit" | "stand" | "double" | "split" | "surrender";
 
 export interface BJConfig {
@@ -33,6 +38,7 @@ export interface BJConfig {
   permite_surrender: boolean;
   permite_insurance: boolean;
   rotacion_banca: RotacionBanca;
+  banca_fija_jugador_id: string | null;
   max_split_hands: number;
   apuesta_min: number;
   apuesta_max: number;

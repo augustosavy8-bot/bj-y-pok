@@ -144,6 +144,14 @@ function proximaBanca(
 ): string | null {
   const orden = ordenBanca(config, jugadores);
   if (orden.length === 0) return null;
+
+  // Banca fija: siempre el mismo jugador, sin importar cuántas rondas pasen.
+  if (config.rotacion_banca === "fija") {
+    const fija = config.banca_fija_jugador_id;
+    const valido = fija && jugadoresDeMesa(jugadores).some((j) => j.id === fija);
+    return valido ? fija : orden[0] ?? null;
+  }
+
   if (!prev || !prev.banca_jugador_id) return orden[0];
 
   const idx = orden.indexOf(prev.banca_jugador_id);
