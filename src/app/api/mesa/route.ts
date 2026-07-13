@@ -12,13 +12,21 @@ export async function POST(req: Request) {
     const user = await requerirUsuario();
     const authUid = user.id;
     const body = await req.json();
-    const nombre = (body?.nombre_crupier ?? "Crupier").toString().slice(0, 40);
     const ciega_chica = Number(body?.ciega_chica) || 10;
     const ciega_grande = Number(body?.ciega_grande) || 20;
     const fichas_iniciales = Number(body?.fichas_iniciales) || 1000;
     const es_practica = Boolean(body?.es_practica);
+    const creditos_minimos = es_practica ? 0 : Math.max(0, Number(body?.creditos_minimos) || 0);
     const tipo_juego =
       body?.tipo_juego === "blackjack" ? "blackjack" : "poker_holdem";
+
+    // Nombre del crupier = nombre del perfil (ya no viene del body).
+    const { data: perfil } = await admin
+      .from("perfiles")
+      .select("nombre")
+      .eq("id", authUid)
+      .maybeSingle();
+    const nombre = ((perfil?.nombre as string) ?? user.email ?? "Crupier").slice(0, 40);
 
     // Generar código único (reintentar ante colisión).
     let codigo = "";
@@ -39,6 +47,7 @@ export async function POST(req: Request) {
         estado: "esperando",
         tipo_juego,
         es_practica,
+        creditos_minimos,
         ciega_chica,
         ciega_grande,
         fichas_iniciales,

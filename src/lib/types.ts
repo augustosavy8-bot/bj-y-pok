@@ -29,6 +29,40 @@ export interface Mesa {
   fichas_iniciales: number;
   dealer_position: number;
   es_practica: boolean;
+  creditos_minimos: number;
+  created_at: string;
+}
+
+export type TipoMovimientoCredito =
+  | "carga"
+  | "retiro"
+  | "buy_in_mesa"
+  | "cash_out_mesa"
+  | "ajuste";
+
+export interface CreditoMovimiento {
+  id: string;
+  user_id: string;
+  tipo: TipoMovimientoCredito;
+  monto: number;
+  saldo_resultante: number;
+  mesa_id: string | null;
+  solicitud_retiro_id: string | null;
+  realizado_por: string | null;
+  notas: string | null;
+  created_at: string;
+}
+
+export type EstadoSolicitudRetiro = "pendiente" | "aprobada" | "rechazada" | "pagada";
+
+export interface SolicitudRetiro {
+  id: string;
+  user_id: string;
+  monto_solicitado: number;
+  estado: EstadoSolicitudRetiro;
+  resuelta_por: string | null;
+  resuelta_at: string | null;
+  notas_admin: string | null;
   created_at: string;
 }
 

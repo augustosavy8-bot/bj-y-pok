@@ -761,6 +761,24 @@ export async function resolverPagos(admin: DB, mesaId: string) {
   await admin.from("bj_rondas").update({ estado: "terminada" }).eq("id", ronda.id);
 }
 
+// ¿El jugador está metido en una ronda activa con una mano viva?
+// (Se usa para no dejar hacer cash-out en medio de una ronda de blackjack,
+// donde las apuestas todavía no se resolvieron.)
+export async function jugadorEnRondaActivaBJ(
+  admin: DB,
+  mesaId: string,
+  jugadorId: string
+): Promise<boolean> {
+  const estado = await cargarEstadoBJ(admin, mesaId);
+  const { ronda } = estado;
+  if (!ronda || ronda.estado === "terminada") return false;
+  return estado.manos.some(
+    (m) =>
+      m.jugador_id === jugadorId &&
+      (m.estado_mano === "apostando" || m.estado_mano === "jugando")
+  );
+}
+
 // ============================================================
 // Barajar (reset del shoe)
 // ============================================================

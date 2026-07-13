@@ -100,6 +100,7 @@ export function VistaCrupierBlackjack({
       <div className="flex flex-col gap-4">
         <header className="panel flex flex-wrap items-center justify-between gap-3 p-4">
           <div>
+            <a href="/home" className="text-xs text-white/60 underline">← Home</a>
             <div className="text-xs text-white/50">Blackjack · Crupier</div>
             <div className="text-2xl font-bold tracking-widest text-oro">{codigo}</div>
           </div>
@@ -122,16 +123,23 @@ export function VistaCrupierBlackjack({
             <ConfigBlackjack codigo={codigo} authUid={authUid} config={config} />
             <section className="panel flex flex-col gap-2 p-4">
               <h3 className="font-semibold">Jugadores</h3>
-              <div className="flex gap-2">
-                <input
-                  value={nombreNuevo}
-                  onChange={(e) => setNombreNuevo(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && agregarJugador()}
-                  placeholder="Nombre (opcional)"
-                  className="flex-1 rounded-xl bg-white/10 p-2.5"
-                />
-                <button className="btn btn-verde" onClick={agregarJugador}>Agregar</button>
-              </div>
+              {mesa.es_practica ? (
+                <div className="flex gap-2">
+                  <input
+                    value={nombreNuevo}
+                    onChange={(e) => setNombreNuevo(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && agregarJugador()}
+                    placeholder="Nombre (jugador de prueba)"
+                    className="flex-1 rounded-xl bg-white/10 p-2.5"
+                  />
+                  <button className="btn btn-verde" onClick={agregarJugador}>Agregar</button>
+                </div>
+              ) : (
+                <p className="text-xs text-white/50">
+                  Compartí el código con los jugadores; entran y hacen su buy-in de{" "}
+                  {mesa.creditos_minimos} créditos.
+                </p>
+              )}
               <div className="text-sm text-white/60">
                 {players.map((j) => j.nombre).join(", ") || "todavía nadie"}
               </div>

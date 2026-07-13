@@ -514,6 +514,31 @@ async function finalizarPorAbandono(
     .eq("id", mano.id);
 }
 
+/**
+ * Fold automático cuando un jugador se retira de la mesa (cash-out) en medio
+ * de una mano. Sus fichas no cambian (lo apostado ya está en el pozo).
+ */
+export async function foldJugadorSalida(admin: DB, mesa: Mesa, jugadorId: string) {
+  const { jugadores, mano } = await cargarEstado(admin, mesa.id);
+  if (!mano || mano.fase === "terminada") return;
+  const jugador = jugadores.find((j) => j.id === jugadorId);
+  if (!jugador || jugador.es_crupier) return;
+  if (jugador.estado !== "activo" && jugador.estado !== "all_in") return;
+
+  if (mano.turno_jugador_id === jugadorId && jugador.estado === "activo") {
+    // Es su turno: un fold normal resuelve turno/cierre correctamente.
+    await procesarAccion(admin, mesa, mano, jugadores, jugadorId, "fold", 0);
+    return;
+  }
+  // No es su turno: marcar fold y, si queda uno solo, cerrar la mano.
+  await admin.from("jugadores").update({ estado: "fold" }).eq("id", jugadorId);
+  jugador.estado = "fold";
+  if (soloUnoEnJuego(jugadores)) {
+    await admin.from("manos").update({ turno_jugador_id: null }).eq("id", mano.id);
+    await finalizarPorAbandono(admin, mesa, mano, jugadores);
+  }
+}
+
 export async function resolverShowdown(
   admin: DB,
   mesa: Mesa,

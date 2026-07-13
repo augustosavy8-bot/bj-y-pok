@@ -10,16 +10,17 @@ import { ListaJugadores } from "@/components/ListaJugadores";
 import { ControlesApuesta } from "@/components/ControlesApuesta";
 import { HistorialAcciones } from "@/components/HistorialAcciones";
 import { VistaJugadorBlackjack } from "@/components/blackjack/VistaJugadorBlackjack";
+import { SaldoBadge } from "@/components/SaldoBadge";
 import { Carta as CartaVisual, DorsoCarta } from "@/components/Carta";
 import type { TipoAccion } from "@/lib/types";
 
 export default function VistaJugador() {
   const codigo = (useParams().codigo as string).toUpperCase();
   const { userId: authUid, jugadorId, refrescar: refrescarIdent } = useIdentidad(codigo);
-  const [nombre, setNombre] = useState("");
   const [uniendo, setUniendo] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
+  const [saldoKey, setSaldoKey] = useState(0);
 
   const { mesa, jugadores, mano, cartas, acciones, cargando } = useMesa(codigo);
 
@@ -52,23 +53,38 @@ export default function VistaJugador() {
   );
 
   async function unirse() {
-    if (!nombre.trim()) return;
     setUniendo(true);
     setError(null);
     try {
-      const res = await fetch(`/api/mesa/${codigo}/unirse`, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ nombre: nombre.trim() }),
-      });
+      // El nombre y la identidad los toma el server del perfil/sesión.
+      const res = await fetch(`/api/mesa/${codigo}/unirse`, { method: "POST" });
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error ?? "No se pudo entrar");
       localStorage.setItem(claveJugadorLocal(codigo), data.jugador.id);
+      setSaldoKey((k) => k + 1); // el buy-in bajó el saldo
       await refrescarIdent(); // ahora mi-jugador devuelve el asiento
     } catch (e) {
       setError(e instanceof Error ? e.message : "Error");
     } finally {
       setUniendo(false);
+    }
+  }
+
+  async function salirDeMesa() {
+    if (!confirm("¿Salir de la mesa? Tus fichas vuelven a tus créditos.")) return;
+    setEnviando(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/mesa/${codigo}/salir`, { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data?.error ?? "No se pudo salir.");
+        return;
+      }
+      setSaldoKey((k) => k + 1);
+      window.location.href = "/home";
+    } finally {
+      setEnviando(false);
     }
   }
 
@@ -107,19 +123,17 @@ export default function VistaJugador() {
   if (!yo) {
     return (
       <main className="mx-auto flex min-h-screen max-w-md flex-col justify-center gap-4 p-6">
-        <h1 className="text-center text-2xl font-bold text-oro">
-          Mesa {codigo}
-        </h1>
+        <div className="flex items-center justify-between">
+          <a href="/home" className="text-sm text-white/60 underline">← Home</a>
+          <SaldoBadge refreshKey={saldoKey} />
+        </div>
+        <h1 className="text-center text-2xl font-bold text-oro">Mesa {codigo}</h1>
         <div className="panel flex flex-col gap-3 p-5">
-          <label className="text-sm text-white/70">
-            Tu nombre
-            <input
-              value={nombre}
-              onChange={(e) => setNombre(e.target.value)}
-              placeholder="Nombre"
-              className="mt-1 w-full rounded-xl bg-white/10 p-3"
-            />
-          </label>
+          {!mesa.es_practica && mesa.creditos_minimos > 0 && (
+            <p className="text-center text-sm text-white/70">
+              Buy-in: <b className="text-oro">{mesa.creditos_minimos}</b> créditos
+            </p>
+          )}
           <button className="btn btn-oro" onClick={unirse} disabled={uniendo}>
             {uniendo ? "Entrando…" : "Sentarme a la mesa"}
           </button>
@@ -148,13 +162,23 @@ export default function VistaJugador() {
 
   return (
     <main className="mx-auto flex min-h-screen max-w-md flex-col gap-4 p-4 pb-24">
-      <header className="flex items-center justify-between">
-        <div>
-          <div className="text-xs text-white/50">Mesa</div>
-          <div className="font-bold tracking-widest text-oro">{codigo}</div>
+      <header className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-3">
+          <a href="/home" className="text-sm text-white/60 underline">← Home</a>
+          <div>
+            <div className="text-[10px] text-white/50">Mesa</div>
+            <div className="font-bold tracking-widest text-oro">{codigo}</div>
+          </div>
         </div>
-        <div className="text-right text-sm text-white/70">
-          {jugadores.filter((j) => !j.es_crupier).length} jugadores
+        <div className="flex items-center gap-2">
+          <SaldoBadge refreshKey={saldoKey} />
+          <button
+            className="rounded-full bg-red-900/50 px-3 py-1 text-xs text-red-100 hover:bg-red-900/80"
+            disabled={enviando}
+            onClick={salirDeMesa}
+          >
+            Salir
+          </button>
         </div>
       </header>
 

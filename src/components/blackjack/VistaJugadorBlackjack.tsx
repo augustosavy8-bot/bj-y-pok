@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useBlackjack } from "@/lib/useBlackjack";
 import { ManoBJ, ManoDealer } from "@/components/blackjack/ManoBJ";
 import { FichasMonto } from "@/components/Ficha";
+import { SaldoBadge } from "@/components/SaldoBadge";
 import { accionesDisponibles } from "@/lib/blackjack/acciones";
 import type { AccionBJ, BJManoJugador } from "@/lib/blackjack/types";
 
@@ -102,6 +103,17 @@ export function VistaJugadorBlackjack({
     }
   }
 
+  async function salirDeMesa() {
+    if (!confirm("¿Salir de la mesa? Tus fichas vuelven a tus créditos.")) return;
+    const res = await fetch(`/api/mesa/${codigo}/salir`, { method: "POST" });
+    const data = await res.json();
+    if (!res.ok) {
+      setError(data?.error ?? "No se pudo salir.");
+      return;
+    }
+    window.location.href = "/home";
+  }
+
   if (!mesa || !yo) return null;
   const otros = jugadores.filter(
     (j) => !j.es_crupier && j.id !== yoId && j.id !== ronda?.banca_jugador_id
@@ -111,6 +123,18 @@ export function VistaJugadorBlackjack({
 
   return (
     <main className="mx-auto flex min-h-screen max-w-md flex-col gap-4 p-4">
+      <div className="flex items-center justify-between gap-2">
+        <a href="/home" className="text-sm text-white/60 underline">← Home</a>
+        <div className="flex items-center gap-2">
+          <SaldoBadge />
+          <button
+            className="rounded-full bg-red-900/50 px-3 py-1 text-xs text-red-100 hover:bg-red-900/80"
+            onClick={salirDeMesa}
+          >
+            Salir
+          </button>
+        </div>
+      </div>
       <header className="flex items-center justify-between">
         <div>
           <div className="text-xs text-white/50">Blackjack · {codigo}</div>

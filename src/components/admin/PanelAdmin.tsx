@@ -1,6 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { CreditosAdmin } from "@/components/admin/CreditosAdmin";
+import { RetirosAdmin } from "@/components/admin/RetirosAdmin";
 
 interface Usuario {
   id: string;
@@ -92,6 +94,10 @@ export function PanelAdmin({ miId }: { miId: string }) {
       {error && (
         <div className="rounded-lg bg-red-900/50 px-3 py-2 text-sm text-red-100">{error}</div>
       )}
+
+      {/* Créditos y retiros */}
+      <CreditosAdmin />
+      <RetirosAdmin />
 
       {/* Invitaciones */}
       <section className="panel flex flex-col gap-3 p-4">

@@ -172,6 +172,7 @@ export default function VistaCrupier() {
       <div className="flex flex-col gap-4">
         <header className="panel flex flex-wrap items-center justify-between gap-3 p-4">
           <div>
+            <a href="/home" className="text-xs text-white/60 underline">← Home</a>
             <div className="text-xs text-white/50">Mesa · Crupier</div>
             <div className="text-2xl font-bold tracking-widest text-oro">{codigo}</div>
           </div>
@@ -186,8 +187,8 @@ export default function VistaCrupier() {
           </div>
         </header>
 
-        {/* Agregar jugadores de prueba (para jugar desde 1 solo dispositivo) */}
-        {mesa.estado === "esperando" && (
+        {/* Agregar jugadores de prueba (solo mesas de práctica) */}
+        {mesa.estado === "esperando" && mesa.es_practica && (
           <section className="panel flex flex-col gap-2 p-4">
             <h3 className="font-semibold">Jugadores de prueba</h3>
             <p className="text-sm text-white/60">
