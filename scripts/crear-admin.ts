@@ -53,12 +53,17 @@ async function main() {
   let userId = data?.user?.id;
 
   if (error) {
-    if (/already registered|exists/i.test(error.message)) {
+    if (/registered|already|exists|duplicate/i.test(error.message)) {
       // Ya existía: buscar su id por email y promoverlo.
       const { data: lista } = await admin.auth.admin.listUsers();
       userId = lista.users.find((u) => u.email?.toLowerCase() === email!.toLowerCase())?.id;
       if (!userId) throw new Error("El usuario existe pero no se pudo encontrar su id.");
-      console.log("El usuario ya existía; lo promuevo a admin.");
+      console.log("El usuario ya existía; reseteo su contraseña y lo promuevo a admin.");
+      // Asegurar la contraseña indicada (por si la cuenta ya existía con otra).
+      await admin.auth.admin.updateUserById(userId, {
+        password,
+        email_confirm: true,
+      });
     } else {
       throw error;
     }
