@@ -1,0 +1,70 @@
+-- ============================================================
+-- 0004_configuracion_manual.sql
+--
+-- ⚠️ ESTE ARCHIVO NO EJECUTA NADA. Es documentación versionada de
+-- los toggles del dashboard de Supabase que hay que activar A MANO
+-- (no se pueden setear con SQL). Corré igual este archivo: sólo tiene
+-- comentarios, para que quede constancia en el historial de migraciones.
+-- ============================================================
+
+-- ------------------------------------------------------------
+-- 1) AUTENTICACIÓN — MIGRACIÓN A EMAIL/PASSWORD (ver 0010/0011)
+-- ------------------------------------------------------------
+-- A partir de la capa de identidad real, la config de Auth cambia:
+--
+--   Authentication → Sign In / Providers
+--     └─ [x] Email  (Email/Password)                ← ACTIVAR
+--     └─ [ ] Allow anonymous sign-ins               ← DESACTIVAR (ver nota)
+--     └─ [ ] Allow new users to sign up             ← DESACTIVAR (signup cerrado:
+--            los usuarios se crean SOLO vía flujo de invitación con service role)
+--
+--   (Opcional para dev) Email → Confirm email:
+--     Se puede dejar sin confirmación de mail porque los usuarios se crean con
+--     admin.createUser({ email_confirm: true }) desde /api/invitacion/aceptar.
+--
+-- ⚠️ NOTA SOBRE ANONYMOUS:
+--   Desactivá "Allow anonymous sign-ins" RECIÉN cuando el cliente ya use la
+--   sesión real (fin de esta fase). Si lo apagás antes, se rompe la creación
+--   de jugadores porque el cliente todavía llama signInAnonymously().
+--
+-- (Histórico) Antes se usaba auth anónima para el auth.uid() por dispositivo.
+-- Ahora ese auth.uid() proviene de la sesión email/password del usuario.
+
+-- ------------------------------------------------------------
+-- 2) REALTIME EN LAS TABLAS  (normalmente ya lo deja la migración 0003)
+-- ------------------------------------------------------------
+-- La migración 0003_realtime.sql agrega las tablas a la publicación
+-- 'supabase_realtime' vía SQL. Si por alguna razón no quedaron, se pueden
+-- activar a mano:
+--
+-- Dónde:  Dashboard → Database → Publications → "supabase_realtime"
+--                    → agregar (source tables) estas 5 tablas:
+--
+--   Database
+--   └─ Publications
+--      └─ supabase_realtime
+--         ├─ [x] public.mesas
+--         ├─ [x] public.jugadores
+--         ├─ [x] public.manos
+--         ├─ [x] public.cartas       ← el feed y las cartas dependen de esto
+--         └─ [x] public.acciones     ← el historial de acciones depende de esto
+--
+-- Nota: la tabla public.correcciones_cartas (auditoría) NO necesita realtime.
+
+-- ------------------------------------------------------------
+-- 3) (Opcional) URL de la app en Auth
+-- ------------------------------------------------------------
+-- Dónde:  Authentication → URL Configuration → Site URL / Redirect URLs.
+-- Para auth anónima no hace falta, pero conviene poner la URL de Vercel
+-- si más adelante agregás login con email/OAuth.
+
+-- ------------------------------------------------------------
+-- 4) Verificación rápida (esto SÍ podés correrlo para chequear)
+-- ------------------------------------------------------------
+-- ¿Qué tablas están en la publicación de realtime?
+--   select schemaname, tablename
+--   from pg_publication_tables
+--   where pubname = 'supabase_realtime'
+--   order by tablename;
+--
+-- Deberías ver: acciones, cartas, jugadores, manos, mesas.

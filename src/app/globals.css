@@ -1,0 +1,47 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  background:
+    radial-gradient(ellipse at top, #155843 0%, #0f3d2e 45%, #0a2a20 100%);
+  background-attachment: fixed;
+  color: #f1f5f2;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Textura sutil de fieltro */
+.fieltro {
+  background-image:
+    radial-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+  background-size: 4px 4px;
+}
+
+.btn {
+  @apply rounded-xl px-4 py-3 font-semibold transition active:scale-95 disabled:opacity-40 disabled:active:scale-100 disabled:cursor-not-allowed;
+}
+.btn-oro {
+  @apply bg-oro text-[#2a1e00] hover:brightness-110;
+}
+.btn-verde {
+  @apply bg-fieltro-light text-white hover:brightness-110;
+}
+.btn-rojo {
+  @apply bg-red-700 text-white hover:brightness-110;
+}
+.btn-gris {
+  @apply bg-white/10 text-white hover:bg-white/20;
+}
+
+.panel {
+  @apply rounded-2xl border border-white/10 bg-black/25 backdrop-blur;
+}
