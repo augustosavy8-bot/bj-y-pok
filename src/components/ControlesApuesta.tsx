@@ -30,29 +30,33 @@ export function ControlesApuesta({
   const puedeSubir = maxTotal > mano.apuesta_actual && jugador.fichas > porIgualar;
 
   const [subirA, setSubirA] = useState(minSubida);
+  const bloqueado = !esMiTurno || enviando;
 
-  if (!esMiTurno) {
-    return (
-      <div className="panel px-4 py-3 text-center text-white/60">
-        {jugador.estado === "activo"
-          ? "Esperando tu turno…"
-          : jugador.estado === "fold"
-          ? "Te retiraste de esta mano"
-          : jugador.estado === "all_in"
-          ? "Estás all-in"
-          : "Fuera de juego"}
-      </div>
-    );
-  }
+  const etiquetaEspera = !esMiTurno
+    ? jugador.estado === "activo"
+      ? "Esperando tu turno…"
+      : jugador.estado === "fold"
+      ? "Te retiraste de esta mano"
+      : jugador.estado === "all_in"
+      ? "Estás all-in"
+      : "Fuera de juego"
+    : null;
 
   const valorSlider = clamp(subirA, minSubida, maxTotal);
 
   return (
-    <div className="panel flex flex-col gap-3 p-3">
+    <div
+      className={`panel flex flex-col gap-3 p-3 transition-opacity duration-300 ${
+        bloqueado ? "opacity-45" : ""
+      }`}
+    >
+      {etiquetaEspera && (
+        <div className="text-center text-xs text-white/60">{etiquetaEspera}</div>
+      )}
       <div className="grid grid-cols-2 gap-2">
         <button
           className="btn btn-rojo"
-          disabled={enviando}
+          disabled={bloqueado}
           onClick={() => onAccion("fold")}
         >
           Retirarse
@@ -60,7 +64,7 @@ export function ControlesApuesta({
         {puedeCheck ? (
           <button
             className="btn btn-gris"
-            disabled={enviando}
+            disabled={bloqueado}
             onClick={() => onAccion("check")}
           >
             Pasar
@@ -68,7 +72,7 @@ export function ControlesApuesta({
         ) : (
           <button
             className="btn btn-verde"
-            disabled={enviando || jugador.fichas === 0}
+            disabled={bloqueado || jugador.fichas === 0}
             onClick={() => onAccion("call")}
           >
             Igualar {Math.min(porIgualar, jugador.fichas).toLocaleString("es")}
@@ -92,18 +96,21 @@ export function ControlesApuesta({
             max={maxTotal}
             step={mesa.ciega_chica}
             value={valorSlider}
+            disabled={bloqueado}
             onChange={(e) => setSubirA(Number(e.target.value))}
-            className="w-full accent-oro"
+            className="w-full accent-oro disabled:opacity-60"
           />
           <div className="grid grid-cols-4 gap-1.5">
             <button
               className="btn btn-gris !py-1.5 text-xs"
+              disabled={bloqueado}
               onClick={() => setSubirA(clamp(minSubida, minSubida, maxTotal))}
             >
               Mín
             </button>
             <button
               className="btn btn-gris !py-1.5 text-xs"
+              disabled={bloqueado}
               onClick={() =>
                 setSubirA(clamp(mano.pozo + porIgualar, minSubida, maxTotal))
               }
@@ -112,6 +119,7 @@ export function ControlesApuesta({
             </button>
             <button
               className="btn btn-gris !py-1.5 text-xs"
+              disabled={bloqueado}
               onClick={() =>
                 setSubirA(clamp(Math.floor(maxTotal / 2), minSubida, maxTotal))
               }
@@ -120,6 +128,7 @@ export function ControlesApuesta({
             </button>
             <button
               className="btn btn-gris !py-1.5 text-xs"
+              disabled={bloqueado}
               onClick={() => setSubirA(maxTotal)}
             >
               Máx
@@ -127,7 +136,7 @@ export function ControlesApuesta({
           </div>
           <button
             className="btn btn-oro"
-            disabled={enviando}
+            disabled={bloqueado}
             onClick={() => onAccion("raise", valorSlider)}
           >
             {valorSlider >= maxTotal
@@ -139,7 +148,7 @@ export function ControlesApuesta({
 
       <button
         className="btn btn-gris text-sm"
-        disabled={enviando}
+        disabled={bloqueado}
         onClick={() => onAccion("all_in")}
       >
         All-in ({jugador.fichas.toLocaleString("es")})

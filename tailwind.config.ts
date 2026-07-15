@@ -16,6 +16,13 @@ const config: Config = {
         },
         oro: "#e0b64d",
         carta: "#f8f7f2",
+        // Marrón-carbón: marco/borde de madera oscura de la mesa real.
+        carbon: {
+          DEFAULT: "#241a12",
+          dark: "#150f0a",
+          light: "#3a2a1c",
+        },
+        crema: "#f1ead9",
       },
       fontFamily: {
         sans: ["ui-sans-serif", "system-ui", "-apple-system", "Segoe UI", "Roboto", "sans-serif"],
@@ -23,6 +30,8 @@ const config: Config = {
       boxShadow: {
         carta: "0 4px 14px rgba(0,0,0,0.35)",
         mesa: "inset 0 0 120px rgba(0,0,0,0.55)",
+        camara: "inset 0 2px 10px rgba(0,0,0,0.6), 0 6px 20px rgba(0,0,0,0.45)",
+        asiento: "0 2px 10px rgba(0,0,0,0.35)",
       },
       keyframes: {
         "card-in": {

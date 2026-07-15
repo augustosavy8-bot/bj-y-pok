@@ -6,6 +6,8 @@ import { ManoBJ, ManoDealer } from "@/components/blackjack/ManoBJ";
 import { ConfigBlackjack } from "@/components/blackjack/ConfigBlackjack";
 import { EscanerCarta } from "@/components/EscanerCarta";
 import { FichasMonto } from "@/components/Ficha";
+import { SuperficieFieltro } from "@/components/mesa/SuperficieFieltro";
+import { CamaraCrupier } from "@/components/mesa/CamaraCrupier";
 import { VALORES, PALOS } from "@/lib/types";
 import type { Valor, Palo } from "@/lib/types";
 
@@ -156,9 +158,14 @@ export function VistaCrupierBlackjack({
           </>
         )}
 
-        {/* Mesa: dealer + manos */}
+        {/* Mesa: cámara propia (lo que ven los jugadores) + dealer + manos */}
         {ronda && (
-          <section className="panel flex flex-col items-center gap-4 p-4">
+          <SuperficieFieltro className="flex flex-col items-center gap-4 p-3 sm:p-4">
+            <CamaraCrupier
+              activa={players.length > 0}
+              etiqueta="Tu cámara (vista de los jugadores)"
+              className="sm:aspect-[21/9]"
+            />
             <ManoDealer cartas={dealerCartas} holeRevelada={ronda.hole_revelada} verHole />
             <div className="flex w-full flex-wrap justify-center gap-3">
               {players.map((j) => {
@@ -169,7 +176,7 @@ export function VistaCrupierBlackjack({
                 return (
                   <div
                     key={j.id}
-                    className={`rounded-xl border border-white/10 bg-black/20 p-2 ${
+                    className={`rounded-xl border border-white/10 bg-black/25 p-2 shadow-asiento ${
                       esBanca ? "opacity-60" : ""
                     }`}
                   >
@@ -213,7 +220,7 @@ export function VistaCrupierBlackjack({
                 );
               })}
             </div>
-          </section>
+          </SuperficieFieltro>
         )}
 
         {/* Controles de fase */}
@@ -224,12 +231,12 @@ export function VistaCrupierBlackjack({
             </button>
           )}
           {ronda?.estado === "apuestas" && (
-            <button className="btn btn-verde" disabled={ocupado} onClick={() => post("cerrar-apuestas")}>
+            <button className="btn btn-oro" disabled={ocupado} onClick={() => post("cerrar-apuestas")}>
               Cerrar apuestas y repartir
             </button>
           )}
           {ronda?.fase_seguro && (
-            <button className="btn btn-verde" disabled={ocupado} onClick={() => post("cerrar-seguro")}>
+            <button className="btn btn-oro" disabled={ocupado} onClick={() => post("cerrar-seguro")}>
               Cerrar seguro
             </button>
           )}

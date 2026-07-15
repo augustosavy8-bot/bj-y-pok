@@ -29,17 +29,10 @@ export function MesaComunitaria({
   const ordenadas = [...comunitarias].sort((a, b) => a.orden_escaneo - b.orden_escaneo);
 
   return (
-    <div className="flex flex-col items-center gap-3">
-      <div className="flex items-center gap-3 text-sm text-white/70">
-        <span className="rounded-full bg-black/30 px-3 py-1 font-medium text-oro">
-          {mano ? NOMBRE_FASE[mano.fase] : "Esperando"}
-        </span>
-        {mano && (
-          <span className="flex items-center gap-1.5">
-            Pozo <FichasMonto monto={mano.pozo} />
-          </span>
-        )}
-      </div>
+    <div className="flex flex-col items-center gap-2.5">
+      <span className="rounded-full bg-black/30 px-3 py-1 text-xs font-medium tracking-wide text-oro">
+        {mano ? NOMBRE_FASE[mano.fase] : "Esperando"}
+      </span>
       <div className="flex gap-2">
         {Array.from({ length: slots }).map((_, i) => {
           const c = ordenadas[i];
@@ -51,6 +44,14 @@ export function MesaComunitaria({
           );
         })}
       </div>
+      {mano && (
+        <div className="flex items-center gap-2 rounded-full bg-black/35 px-3 py-1.5 text-sm">
+          <span className="text-white/60">Pozo</span>
+          <span className="text-base">
+            <FichasMonto monto={mano.pozo} />
+          </span>
+        </div>
+      )}
     </div>
   );
 }

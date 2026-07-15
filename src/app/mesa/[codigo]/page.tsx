@@ -6,12 +6,17 @@ import { useMesa } from "@/lib/useMesa";
 import { useIdentidad } from "@/lib/useIdentidad";
 import { claveJugadorLocal } from "@/lib/utils";
 import { MesaComunitaria } from "@/components/MesaComunitaria";
-import { ListaJugadores } from "@/components/ListaJugadores";
 import { ControlesApuesta } from "@/components/ControlesApuesta";
 import { HistorialAcciones } from "@/components/HistorialAcciones";
 import { VistaJugadorBlackjack } from "@/components/blackjack/VistaJugadorBlackjack";
 import { SaldoBadge } from "@/components/SaldoBadge";
 import { Carta as CartaVisual, DorsoCarta } from "@/components/Carta";
+import { FichasMonto, Ficha } from "@/components/Ficha";
+import { SuperficieFieltro } from "@/components/mesa/SuperficieFieltro";
+import { CamaraCrupier } from "@/components/mesa/CamaraCrupier";
+import { ArcoJugadores } from "@/components/mesa/ArcoJugadores";
+import { AsientoOtroJugador } from "@/components/mesa/AsientoOtroJugador";
+import { AroTurno } from "@/components/mesa/AroTurno";
 import type { TipoAccion } from "@/lib/types";
 
 export default function VistaJugador() {
@@ -50,6 +55,13 @@ export default function VistaJugador() {
   const comunitarias = useMemo(
     () => cartas.filter((c) => c.tipo === "comunitaria"),
     [cartas]
+  );
+  const otrosJugadores = useMemo(
+    () =>
+      jugadores
+        .filter((j) => !j.es_crupier && j.id !== yo?.id)
+        .sort((a, b) => a.posicion - b.posicion),
+    [jugadores, yo]
   );
 
   async function unirse() {
@@ -160,8 +172,11 @@ export default function VistaJugador() {
     ? jugadores.find((j) => resultado.botes[0]?.ganadores.includes(j.id))?.nombre
     : null;
 
+  const esMiTurno = mano?.turno_jugador_id === yo.id && yo.estado === "activo";
+  const misCartasOrdenadas = [...misCartas].sort((a, b) => a.orden_escaneo - b.orden_escaneo);
+
   return (
-    <main className="mx-auto flex min-h-screen max-w-md flex-col gap-4 p-4 pb-24">
+    <main className="mx-auto flex min-h-screen max-w-md flex-col gap-3 p-3 pb-28 lg:max-w-xl">
       <header className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-3">
           <a href="/home" className="text-sm text-white/60 underline">← Home</a>
@@ -182,38 +197,35 @@ export default function VistaJugador() {
         </div>
       </header>
 
-      <section className="panel p-4">
+      {/* Zona superior: arco de los demás jugadores */}
+      <ArcoJugadores className="min-h-[104px] pt-2">
+        {otrosJugadores.map((j) => {
+          const susCartas = cartas.filter((c) => c.tipo === "hole" && c.jugador_id === j.id);
+          return (
+            <AsientoOtroJugador
+              key={j.id}
+              nombre={j.nombre}
+              fichas={j.fichas}
+              apuesta={j.apuesta_ronda}
+              estado={j.estado}
+              esTurno={mano?.turno_jugador_id === j.id}
+              esDealer={mesa.dealer_position === j.posicion}
+              holeCards={j.estado === "eliminado" ? 0 : 2}
+              cartasReveladas={
+                susCartas.length > 0 && susCartas.every((c) => c.valor && c.palo)
+                  ? susCartas.sort((a, b) => a.orden_escaneo - b.orden_escaneo)
+                  : undefined
+              }
+            />
+          );
+        })}
+      </ArcoJugadores>
+
+      {/* Zona central: cámara del crupier + fieltro con comunitarias y pozo */}
+      <SuperficieFieltro className="flex flex-col items-center gap-3 p-3">
+        <CamaraCrupier activa={mesa.estado === "jugando"} />
         <MesaComunitaria mano={mano} comunitarias={comunitarias} />
-      </section>
-
-      {/* Mis cartas */}
-      <section className="flex flex-col items-center gap-2">
-        <div className="text-xs uppercase tracking-wide text-white/50">Tus cartas</div>
-        <div className="flex gap-3">
-          {misCartas.length > 0 ? (
-            misCartas
-              .sort((a, b) => a.orden_escaneo - b.orden_escaneo)
-              .map((c) => (
-                <CartaVisual key={c.id} valor={c.valor} palo={c.palo} size="lg" nueva />
-              ))
-          ) : (
-            <>
-              <DorsoCarta size="lg" />
-              <DorsoCarta size="lg" />
-            </>
-          )}
-        </div>
-      </section>
-
-      {mano && mano.fase !== "terminada" && (
-        <ControlesApuesta
-          jugador={yo}
-          mesa={mesa}
-          mano={mano}
-          onAccion={actuar}
-          enviando={enviando}
-        />
-      )}
+      </SuperficieFieltro>
 
       {mano?.fase === "terminada" && (
         <div className="panel p-4 text-center">
@@ -232,12 +244,53 @@ export default function VistaJugador() {
         </div>
       )}
 
-      <section>
-        <div className="mb-2 text-xs uppercase tracking-wide text-white/50">
-          Jugadores
+      {/* Zona inferior: mi asiento */}
+      <AroTurno activo={!!esMiTurno} className="panel p-3">
+        <div className="flex flex-col items-center gap-2">
+          <div className="relative flex h-24 items-center justify-center">
+            {misCartasOrdenadas.length > 0 ? (
+              misCartasOrdenadas.map((c, i) => (
+                <div
+                  key={c.id}
+                  className={i === 0 ? "-rotate-6 -mr-4" : "rotate-3"}
+                  style={{ zIndex: i }}
+                >
+                  <CartaVisual valor={c.valor} palo={c.palo} size="lg" nueva />
+                </div>
+              ))
+            ) : (
+              <>
+                <div className="-rotate-6 -mr-4">
+                  <DorsoCarta size="lg" />
+                </div>
+                <div className="rotate-3">
+                  <DorsoCarta size="lg" />
+                </div>
+              </>
+            )}
+          </div>
+          <div className="text-sm font-semibold text-crema">
+            {yo.nombre} <span className="text-oro">(vos)</span>
+          </div>
+          <FichasMonto monto={yo.fichas} />
+          {yo.apuesta_ronda > 0 && (
+            <div className="flex items-center gap-1.5 text-xs text-oro/90">
+              <Ficha monto={yo.apuesta_ronda} size={16} />
+              apuesta: {yo.apuesta_ronda.toLocaleString("es")}
+            </div>
+          )}
         </div>
-        <ListaJugadores jugadores={jugadores} mesa={mesa} mano={mano} miId={yo.id} />
-      </section>
+      </AroTurno>
+
+      {mano && mano.fase !== "terminada" && (
+        <ControlesApuesta
+          jugador={yo}
+          mesa={mesa}
+          mano={mano}
+          onAccion={actuar}
+          enviando={enviando}
+        />
+      )}
 
       {error && <ErrorBox>{error}</ErrorBox>}
 

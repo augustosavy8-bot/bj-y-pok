@@ -12,6 +12,8 @@ import { Carta as CartaVisual } from "@/components/Carta";
 import { ControlesApuesta } from "@/components/ControlesApuesta";
 import { VistaCrupierBlackjack } from "@/components/blackjack/VistaCrupierBlackjack";
 import { jugadoresActivos } from "@/lib/poker/engine";
+import { SuperficieFieltro } from "@/components/mesa/SuperficieFieltro";
+import { CamaraCrupier } from "@/components/mesa/CamaraCrupier";
 import type { Carta, Jugador, TipoAccion } from "@/lib/types";
 
 // El acceso de crupier ya se validó server-side en page.tsx (guard).
@@ -211,26 +213,31 @@ export function CrupierClient({ userId }: { userId: string }) {
           </section>
         )}
 
-        <section className="panel p-5">
+        <SuperficieFieltro className="flex flex-col items-center gap-3 p-3 sm:p-5">
+          <CamaraCrupier
+            activa={jugadores.some((j) => !j.es_crupier)}
+            etiqueta="Tu cámara (vista de los jugadores)"
+            className="sm:aspect-[21/9]"
+          />
           <MesaComunitaria
             mano={mano}
             comunitarias={comunitarias}
             onEditarCarta={puedeCorregir ? setCartaEditando : undefined}
           />
-        </section>
+        </SuperficieFieltro>
 
-        {/* Panel de control de la mano */}
+        {/* Panel de control de la mano: la acción vigente destacada en dorado */}
         <section className="panel flex flex-col gap-3 p-4">
           <div className="flex flex-wrap items-center gap-2">
             <button
-              className="btn btn-oro"
+              className={puedeAvanzar ? "btn btn-gris" : "btn btn-oro"}
               disabled={ocupado}
               onClick={() => llamar("iniciar-mano")}
             >
               {mano && mano.fase !== "terminada" ? "Reiniciar mano" : "Iniciar mano nueva"}
             </button>
             <button
-              className="btn btn-verde"
+              className={puedeAvanzar ? "btn btn-oro" : "btn btn-gris"}
               disabled={ocupado || !puedeAvanzar}
               onClick={() => llamar("avanzar-fase")}
             >
@@ -281,8 +288,8 @@ export function CrupierClient({ userId }: { userId: string }) {
               .map((j) => (
                 <div
                   key={j.id}
-                  className={`rounded-xl border border-white/10 bg-black/20 p-3 ${
-                    mano?.turno_jugador_id === j.id ? "ring-2 ring-oro" : ""
+                  className={`rounded-xl border border-white/10 bg-black/20 p-3 shadow-asiento ${
+                    mano?.turno_jugador_id === j.id ? "ring-2 ring-oro animate-turn-pulse" : ""
                   }`}
                 >
                   <div className="mb-2 truncate text-sm font-medium">

@@ -6,6 +6,8 @@ import { ManoBJ, ManoDealer } from "@/components/blackjack/ManoBJ";
 import { FichasMonto } from "@/components/Ficha";
 import { SaldoBadge } from "@/components/SaldoBadge";
 import { accionesDisponibles } from "@/lib/blackjack/acciones";
+import { SuperficieFieltro } from "@/components/mesa/SuperficieFieltro";
+import { CamaraCrupier } from "@/components/mesa/CamaraCrupier";
 import type { AccionBJ, BJManoJugador } from "@/lib/blackjack/types";
 
 const FICHAS_RAPIDAS = [5, 10, 25, 50, 100];
@@ -148,14 +150,15 @@ export function VistaJugadorBlackjack({
         </div>
       </header>
 
-      {/* Dealer */}
-      <section className="panel flex justify-center p-3">
+      {/* Mesa: cámara del crupier + mano del dealer sobre el fieltro */}
+      <SuperficieFieltro className="flex flex-col items-center gap-3 p-3">
+        <CamaraCrupier activa={mesa.estado === "jugando"} />
         <ManoDealer
           cartas={dealerCartas}
           holeRevelada={ronda?.hole_revelada ?? false}
           verHole={soyBanca}
         />
-      </section>
+      </SuperficieFieltro>
 
       {/* Otros jugadores (compacto) */}
       {otros.length > 0 && (
@@ -164,9 +167,17 @@ export function VistaJugadorBlackjack({
             const suMano = manos.find((m) => m.jugador_id === o.id && !m.es_split_de);
             const suCartas = suMano ? cartas.filter((c) => c.mano_jugador_id === suMano.id) : [];
             return (
-              <div key={o.id} className="rounded-lg bg-black/20 px-2 py-1 text-center">
+              <div
+                key={o.id}
+                className="rounded-lg bg-black/20 px-2 py-1 text-center shadow-asiento"
+              >
                 <div className="text-xs text-white/70">{o.nombre}</div>
-                <ManoBJ cartas={suCartas} mano={suMano} size="sm" />
+                <ManoBJ
+                  cartas={suCartas}
+                  mano={suMano}
+                  size="sm"
+                  destacada={!!suMano && ronda?.turno_mano_id === suMano.id}
+                />
               </div>
             );
           })}

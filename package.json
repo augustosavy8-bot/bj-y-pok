@@ -13,6 +13,7 @@
     "@anthropic-ai/sdk": "^0.30.1",
     "@supabase/ssr": "^0.5.2",
     "@supabase/supabase-js": "^2.45.4",
+    "framer-motion": "^12.42.2",
     "next": "^14.2.35",
     "pokersolver": "^2.1.4",
     "react": "^18.3.1",
