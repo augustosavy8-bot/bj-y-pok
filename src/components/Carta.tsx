@@ -1,13 +1,30 @@
 "use client";
 
 import type { Palo, Valor } from "@/lib/types";
-import { SIMBOLO_PALO, esPaloRojo } from "@/lib/poker/cards";
+
+// Mazo vectorial real (Chris Aguilar / svg-cards, licencia LGPL). El sprite se
+// sirve desde /public y cada carta se instancia con <use href>. Aspect ratio
+// nativo del mazo: 169.075 × 244.640.
+const CARD_W = 169.075;
+const CARD_H = 244.64;
 
 const TAMANOS = {
-  sm: "w-11 h-16 text-base rounded-md",
-  md: "w-16 h-24 text-2xl rounded-lg",
-  lg: "w-24 h-36 text-4xl rounded-xl",
+  sm: { w: 44, className: "rounded-md" },
+  md: { w: 66, className: "rounded-lg" },
+  lg: { w: 97, className: "rounded-xl" },
 } as const;
+
+const PALO_ID: Record<Palo, string> = {
+  corazones: "heart",
+  diamantes: "diamond",
+  treboles: "club",
+  picas: "spade",
+};
+
+const VALOR_ID: Record<Valor, string> = {
+  A: "1", "2": "2", "3": "3", "4": "4", "5": "5", "6": "6", "7": "7",
+  "8": "8", "9": "9", "10": "10", J: "jack", Q: "queen", K: "king",
+};
 
 export function Carta({
   valor,
@@ -20,47 +37,48 @@ export function Carta({
   size?: keyof typeof TAMANOS;
   nueva?: boolean;
 }) {
-  const rojo = esPaloRojo(palo);
-  const simbolo = SIMBOLO_PALO[palo];
-  const color = rojo ? "text-red-600" : "text-neutral-900";
+  const { w, className } = TAMANOS[size];
+  const h = Math.round((w * CARD_H) / CARD_W);
+  const id = `${PALO_ID[palo]}_${VALOR_ID[valor]}`;
 
   return (
-    <div
-      className={`relative flex flex-col justify-between bg-carta shadow-carta select-none ${TAMANOS[size]} ${
-        nueva ? "animate-card-in" : ""
-      }`}
+    <svg
+      viewBox={`0 0 ${CARD_W} ${CARD_H}`}
+      width={w}
+      height={h}
+      className={`${className} shadow-carta select-none ${nueva ? "animate-card-in" : ""}`}
     >
-      <div className={`absolute left-1 top-0.5 leading-none font-bold ${color}`}>
-        <div>{valor}</div>
-        <div className="text-[0.7em] -mt-0.5">{simbolo}</div>
-      </div>
-      <div className={`flex-1 flex items-center justify-center ${color}`}>
-        <span className="text-[1.6em] leading-none">{simbolo}</span>
-      </div>
-      <div
-        className={`absolute right-1 bottom-0.5 leading-none font-bold rotate-180 ${color}`}
-      >
-        <div>{valor}</div>
-        <div className="text-[0.7em] -mt-0.5">{simbolo}</div>
-      </div>
-    </div>
+      <use href={`/svg-cards.svg#${id}`} />
+    </svg>
   );
 }
 
 export function DorsoCarta({ size = "md" }: { size?: keyof typeof TAMANOS }) {
+  const { w, className } = TAMANOS[size];
+  const h = Math.round((w * CARD_H) / CARD_W);
+  const patId = `dorso-${size}`;
   return (
-    <div
-      className={`flex items-center justify-center bg-gradient-to-br from-red-800 to-red-950 border-2 border-white/70 shadow-carta ${TAMANOS[size]}`}
-    >
-      <div className="w-2/3 h-2/3 rounded border border-white/30 bg-[repeating-linear-gradient(45deg,rgba(255,255,255,0.12)_0_4px,transparent_4px_8px)]" />
-    </div>
+    <svg viewBox="0 0 100 140" width={w} height={h} className={`${className} shadow-carta select-none`}>
+      <defs>
+        <pattern id={patId} width="10" height="10" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+          <rect width="10" height="10" fill="#241a12" />
+          <rect width="5" height="10" fill="#2f2115" />
+        </pattern>
+      </defs>
+      <rect x="1.5" y="1.5" width="97" height="137" rx="9" fill="#150f0a" stroke="#3a2a1c" strokeWidth="1.2" />
+      <rect x="7" y="7" width="86" height="126" rx="6" fill={`url(#${patId})`} stroke="#e0b64d" strokeOpacity="0.55" strokeWidth="1.5" />
+      <rect x="7" y="7" width="86" height="126" rx="6" fill="none" stroke="#e0b64d" strokeOpacity="0.22" strokeWidth="5" />
+    </svg>
   );
 }
 
 export function EspacioCarta({ size = "md" }: { size?: keyof typeof TAMANOS }) {
+  const { w, className } = TAMANOS[size];
+  const h = Math.round((w * CARD_H) / CARD_W);
   return (
     <div
-      className={`border-2 border-dashed border-white/15 ${TAMANOS[size]}`}
+      style={{ width: w, height: h }}
+      className={`border-2 border-dashed border-white/15 ${className}`}
     />
   );
 }

@@ -16,6 +16,15 @@ function etiquetaValor(cartas: { valor: BJCarta["valor"] }[], estado?: string): 
   return `${e.valor}`;
 }
 
+// Insignia negra con el valor de la mano, como en una mesa de casino real.
+function InsigniaValor({ children }: { children: React.ReactNode }) {
+  return (
+    <span className="rounded-md bg-black/75 px-2 py-0.5 text-xs font-bold tabular-nums text-crema shadow-asiento ring-1 ring-white/10">
+      {children}
+    </span>
+  );
+}
+
 export function ManoBJ({
   cartas,
   mano,
@@ -39,6 +48,7 @@ export function ManoBJ({
       }`}
     >
       {etiqueta && <div className="text-xs text-white/70">{etiqueta}</div>}
+      {val && <InsigniaValor>{val}</InsigniaValor>}
       <div className="flex gap-1.5">
         {orden.length > 0 ? (
           orden.map((c) => (
@@ -48,15 +58,12 @@ export function ManoBJ({
           <DorsoCarta size={size} />
         )}
       </div>
-      <div className="flex items-center gap-2 text-sm">
-        {val && <span className="font-bold text-oro">{val}</span>}
-        {mano && mano.apuesta_fichas > 0 && (
-          <span className="text-white/60">
-            ${mano.apuesta_fichas.toLocaleString("es")}
-            {mano.doblada ? " (x2)" : ""}
-          </span>
-        )}
-      </div>
+      {mano && mano.apuesta_fichas > 0 && (
+        <span className="text-xs text-white/60">
+          ${mano.apuesta_fichas.toLocaleString("es")}
+          {mano.doblada ? " (x2)" : ""}
+        </span>
+      )}
     </div>
   );
 }
@@ -95,13 +102,13 @@ export function ManoDealer({
       }`}
     >
       <div className="text-xs uppercase tracking-wide text-white/60">Dealer (banca)</div>
+      {val && <InsigniaValor>{val}</InsigniaValor>}
       <div className="flex gap-1.5">
         {visibles.map((c) => (
           <CartaVisual key={c.id} valor={c.valor} palo={c.palo} size="md" />
         ))}
         {(ocultas > 0 || faltaHole) && <DorsoCarta size="md" />}
       </div>
-      {val && <span className="text-sm font-bold text-oro">{val}</span>}
     </div>
   );
 }
