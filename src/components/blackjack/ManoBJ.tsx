@@ -1,7 +1,8 @@
 "use client";
 
 import type { BJCarta, BJManoJugador } from "@/lib/blackjack/types";
-import { Carta as CartaVisual, DorsoCarta } from "@/components/Carta";
+import { DorsoCarta } from "@/components/Carta";
+import { CartaFlip } from "@/components/mesa/CartaFlip";
 import { evaluarMano } from "@/lib/blackjack/hand";
 
 const TAMANO = { sm: "sm", md: "md", lg: "lg" } as const;
@@ -51,8 +52,8 @@ export function ManoBJ({
       {val && <InsigniaValor>{val}</InsigniaValor>}
       <div className="flex gap-1.5">
         {orden.length > 0 ? (
-          orden.map((c) => (
-            <CartaVisual key={c.id} valor={c.valor} palo={c.palo} size={size} nueva />
+          orden.map((c, i) => (
+            <CartaFlip key={c.id} valor={c.valor} palo={c.palo} size={size} flip delay={i * 0.08} />
           ))
         ) : (
           <DorsoCarta size={size} />
@@ -104,8 +105,8 @@ export function ManoDealer({
       <div className="text-xs uppercase tracking-wide text-white/60">Dealer (banca)</div>
       {val && <InsigniaValor>{val}</InsigniaValor>}
       <div className="flex gap-1.5">
-        {visibles.map((c) => (
-          <CartaVisual key={c.id} valor={c.valor} palo={c.palo} size="md" />
+        {visibles.map((c, i) => (
+          <CartaFlip key={c.id} valor={c.valor} palo={c.palo} size="md" flip delay={i * 0.08} />
         ))}
         {(ocultas > 0 || faltaHole) && <DorsoCarta size="md" />}
       </div>

@@ -1,7 +1,8 @@
 "use client";
 
 import type { Carta, EstadoJugador } from "@/lib/types";
-import { Carta as CartaVisual, DorsoCarta } from "@/components/Carta";
+import { DorsoCarta } from "@/components/Carta";
+import { CartaFlip } from "@/components/mesa/CartaFlip";
 import { Ficha, FichasMonto } from "@/components/Ficha";
 import { AroTurno } from "@/components/mesa/AroTurno";
 import { InsigniaEstado } from "@/components/mesa/InsigniaEstado";
@@ -79,9 +80,10 @@ function MiniCarta({
   if (!visible) return <div className="w-5" />;
   const rot = lado === "izq" ? "-rotate-6" : "rotate-6";
   if (revelada) {
+    // Showdown: la carta se da vuelta del dorso a la cara.
     return (
       <div className={rot}>
-        <CartaVisual valor={revelada.valor} palo={revelada.palo} size="sm" />
+        <CartaFlip valor={revelada.valor} palo={revelada.palo} size="sm" flip delay={lado === "der" ? 0.2 : 0} />
       </div>
     );
   }

@@ -1,9 +1,10 @@
 "use client";
 
 import type { Carta, Mano } from "@/lib/types";
-import { Carta as CartaVisual, EspacioCarta } from "@/components/Carta";
+import { EspacioCarta } from "@/components/Carta";
 import { CartaEditable } from "@/components/EdicionCarta";
-import { FichasMonto } from "@/components/Ficha";
+import { CartaFlip } from "@/components/mesa/CartaFlip";
+import { ContadorNumero, PilaFichas } from "@/components/mesa/FichasAnimadas";
 
 const NOMBRE_FASE: Record<string, string> = {
   pre_reparto: "Repartiendo",
@@ -40,15 +41,25 @@ export function MesaComunitaria({
           return onEditarCarta ? (
             <CartaEditable key={c.id} carta={c} size="md" onEditar={onEditarCarta} />
           ) : (
-            <CartaVisual key={c.id} valor={c.valor} palo={c.palo} size="md" nueva />
+            <CartaFlip
+              key={c.id}
+              valor={c.valor}
+              palo={c.palo}
+              size="md"
+              deal
+              flip
+              origen={{ y: -72 }}
+              delay={i < 3 ? i * 0.1 : 0}
+            />
           );
         })}
       </div>
       {mano && (
         <div className="flex items-center gap-2 rounded-full bg-black/35 px-3 py-1.5 text-sm">
           <span className="text-white/60">Pozo</span>
-          <span className="text-base">
-            <FichasMonto monto={mano.pozo} />
+          <PilaFichas monto={mano.pozo} />
+          <span className="text-base font-semibold tabular-nums">
+            <ContadorNumero value={mano.pozo} />
           </span>
         </div>
       )}

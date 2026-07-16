@@ -10,8 +10,9 @@ import { ControlesApuesta } from "@/components/ControlesApuesta";
 import { HistorialAcciones } from "@/components/HistorialAcciones";
 import { VistaJugadorBlackjack } from "@/components/blackjack/VistaJugadorBlackjack";
 import { SaldoBadge } from "@/components/SaldoBadge";
-import { Carta as CartaVisual, DorsoCarta } from "@/components/Carta";
+import { DorsoCarta } from "@/components/Carta";
 import { FichasMonto, Ficha } from "@/components/Ficha";
+import { CartaFlip } from "@/components/mesa/CartaFlip";
 import { SuperficieFieltro } from "@/components/mesa/SuperficieFieltro";
 import { CamaraCrupier } from "@/components/mesa/CamaraCrupier";
 import { ArcoJugadores } from "@/components/mesa/ArcoJugadores";
@@ -255,7 +256,15 @@ export default function VistaJugador() {
                   className={i === 0 ? "-rotate-6 -mr-4" : "rotate-3"}
                   style={{ zIndex: i }}
                 >
-                  <CartaVisual valor={c.valor} palo={c.palo} size="lg" nueva />
+                  <CartaFlip
+                    valor={c.valor}
+                    palo={c.palo}
+                    size="lg"
+                    deal
+                    flip
+                    origen={{ y: -150, rotate: i === 0 ? -10 : 8 }}
+                    delay={i * 0.15}
+                  />
                 </div>
               ))
             ) : (
