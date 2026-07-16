@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "next/navigation";
+import { reproducir } from "@/lib/sonidos";
 import { useMesa } from "@/lib/useMesa";
 import { useIdentidad } from "@/lib/useIdentidad";
 import { claveJugadorLocal } from "@/lib/utils";
@@ -18,6 +19,9 @@ import { CamaraCrupier } from "@/components/mesa/CamaraCrupier";
 import { ArcoJugadores } from "@/components/mesa/ArcoJugadores";
 import { AsientoOtroJugador } from "@/components/mesa/AsientoOtroJugador";
 import { AroTurno } from "@/components/mesa/AroTurno";
+import { OverlayResultado, type TipoResultado } from "@/components/mesa/OverlayResultado";
+import { BotonSonido } from "@/components/mesa/BotonSonido";
+import { FichasVolando } from "@/components/mesa/FichasVolando";
 import type { TipoAccion } from "@/lib/types";
 
 export default function VistaJugador() {
@@ -44,10 +48,35 @@ export default function VistaJugador() {
     if (drawerAbierto) setVistas(acciones.length);
   }, [drawerAbierto, acciones.length]);
 
+  const [mostrarResultado, setMostrarResultado] = useState(false);
+  const [disparoFicha, setDisparoFicha] = useState(0);
+  const [montoFicha, setMontoFicha] = useState(0);
+
   const yo = useMemo(
     () => jugadores.find((j) => j.id === jugadorId && !j.es_crupier),
     [jugadores, jugadorId]
   );
+
+  // Overlay de resultado transitorio (se auto-oculta para no tapar el fieltro).
+  useEffect(() => {
+    if (mano?.fase === "terminada") {
+      setMostrarResultado(true);
+      const gano = mano.resultado?.botes.some((b) => b.ganadores.includes(yo?.id ?? "")) ?? false;
+      if (gano) reproducir("win");
+      const t = setTimeout(() => setMostrarResultado(false), 4000);
+      return () => clearTimeout(t);
+    }
+    setMostrarResultado(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mano?.fase, mano?.id]);
+
+  // Sonido de "tu turno" al pasar a ser mi turno.
+  const turnoPrevio = useRef(false);
+  useEffect(() => {
+    const miTurno = mano?.turno_jugador_id === yo?.id && yo?.estado === "activo";
+    if (miTurno && !turnoPrevio.current) reproducir("turno");
+    turnoPrevio.current = !!miTurno;
+  }, [mano?.turno_jugador_id, yo?.id, yo?.estado]);
 
   const misCartas = useMemo(
     () => cartas.filter((c) => c.tipo === "hole" && c.jugador_id === yo?.id),
@@ -103,6 +132,11 @@ export default function VistaJugador() {
 
   async function actuar(tipo: TipoAccion, monto?: number) {
     if (!yo || !authUid) return;
+    if (tipo === "call" || tipo === "raise" || tipo === "all_in") {
+      reproducir("ficha");
+      setMontoFicha(monto ?? mano?.apuesta_actual ?? 100);
+      setDisparoFicha((d) => d + 1);
+    }
     setEnviando(true);
     setError(null);
     try {
@@ -173,6 +207,11 @@ export default function VistaJugador() {
     ? jugadores.find((j) => resultado.botes[0]?.ganadores.includes(j.id))?.nombre
     : null;
 
+  // Mi resultado de la mano para el overlay transitorio.
+  const miGanancia = resultado?.ganancias?.[yo.id] ?? 0;
+  const gane = resultado?.botes.some((b) => b.ganadores.includes(yo.id)) ?? false;
+  const tipoResultado: TipoResultado = gane ? "gana" : miGanancia < 0 ? "pierde" : "empate";
+
   const esMiTurno = mano?.turno_jugador_id === yo.id && yo.estado === "activo";
   const misCartasOrdenadas = [...misCartas].sort((a, b) => a.orden_escaneo - b.orden_escaneo);
 
@@ -187,6 +226,7 @@ export default function VistaJugador() {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <BotonSonido />
           <SaldoBadge refreshKey={saldoKey} />
           <button
             className="rounded-full bg-red-900/50 px-3 py-1 text-xs text-red-100 hover:bg-red-900/80"
@@ -226,6 +266,15 @@ export default function VistaJugador() {
       <SuperficieFieltro className="flex flex-col items-center gap-3 p-3">
         <CamaraCrupier activa={mesa.estado === "jugando"} />
         <MesaComunitaria mano={mano} comunitarias={comunitarias} />
+        {mostrarResultado && resultado && (
+          <div className="absolute inset-0 z-10 flex items-center justify-center">
+            <OverlayResultado
+              tipo={tipoResultado}
+              monto={miGanancia}
+              detalle={gane ? resultado.botes[0]?.descripcion : ganadorNombre ? `Ganó ${ganadorNombre}` : undefined}
+            />
+          </div>
+        )}
       </SuperficieFieltro>
 
       {mano?.fase === "terminada" && (
@@ -318,6 +367,8 @@ export default function VistaJugador() {
           className="h-[52vh] border-0 !bg-transparent"
         />
       </DrawerHistorial>
+
+      <FichasVolando disparo={disparoFicha} monto={montoFicha} />
     </main>
   );
 }

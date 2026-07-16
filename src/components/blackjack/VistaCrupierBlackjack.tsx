@@ -8,6 +8,7 @@ import { EscanerCarta } from "@/components/EscanerCarta";
 import { FichasMonto } from "@/components/Ficha";
 import { SuperficieFieltro } from "@/components/mesa/SuperficieFieltro";
 import { CamaraCrupier } from "@/components/mesa/CamaraCrupier";
+import { LeyendaFieltro } from "@/components/mesa/LeyendaFieltro";
 import { VALORES, PALOS } from "@/lib/types";
 import type { Valor, Palo } from "@/lib/types";
 
@@ -167,6 +168,11 @@ export function VistaCrupierBlackjack({
               className="sm:aspect-[21/9]"
             />
             <ManoDealer cartas={dealerCartas} holeRevelada={ronda.hole_revelada} verHole />
+            <LeyendaFieltro
+              pago={config?.blackjack_pago === "6_a_5" ? "6 A 5" : "3 A 2"}
+              limiteMin={config?.apuesta_min}
+              limiteMax={config?.apuesta_max}
+            />
             <div className="flex w-full flex-wrap justify-center gap-3">
               {players.map((j) => {
                 const susManos = manos

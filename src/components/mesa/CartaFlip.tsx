@@ -1,7 +1,9 @@
 "use client";
 
+import { useEffect } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import { Carta, DorsoCarta } from "@/components/Carta";
+import { reproducir } from "@/lib/sonidos";
 import type { Palo, Valor } from "@/lib/types";
 
 const CARD_W = 169.075;
@@ -34,6 +36,12 @@ export function CartaFlip({
   const reduce = useReducedMotion();
   const w = TAM_W[size];
   const h = Math.round((w * CARD_H) / CARD_W);
+
+  // Sonido de carta al repartir (solo cartas que "viajan", no cada flip).
+  useEffect(() => {
+    if (deal) reproducir("carta");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   if (reduce) return <Carta valor={valor} palo={palo} size={size} />;
 

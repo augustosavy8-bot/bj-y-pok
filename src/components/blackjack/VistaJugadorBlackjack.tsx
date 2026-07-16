@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useBlackjack } from "@/lib/useBlackjack";
 import { ManoBJ, ManoDealer } from "@/components/blackjack/ManoBJ";
 import { FichasMonto } from "@/components/Ficha";
@@ -8,6 +8,12 @@ import { SaldoBadge } from "@/components/SaldoBadge";
 import { accionesDisponibles } from "@/lib/blackjack/acciones";
 import { SuperficieFieltro } from "@/components/mesa/SuperficieFieltro";
 import { CamaraCrupier } from "@/components/mesa/CamaraCrupier";
+import { TimerCircular } from "@/components/mesa/TimerCircular";
+import { OverlayResultado, type TipoResultado } from "@/components/mesa/OverlayResultado";
+import { LeyendaFieltro } from "@/components/mesa/LeyendaFieltro";
+import { BotonSonido } from "@/components/mesa/BotonSonido";
+import { FichasVolando } from "@/components/mesa/FichasVolando";
+import { reproducir } from "@/lib/sonidos";
 import type { AccionBJ, BJManoJugador } from "@/lib/blackjack/types";
 
 const FICHAS_RAPIDAS = [5, 10, 25, 50, 100];
@@ -26,6 +32,15 @@ export function VistaJugadorBlackjack({
   const [error, setError] = useState<string | null>(null);
   const [apuesta, setApuesta] = useState(0);
   const [restante, setRestante] = useState<number | null>(null);
+  const [mostrarResultado, setMostrarResultado] = useState(false);
+  const [ultimaApuesta, setUltimaApuesta] = useState(0);
+  const [disparoFicha, setDisparoFicha] = useState(0);
+  const claveUltima = `bj-ultima-apuesta-${codigo}-${yoId}`;
+
+  useEffect(() => {
+    const v = Number(localStorage.getItem(claveUltima) ?? 0);
+    if (v > 0) setUltimaApuesta(v);
+  }, [claveUltima]);
 
   const yo = jugadores.find((j) => j.id === yoId);
   const soyBanca = ronda?.banca_jugador_id === yoId;
@@ -61,6 +76,8 @@ export function VistaJugadorBlackjack({
   }, [ronda?.turno_mano_id, ronda?.turno_expira_at, ronda?.estado]);
 
   async function apostar() {
+    reproducir("ficha");
+    if (apuesta > 0) setDisparoFicha((d) => d + 1);
     setEnviando(true);
     setError(null);
     try {
@@ -71,6 +88,10 @@ export function VistaJugadorBlackjack({
       });
       const data = await res.json();
       if (!res.ok) setError(data?.error ?? "Error");
+      else if (apuesta > 0) {
+        setUltimaApuesta(apuesta);
+        localStorage.setItem(claveUltima, String(apuesta));
+      }
     } finally {
       setEnviando(false);
     }
@@ -116,6 +137,40 @@ export function VistaJugadorBlackjack({
     window.location.href = "/home";
   }
 
+  // Resultado agregado de mis manos, para el overlay transitorio.
+  const misResultados = misManos
+    .map((m) => resultados.find((r) => r.mano_jugador_id === m.id))
+    .filter(Boolean) as ReturnType<typeof useBlackjack>["resultados"];
+  const netoResultado = misResultados.reduce((s, r) => s + r.fichas_ganadas_o_perdidas, 0);
+  const tuveBlackjack = misResultados.some((r) => r.resultado === "blackjack");
+  const tipoResultadoBJ: TipoResultado = tuveBlackjack
+    ? "blackjack"
+    : netoResultado > 0
+    ? "gana"
+    : netoResultado < 0
+    ? "pierde"
+    : "empate";
+
+  useEffect(() => {
+    if (ronda?.estado === "terminada" && misResultados.length > 0 && !soyBanca) {
+      setMostrarResultado(true);
+      if (netoResultado > 0) reproducir("win");
+      const t = setTimeout(() => setMostrarResultado(false), 4000);
+      return () => clearTimeout(t);
+    }
+    setMostrarResultado(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ronda?.estado, ronda?.id]);
+
+  // Sonido de "tu turno" al pasar a ser mi mano.
+  const turnoPrevio = useRef(false);
+  useEffect(() => {
+    const manoEnTurno = manos.find((m) => m.id === ronda?.turno_mano_id);
+    const miTurno = ronda?.estado === "turnos_jugadores" && manoEnTurno?.jugador_id === yoId;
+    if (miTurno && !turnoPrevio.current) reproducir("turno");
+    turnoPrevio.current = !!miTurno;
+  }, [ronda?.turno_mano_id, ronda?.estado, manos, yoId]);
+
   if (!mesa || !yo) return null;
   const otros = jugadores.filter(
     (j) => !j.es_crupier && j.id !== yoId && j.id !== ronda?.banca_jugador_id
@@ -128,6 +183,7 @@ export function VistaJugadorBlackjack({
       <div className="flex items-center justify-between gap-2">
         <a href="/home" className="text-sm text-white/60 underline">← Home</a>
         <div className="flex items-center gap-2">
+          <BotonSonido />
           <SaldoBadge />
           <button
             className="rounded-full bg-red-900/50 px-3 py-1 text-xs text-red-100 hover:bg-red-900/80"
@@ -158,6 +214,16 @@ export function VistaJugadorBlackjack({
           holeRevelada={ronda?.hole_revelada ?? false}
           verHole={soyBanca}
         />
+        <LeyendaFieltro
+          pago={config?.blackjack_pago === "6_a_5" ? "6 A 5" : "3 A 2"}
+          limiteMin={config?.apuesta_min}
+          limiteMax={config?.apuesta_max}
+        />
+        {mostrarResultado && (
+          <div className="absolute inset-0 z-10 flex items-center justify-center">
+            <OverlayResultado tipo={tipoResultadoBJ} monto={netoResultado} />
+          </div>
+        )}
       </SuperficieFieltro>
 
       {/* Otros jugadores (compacto) */}
@@ -241,6 +307,22 @@ export function VistaJugadorBlackjack({
               Limpiar
             </button>
           </div>
+          {ultimaApuesta > 0 && (
+            <div className="flex gap-2">
+              <button
+                className="btn btn-verde flex-1 !py-2 text-sm"
+                onClick={() => setApuesta(Math.min(ultimaApuesta, config?.apuesta_max ?? 500, yo.fichas))}
+              >
+                Rebet {ultimaApuesta.toLocaleString("es")}
+              </button>
+              <button
+                className="btn btn-gris flex-1 !py-2 text-sm"
+                onClick={() => setApuesta(Math.min(ultimaApuesta * 2, config?.apuesta_max ?? 500, yo.fichas))}
+              >
+                Rebet x2
+              </button>
+            </div>
+          )}
           <button
             className="btn btn-oro"
             disabled={enviando || apuesta < (config?.apuesta_min ?? 1)}
@@ -298,6 +380,8 @@ export function VistaJugadorBlackjack({
       {error && (
         <div className="rounded-lg bg-red-900/50 px-3 py-2 text-sm text-red-100">{error}</div>
       )}
+
+      <FichasVolando disparo={disparoFicha} monto={apuesta || ultimaApuesta || 25} />
     </main>
   );
 }
@@ -353,9 +437,11 @@ function ControlesBJ({
     <section className="panel flex flex-col gap-2 p-3">
       <div className="flex items-center justify-between text-sm">
         <span className="font-semibold text-oro">Tu turno</span>
-        {restante !== null && (
-          <span className={restante <= 5 ? "text-red-400" : "text-white/60"}>{restante}s</span>
-        )}
+        <TimerCircular restante={restante} total={config.segundos_por_turno} size={38}>
+          <span className={`text-xs font-bold tabular-nums ${restante !== null && restante <= 5 ? "text-red-400" : "text-white/70"}`}>
+            {restante ?? "—"}
+          </span>
+        </TimerCircular>
       </div>
       <div className="grid grid-cols-2 gap-2">
         <button className="btn btn-verde" disabled={enviando || !disp.hit}

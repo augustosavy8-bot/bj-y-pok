@@ -15,6 +15,10 @@ import { ArcoJugadores } from "@/components/mesa/ArcoJugadores";
 import { AsientoOtroJugador } from "@/components/mesa/AsientoOtroJugador";
 import { AroTurno } from "@/components/mesa/AroTurno";
 import { ManoBJ, ManoDealer } from "@/components/blackjack/ManoBJ";
+import { TimerCircular } from "@/components/mesa/TimerCircular";
+import { OverlayResultado } from "@/components/mesa/OverlayResultado";
+import { LeyendaFieltro } from "@/components/mesa/LeyendaFieltro";
+import { BotonSonido } from "@/components/mesa/BotonSonido";
 import type { Carta, Jugador, Mano, Mesa } from "@/lib/types";
 import type { BJCarta, BJManoJugador } from "@/lib/blackjack/types";
 
@@ -238,12 +242,16 @@ function BlackjackJugador() {
           <div className="text-xs text-white/50">Blackjack · {MESA.codigo_sala}</div>
           <div className="font-bold text-oro">Ronda #6 · turnos_jugadores</div>
         </div>
-        <FichasMonto monto={845} />
+        <div className="flex items-center gap-2">
+          <BotonSonido />
+          <FichasMonto monto={845} />
+        </div>
       </header>
 
       <SuperficieFieltro className="flex flex-col items-center gap-3 p-3">
         <CamaraCrupier activa />
         <ManoDealer cartas={BJ_DEALER_CARTAS} holeRevelada={false} />
+        <LeyendaFieltro pago="3 A 2" limiteMin={5} limiteMax={500} />
       </SuperficieFieltro>
 
       <section className="flex flex-wrap justify-center gap-2">
@@ -261,7 +269,9 @@ function BlackjackJugador() {
       <section className="panel flex flex-col gap-2 p-3">
         <div className="flex items-center justify-between text-sm">
           <span className="font-semibold text-oro">Tu turno</span>
-          <span className="text-white/60">14s</span>
+          <TimerCircular restante={9} total={15} size={38}>
+            <span className="text-xs font-bold tabular-nums text-white/70">9</span>
+          </TimerCircular>
         </div>
         <div className="grid grid-cols-2 gap-2">
           <button className="btn btn-verde">Pedir (hit)</button>
