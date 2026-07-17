@@ -1,16 +1,17 @@
 import { getSupabaseAdmin } from "@/lib/supabase/server";
-import { requerirUsuario } from "@/lib/server/auth";
+import { requerirAdmin } from "@/lib/server/auth";
 import { generarCodigoSala, json, errorJson, errorFrom } from "@/lib/utils";
 
 export const runtime = "nodejs";
 
-// Crear una mesa nueva + el asiento del crupier.
+// Crear una mesa nueva + el asiento del crupier. Solo un administrador puede
+// arrancar una mesa (el crupier de la mesa es ese admin).
 export async function POST(req: Request) {
   try {
     const admin = getSupabaseAdmin();
-    // El crupier es el usuario logueado (identidad de la sesión).
-    const user = await requerirUsuario();
-    const authUid = user.id;
+    // Solo admin: la identidad de la sesión debe tener rol admin.
+    const perfilAdmin = await requerirAdmin();
+    const authUid = perfilAdmin.id;
     const body = await req.json();
     const ciega_chica = Number(body?.ciega_chica) || 10;
     const ciega_grande = Number(body?.ciega_grande) || 20;
@@ -20,13 +21,8 @@ export async function POST(req: Request) {
     const tipo_juego =
       body?.tipo_juego === "blackjack" ? "blackjack" : "poker_holdem";
 
-    // Nombre del crupier = nombre del perfil (ya no viene del body).
-    const { data: perfil } = await admin
-      .from("perfiles")
-      .select("nombre")
-      .eq("id", authUid)
-      .maybeSingle();
-    const nombre = ((perfil?.nombre as string) ?? user.email ?? "Crupier").slice(0, 40);
+    // Nombre del crupier = nombre del perfil admin.
+    const nombre = (perfilAdmin.nombre ?? perfilAdmin.email ?? "Crupier").slice(0, 40);
 
     // Generar código único (reintentar ante colisión).
     let codigo = "";

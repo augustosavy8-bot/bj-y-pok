@@ -53,6 +53,22 @@ export function VistaCrupierBlackjack({
     }
   }
 
+  async function cerrarMesa() {
+    if (!confirm("¿Cerrar la mesa? Los jugadores reciben sus fichas de vuelta y la mesa deja de estar activa.")) return;
+    setOcupado(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/mesa/${codigo}/cerrar`, { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) setError(data?.error ?? "No se pudo cerrar la mesa.");
+      else window.location.href = "/home";
+    } catch {
+      setError("Error de red");
+    } finally {
+      setOcupado(false);
+    }
+  }
+
   async function agregarJugador() {
     if (!nombreNuevo.trim() && players.length >= 8) return;
     await fetch(`/api/mesa/${codigo}/agregar-jugador`, {
@@ -251,6 +267,13 @@ export function VistaCrupierBlackjack({
               Estado: <b>{ronda.estado}</b>
             </span>
           )}
+          <button
+            className={`rounded-xl bg-red-900/50 px-3 py-2 text-sm text-red-100 hover:bg-red-900/80 disabled:opacity-40 ${ronda ? "" : "ml-auto"}`}
+            disabled={ocupado}
+            onClick={cerrarMesa}
+          >
+            Cerrar mesa
+          </button>
         </section>
 
         {/* Liquidación */}

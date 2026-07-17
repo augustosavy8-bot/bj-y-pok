@@ -67,7 +67,7 @@ export default function HomePage() {
           </button>
         </div>
       ) : (
-        <VistaJuego juego={juego} onVolver={() => setJuego(null)} router={router} />
+        <VistaJuego juego={juego} onVolver={() => setJuego(null)} router={router} esAdmin={esAdmin} />
       )}
     </main>
   );
@@ -77,10 +77,12 @@ function VistaJuego({
   juego,
   onVolver,
   router,
+  esAdmin,
 }: {
   juego: Juego;
   onVolver: () => void;
   router: ReturnType<typeof useRouter>;
+  esAdmin: boolean;
 }) {
   const [mesas, setMesas] = useState<MesaMia[]>([]);
   const [codigo, setCodigo] = useState("");
@@ -129,6 +131,19 @@ function VistaJuego({
     }
   }
 
+  async function cerrarMesa(cod: string) {
+    if (!confirm(`¿Cerrar la mesa ${cod}? Los jugadores reciben sus fichas de vuelta y la mesa deja de estar activa.`))
+      return;
+    setError(null);
+    const r = await fetch(`/api/mesa/${cod}/cerrar`, { method: "POST" });
+    const d = await r.json();
+    if (!r.ok) {
+      setError(d?.error ?? "No se pudo cerrar la mesa.");
+      return;
+    }
+    cargarMesas();
+  }
+
   async function unirse() {
     const c = codigo.trim().toUpperCase();
     if (c.length !== 6) {
@@ -165,16 +180,26 @@ function VistaJuego({
         <section className="panel flex flex-col gap-2 p-4">
           <h3 className="font-semibold">Mis mesas activas</h3>
           {mesas.map((m) => (
-            <button
-              key={m.id}
-              onClick={() => router.push(`/mesa/${m.codigo_sala}${m.soy_crupier ? "/crupier" : ""}`)}
-              className="flex items-center justify-between rounded-lg bg-black/20 px-3 py-2 text-left hover:bg-black/40"
-            >
-              <span className="font-mono tracking-widest text-oro">{m.codigo_sala}</span>
-              <span className="text-xs text-white/60">
-                {m.soy_crupier ? "crupier" : "jugador"} · {m.es_practica ? "práctica" : `min ${m.creditos_minimos}`}
-              </span>
-            </button>
+            <div key={m.id} className="flex items-center gap-2">
+              <button
+                onClick={() => router.push(`/mesa/${m.codigo_sala}${m.soy_crupier ? "/crupier" : ""}`)}
+                className="flex flex-1 items-center justify-between rounded-lg bg-black/20 px-3 py-2 text-left hover:bg-black/40"
+              >
+                <span className="font-mono tracking-widest text-oro">{m.codigo_sala}</span>
+                <span className="text-xs text-white/60">
+                  {m.soy_crupier ? "crupier" : "jugador"} · {m.es_practica ? "práctica" : `min ${m.creditos_minimos}`}
+                </span>
+              </button>
+              {m.soy_crupier && (
+                <button
+                  onClick={() => cerrarMesa(m.codigo_sala)}
+                  className="shrink-0 rounded-lg bg-red-900/50 px-3 py-2 text-xs text-red-100 hover:bg-red-900/80"
+                  title="Cerrar mesa"
+                >
+                  Cerrar
+                </button>
+              )}
+            </div>
           ))}
         </section>
       )}
@@ -194,8 +219,8 @@ function VistaJuego({
         </div>
       </section>
 
-      {/* Crear mesa */}
-      {!creando ? (
+      {/* Crear mesa — solo administradores */}
+      {!esAdmin ? null : !creando ? (
         <button className="btn btn-verde" onClick={() => setCreando(true)}>
           Crear mesa nueva
         </button>

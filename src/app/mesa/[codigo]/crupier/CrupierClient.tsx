@@ -94,6 +94,22 @@ export function CrupierClient({ userId }: { userId: string }) {
     }
   }
 
+  async function cerrarMesa() {
+    if (!confirm("¿Cerrar la mesa? Los jugadores reciben sus fichas de vuelta y la mesa deja de estar activa.")) return;
+    setOcupado(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/mesa/${codigo}/cerrar`, { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) setError(data?.error ?? "No se pudo cerrar la mesa.");
+      else window.location.href = "/home";
+    } catch {
+      setError("Error de red");
+    } finally {
+      setOcupado(false);
+    }
+  }
+
   // Agregar un jugador de prueba (para jugar desde un solo dispositivo).
   async function agregarJugador() {
     if (!authUid || agregando) return;
@@ -248,6 +264,13 @@ export function CrupierClient({ userId }: { userId: string }) {
                 Mano #{mano.numero_mano} · {rondaCerrada ? "ronda cerrada" : "en juego"}
               </span>
             )}
+            <button
+              className={`rounded-xl bg-red-900/50 px-3 py-2 text-sm text-red-100 hover:bg-red-900/80 disabled:opacity-40 ${mano ? "" : "ml-auto"}`}
+              disabled={ocupado}
+              onClick={cerrarMesa}
+            >
+              Cerrar mesa
+            </button>
           </div>
           {puedeAvanzar && (
             <div className="rounded-lg bg-fieltro-light/40 px-3 py-2 text-sm">
