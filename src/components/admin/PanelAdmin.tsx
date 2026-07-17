@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { AppShell } from "@/components/shell/AppShell";
 import { CreditosAdmin } from "@/components/admin/CreditosAdmin";
 import { RetirosAdmin } from "@/components/admin/RetirosAdmin";
 
@@ -85,11 +86,9 @@ export function PanelAdmin({ miId }: { miId: string }) {
   }
 
   return (
-    <main className="mx-auto flex max-w-4xl flex-col gap-6 p-6">
-      <header className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-oro">Panel de administración</h1>
-        <a href="/home" className="text-sm text-white/60 underline">← Volver</a>
-      </header>
+    <AppShell activo="/admin">
+      <div className="mx-auto flex max-w-4xl flex-col gap-6 py-4">
+      <h1 className="text-2xl font-bold text-oro">Panel de administración</h1>
 
       {error && (
         <div className="rounded-lg bg-red-900/50 px-3 py-2 text-sm text-red-100">{error}</div>
@@ -213,7 +212,8 @@ export function PanelAdmin({ miId }: { miId: string }) {
           </table>
         </div>
       </section>
-    </main>
+      </div>
+    </AppShell>
   );
 }
 

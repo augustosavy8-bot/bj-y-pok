@@ -2,8 +2,8 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { getSupabaseBrowser, usuarioActualId, cerrarSesion } from "@/lib/supabase/client";
-import { SaldoBadge } from "@/components/SaldoBadge";
+import { getSupabaseBrowser, usuarioActualId } from "@/lib/supabase/client";
+import { AppShell } from "@/components/shell/AppShell";
 import type { Mesa } from "@/lib/types";
 
 type Juego = "poker_holdem" | "blackjack";
@@ -14,73 +14,64 @@ const NOMBRE_JUEGO: Record<Juego, string> = {
   blackjack: "Blackjack",
 };
 
+const CHIPS: { juego: Juego; label: string; icono: string }[] = [
+  { juego: "poker_holdem", label: "Poker", icono: "♠" },
+  { juego: "blackjack", label: "Blackjack", icono: "🂡" },
+];
+
 export default function HomePage() {
   const router = useRouter();
-  const [juego, setJuego] = useState<Juego | null>(null);
+  const [juego, setJuego] = useState<Juego>("poker_holdem");
   const [esAdmin, setEsAdmin] = useState(false);
-  const [miNombre, setMiNombre] = useState("");
 
   useEffect(() => {
     (async () => {
       const uid = await usuarioActualId();
       if (!uid) return;
       const supabase = getSupabaseBrowser();
-      const { data } = await supabase.from("perfiles").select("rol, nombre").eq("id", uid).maybeSingle();
-      if (data) {
-        setEsAdmin((data as { rol: string }).rol === "admin");
-        setMiNombre((data as { nombre: string }).nombre ?? "");
-      }
+      const { data } = await supabase.from("perfiles").select("rol").eq("id", uid).maybeSingle();
+      if (data) setEsAdmin((data as { rol: string }).rol === "admin");
     })();
   }, []);
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-lg flex-col gap-6 p-6">
-      <header className="flex items-center justify-between">
-        <span className="text-sm text-white/60">{miNombre && `Hola, ${miNombre}`}</span>
-        <div className="flex items-center gap-3">
-          <SaldoBadge />
-          {esAdmin && <a href="/admin" className="text-sm text-oro underline">Admin</a>}
-          <button className="text-sm text-white/60 underline" onClick={cerrarSesion}>Salir</button>
+    <AppShell activo="/home">
+      <div className="mx-auto flex max-w-lg flex-col gap-5 py-4">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold tracking-tight text-oro">♠ Mesa de Poker ♥</h1>
+          <p className="mt-1 text-sm text-white/50">Crupier físico · escaneo por visión IA</p>
         </div>
-      </header>
 
-      <div className="text-center">
-        <h1 className="text-3xl font-bold tracking-tight text-oro">♠ Mesa de Poker ♥</h1>
+        {/* Chip bar de categorías (juegos) */}
+        <div className="flex gap-2 overflow-x-auto pb-1">
+          {CHIPS.map((c) => (
+            <button
+              key={c.juego}
+              onClick={() => setJuego(c.juego)}
+              className={`flex shrink-0 items-center gap-1.5 rounded-full px-4 py-2 text-sm font-semibold transition ${
+                juego === c.juego
+                  ? "bg-oro text-[#2a1e00]"
+                  : "bg-white/10 text-white/70 hover:bg-white/20"
+              }`}
+            >
+              <span>{c.icono}</span>
+              {c.label}
+            </button>
+          ))}
+        </div>
+
+        <VistaJuego juego={juego} router={router} esAdmin={esAdmin} />
       </div>
-
-      {!juego ? (
-        <div className="flex flex-col gap-4">
-          <p className="text-center text-white/70">Elegí un juego</p>
-          <button
-            onClick={() => setJuego("poker_holdem")}
-            className="panel flex flex-col items-center gap-2 p-8 transition hover:brightness-125"
-          >
-            <span className="text-5xl">♠</span>
-            <span className="text-lg font-semibold">Poker Texas Hold&apos;em</span>
-          </button>
-          <button
-            onClick={() => setJuego("blackjack")}
-            className="panel flex flex-col items-center gap-2 p-8 transition hover:brightness-125"
-          >
-            <span className="text-5xl">🂡</span>
-            <span className="text-lg font-semibold">Blackjack</span>
-          </button>
-        </div>
-      ) : (
-        <VistaJuego juego={juego} onVolver={() => setJuego(null)} router={router} esAdmin={esAdmin} />
-      )}
-    </main>
+    </AppShell>
   );
 }
 
 function VistaJuego({
   juego,
-  onVolver,
   router,
   esAdmin,
 }: {
   juego: Juego;
-  onVolver: () => void;
   router: ReturnType<typeof useRouter>;
   esAdmin: boolean;
 }) {
@@ -151,7 +142,6 @@ function VistaJuego({
       return;
     }
     setError(null);
-    // Pre-validar saldo contra el mínimo de esa mesa.
     const r = await fetch(`/api/mesa/${c}/info`);
     if (!r.ok) {
       const d = await r.json();
@@ -170,15 +160,10 @@ function VistaJuego({
 
   return (
     <div className="flex flex-col gap-4">
-      <button onClick={onVolver} className="self-start text-sm text-white/60 underline">
-        ← Cambiar juego
-      </button>
-      <h2 className="text-xl font-semibold text-oro">{NOMBRE_JUEGO[juego]}</h2>
-
       {/* Mis mesas activas */}
       {mesas.length > 0 && (
         <section className="panel flex flex-col gap-2 p-4">
-          <h3 className="font-semibold">Mis mesas activas</h3>
+          <h3 className="font-semibold">Mis mesas de {NOMBRE_JUEGO[juego]}</h3>
           {mesas.map((m) => (
             <div key={m.id} className="flex items-center gap-2">
               <button
@@ -222,7 +207,7 @@ function VistaJuego({
       {/* Crear mesa — solo administradores */}
       {!esAdmin ? null : !creando ? (
         <button className="btn btn-verde" onClick={() => setCreando(true)}>
-          Crear mesa nueva
+          Crear mesa de {NOMBRE_JUEGO[juego]}
         </button>
       ) : (
         <section className="panel flex flex-col gap-3 p-4">

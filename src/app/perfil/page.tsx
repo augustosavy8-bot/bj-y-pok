@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { cerrarSesion } from "@/lib/supabase/client";
+import { AppShell } from "@/components/shell/AppShell";
 import type { CreditoMovimiento, SolicitudRetiro } from "@/lib/types";
 
 const TIPO_LABEL: Record<string, string> = {
@@ -70,14 +70,9 @@ export default function PerfilPage() {
   }
 
   return (
-    <main className="mx-auto flex max-w-2xl flex-col gap-5 p-6">
-      <header className="flex items-center justify-between">
-        <div>
-          <a href="/home" className="text-sm text-white/60 underline">← Volver al home</a>
-          <h1 className="mt-1 text-2xl font-bold text-oro">Mi perfil</h1>
-        </div>
-        <button className="text-sm text-white/60 underline" onClick={cerrarSesion}>Salir</button>
-      </header>
+    <AppShell activo="/perfil">
+      <div className="mx-auto flex max-w-2xl flex-col gap-5 py-4">
+      <h1 className="text-2xl font-bold text-oro">Mi perfil</h1>
 
       <section className="panel flex items-center justify-between p-5">
         <div>
@@ -160,7 +155,8 @@ export default function PerfilPage() {
           </table>
         </div>
       </section>
-    </main>
+      </div>
+    </AppShell>
   );
 }
 
