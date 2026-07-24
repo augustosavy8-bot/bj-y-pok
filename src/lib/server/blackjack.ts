@@ -265,9 +265,11 @@ export async function iniciarRondaBJ(admin: DB, mesa: Mesa) {
   const config = estado.config ?? (await asegurarConfig(admin, mesa));
 
   const jugadoresValidos = jugadoresDeMesa(estado.jugadores);
-  if (jugadoresValidos.length < 2) {
-    throw new Error("Se necesitan al menos 2 jugadores para blackjack.");
+  if (jugadoresValidos.length < 1) {
+    throw new Error("Se necesita al menos 1 jugador para blackjack.");
   }
+  // La banca es siempre el crupier (admin). No rota entre jugadores.
+  const crupier = estado.jugadores.find((j) => j.es_crupier);
 
   // Asegurar shoe.
   if (!estado.shoe) {
@@ -298,7 +300,7 @@ export async function iniciarRondaBJ(admin: DB, mesa: Mesa) {
 
   const numero = (await admin.rpc("bj_siguiente_numero_ronda", { p_mesa_id: mesa.id }))
     .data as number;
-  const banca = proximaBanca(config, estado.jugadores, estado.ronda, numero);
+  const banca = crupier?.id ?? null;
 
   const { data: ronda, error } = await admin
     .from("bj_rondas")
@@ -878,9 +880,10 @@ export async function resolverPagos(admin: DB, mesaId: string) {
   await revelarHole(admin, ronda.id, estado.cartas);
 
   const dealerEval = evaluarMano(cartasDealer(estado.cartas));
-  const bancaJugador = estado.jugadores.find((j) => j.id === ronda.banca_jugador_id);
-  const fichasBancaInicio = bancaJugador?.fichas ?? 0;
 
+  // La casa es el crupier (admin) y es ilimitada: no se le lleva bankroll.
+  // Solo se ajustan las fichas de los jugadores. netoBanca se registra como
+  // auditoría del resultado neto de la casa en la ronda.
   let netoBanca = 0;
 
   for (const mano of estado.manos) {
@@ -913,18 +916,12 @@ export async function resolverPagos(admin: DB, mesaId: string) {
     });
   }
 
-  // Ajustar fichas de la banca con el neto.
-  if (bancaJugador) {
-    await admin
-      .from("jugadores")
-      .update({ fichas: fichasBancaInicio + netoBanca })
-      .eq("id", bancaJugador.id);
-  }
+  // Auditoría del neto de la casa (sin tocar fichas: la casa es ilimitada).
   await admin.from("bj_banca_balance").insert({
     ronda_id: ronda.id,
     banca_jugador_id: ronda.banca_jugador_id,
-    fichas_al_inicio: fichasBancaInicio,
-    fichas_al_final: fichasBancaInicio + netoBanca,
+    fichas_al_inicio: 0,
+    fichas_al_final: netoBanca,
     delta: netoBanca,
   });
 

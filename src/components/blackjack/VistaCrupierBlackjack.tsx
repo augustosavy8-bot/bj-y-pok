@@ -4,7 +4,6 @@ import { useMemo, useState } from "react";
 import { useBlackjack } from "@/lib/useBlackjack";
 import { ManoBJ, ManoDealer } from "@/components/blackjack/ManoBJ";
 import { ConfigBlackjack } from "@/components/blackjack/ConfigBlackjack";
-import { FichasMonto } from "@/components/Ficha";
 import { LeyendaFieltro } from "@/components/mesa/LeyendaFieltro";
 
 export function VistaCrupierBlackjack({
@@ -25,7 +24,6 @@ export function VistaCrupierBlackjack({
     [jugadores]
   );
   const dealerCartas = useMemo(() => cartas.filter((c) => c.es_carta_dealer), [cartas]);
-  const banca = jugadores.find((j) => j.id === ronda?.banca_jugador_id);
   const enEspera = mesa?.estado === "esperando";
   const rondaActiva = ronda && ronda.estado !== "terminada";
 
@@ -98,15 +96,8 @@ export function VistaCrupierBlackjack({
             <div className="text-2xl font-bold tracking-widest text-oro">{codigo}</div>
           </div>
           <div className="text-right text-sm">
-            <div className="text-white/60">Banca de la ronda:</div>
-            <div className="font-semibold">
-              {banca ? banca.nombre : "—"}
-              {banca && (
-                <span className="ml-2 text-white/60">
-                  (<FichasMonto monto={banca.fichas} />)
-                </span>
-              )}
-            </div>
+            <div className="text-white/60">La casa</div>
+            <div className="font-semibold text-oro">Vos (crupier + banca)</div>
           </div>
         </header>
 
@@ -142,8 +133,8 @@ export function VistaCrupierBlackjack({
                 {players.map((j) => j.nombre).join(", ") || "todavía nadie"}
               </div>
               <p className="text-xs text-white/50">
-                La banca rota entre estos jugadores según la configuración. El crupier
-                (vos) no es la banca; solo controlás el ritmo de la mesa.
+                Vos sos la casa: repartís y jugás la mano del dealer. Los jugadores
+                juegan contra la casa (ilimitada), no entre ellos.
               </p>
             </section>
           </>
