@@ -5,7 +5,6 @@ import { useBlackjack } from "@/lib/useBlackjack";
 import { ManoBJ, ManoDealer } from "@/components/blackjack/ManoBJ";
 import { ConfigBlackjack } from "@/components/blackjack/ConfigBlackjack";
 import { FichasMonto } from "@/components/Ficha";
-import { SuperficieFieltro } from "@/components/mesa/SuperficieFieltro";
 import { LeyendaFieltro } from "@/components/mesa/LeyendaFieltro";
 
 export function VistaCrupierBlackjack({
@@ -80,6 +79,13 @@ export function VistaCrupierBlackjack({
 
   const totalShoe = (shoe?.cantidad_mazos ?? 6) * 52;
 
+  const feltStyle: React.CSSProperties = {
+    background: "radial-gradient(ellipse 72% 60% at 50% 28%, #176b41 0%, #0f3d2e 52%, #0a2a20 100%)",
+    borderRadius: "38% 38% 42% 42% / 16% 16% 64% 64%",
+    border: "10px solid #241a12",
+    boxShadow: "inset 0 0 90px rgba(0,0,0,0.6), 0 12px 36px rgba(0,0,0,0.5)",
+  };
+
   if (!mesa) return null;
 
   return (
@@ -143,72 +149,74 @@ export function VistaCrupierBlackjack({
           </>
         )}
 
-        {/* Mesa: cámara propia (lo que ven los jugadores) + dealer + manos */}
+        {/* Mesa de fieltro en media luna: dealer arriba + jugadores en arco */}
         {ronda && (
-          <SuperficieFieltro className="flex flex-col items-center gap-4 p-3 sm:p-4">
-            <div className="text-[10px] font-semibold uppercase tracking-[0.2em] text-crema/50">
-              Dealer
-            </div>
-            <ManoDealer cartas={dealerCartas} holeRevelada={ronda.hole_revelada} verHole />
-            <LeyendaFieltro
-              pago={config?.blackjack_pago === "6_a_5" ? "6 A 5" : "3 A 2"}
-              limiteMin={config?.apuesta_min}
-              limiteMax={config?.apuesta_max}
-            />
-            <div className="flex w-full flex-wrap justify-center gap-3">
-              {players.map((j) => {
-                const susManos = manos
-                  .filter((m) => m.jugador_id === j.id)
-                  .sort((a, b) => a.orden_mano - b.orden_mano);
-                const esBanca = j.id === ronda.banca_jugador_id;
-                return (
-                  <div
-                    key={j.id}
-                    className={`rounded-xl border border-white/10 bg-black/25 p-2 shadow-asiento ${
-                      esBanca ? "opacity-60" : ""
-                    }`}
-                  >
-                    <div className="text-center text-xs text-white/70">
-                      {j.nombre}
-                      {esBanca && " (banca)"}
-                    </div>
-                    {esBanca ? (
-                      <div className="py-2 text-center text-xs text-white/40">es la banca</div>
-                    ) : susManos.length === 0 ? (
-                      <div className="py-2 text-center text-xs text-white/40">sin apuesta</div>
-                    ) : (
-                      <div className="flex gap-2">
-                        {susManos.map((m) => {
-                          const cs = cartas.filter((c) => c.mano_jugador_id === m.id);
-                          const r = resultados.find((x) => x.mano_jugador_id === m.id);
-                          return (
-                            <div key={m.id} className="flex flex-col items-center">
-                              <ManoBJ
-                                cartas={cs}
-                                mano={m}
-                                size="sm"
-                                destacada={ronda.turno_mano_id === m.id}
-                              />
-                              {r && (
-                                <span
-                                  className={`text-[11px] font-bold ${
-                                    r.fichas_ganadas_o_perdidas >= 0 ? "text-green-400" : "text-red-400"
-                                  }`}
-                                >
-                                  {r.fichas_ganadas_o_perdidas >= 0 ? "+" : ""}
-                                  {r.fichas_ganadas_o_perdidas}
-                                </span>
-                              )}
-                            </div>
-                          );
-                        })}
+          <div className="relative w-full overflow-hidden" style={feltStyle}>
+            <div className="flex flex-col items-center gap-4 px-3 py-5 sm:px-5">
+              <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-crema/50">
+                Dealer
+              </span>
+              <ManoDealer cartas={dealerCartas} holeRevelada={ronda.hole_revelada} verHole />
+              <LeyendaFieltro
+                pago={config?.blackjack_pago === "6_a_5" ? "6 A 5" : "3 A 2"}
+                limiteMin={config?.apuesta_min}
+                limiteMax={config?.apuesta_max}
+              />
+              <div className="flex w-full flex-wrap items-start justify-center gap-3">
+                {players.map((j) => {
+                  const susManos = manos
+                    .filter((m) => m.jugador_id === j.id)
+                    .sort((a, b) => a.orden_mano - b.orden_mano);
+                  const esBanca = j.id === ronda.banca_jugador_id;
+                  return (
+                    <div
+                      key={j.id}
+                      className={`flex flex-col items-center gap-1 rounded-xl bg-black/25 px-2 py-1.5 ${
+                        esBanca ? "opacity-60" : ""
+                      }`}
+                    >
+                      <div className="text-center text-[11px] font-medium text-crema/80">
+                        {j.nombre}
+                        {esBanca && " (banca)"}
                       </div>
-                    )}
-                  </div>
-                );
-              })}
+                      {esBanca ? (
+                        <div className="py-2 text-center text-[11px] text-crema/40">es la banca</div>
+                      ) : susManos.length === 0 ? (
+                        <div className="py-2 text-center text-[11px] text-crema/40">sin apuesta</div>
+                      ) : (
+                        <div className="flex gap-2">
+                          {susManos.map((m) => {
+                            const cs = cartas.filter((c) => c.mano_jugador_id === m.id);
+                            const r = resultados.find((x) => x.mano_jugador_id === m.id);
+                            return (
+                              <div key={m.id} className="flex flex-col items-center gap-0.5">
+                                <ManoBJ
+                                  cartas={cs}
+                                  mano={m}
+                                  size="sm"
+                                  destacada={ronda.turno_mano_id === m.id}
+                                />
+                                {r && (
+                                  <span
+                                    className={`text-[11px] font-bold ${
+                                      r.fichas_ganadas_o_perdidas >= 0 ? "text-green-300" : "text-red-300"
+                                    }`}
+                                  >
+                                    {r.fichas_ganadas_o_perdidas >= 0 ? "+" : ""}
+                                    {r.fichas_ganadas_o_perdidas}
+                                  </span>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
             </div>
-          </SuperficieFieltro>
+          </div>
         )}
 
         {/* Controles de fase */}
