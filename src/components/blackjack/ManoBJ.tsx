@@ -17,10 +17,10 @@ function etiquetaValor(cartas: { valor: BJCarta["valor"] }[], estado?: string): 
   return `${e.valor}`;
 }
 
-// Insignia negra con el valor de la mano, como en una mesa de casino real.
+// Pill con el valor de la mano (estilo Nocturne).
 function InsigniaValor({ children }: { children: React.ReactNode }) {
   return (
-    <span className="rounded-md bg-black/75 px-2 py-0.5 text-xs font-bold tabular-nums text-crema shadow-asiento ring-1 ring-white/10">
+    <span className="rounded bg-noche/80 px-2 py-0.5 text-xs font-medium tabular-nums text-tinta ring-1 ring-white/12">
       {children}
     </span>
   );
@@ -45,10 +45,10 @@ export function ManoBJ({
   return (
     <div
       className={`flex flex-col items-center gap-1 rounded-xl p-2 ${
-        destacada ? "ring-2 ring-oro animate-turn-pulse" : ""
+        destacada ? "ring-2 ring-acento" : ""
       }`}
     >
-      {etiqueta && <div className="text-xs text-white/70">{etiqueta}</div>}
+      {etiqueta && <div className="text-xs text-tinta/70">{etiqueta}</div>}
       {val && <InsigniaValor>{val}</InsigniaValor>}
       <div className="flex gap-1.5">
         {orden.length > 0 ? (
@@ -60,8 +60,8 @@ export function ManoBJ({
         )}
       </div>
       {mano && mano.apuesta_fichas > 0 && (
-        <span className="text-xs text-white/60">
-          ${mano.apuesta_fichas.toLocaleString("es")}
+        <span className="text-xs text-tinta/60">
+          {mano.apuesta_fichas.toLocaleString("es")}
           {mano.doblada ? " (x2)" : ""}
         </span>
       )}
@@ -99,10 +99,10 @@ export function ManoDealer({
   return (
     <div
       className={`flex flex-col items-center gap-1 rounded-xl p-2 ${
-        destacada ? "ring-2 ring-oro" : ""
+        destacada ? "ring-2 ring-acento" : ""
       }`}
     >
-      <div className="text-xs uppercase tracking-wide text-white/60">Dealer (banca)</div>
+      <div className="text-xs uppercase tracking-wide text-tinta/55">Crupier</div>
       {val && <InsigniaValor>{val}</InsigniaValor>}
       <div className="flex gap-1.5">
         {visibles.map((c, i) => (
