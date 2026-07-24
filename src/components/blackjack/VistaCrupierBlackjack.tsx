@@ -4,7 +4,6 @@ import { useMemo, useState } from "react";
 import { useBlackjack } from "@/lib/useBlackjack";
 import { ManoBJ, ManoDealer } from "@/components/blackjack/ManoBJ";
 import { ConfigBlackjack } from "@/components/blackjack/ConfigBlackjack";
-import { LeyendaFieltro } from "@/components/mesa/LeyendaFieltro";
 
 export function VistaCrupierBlackjack({
   codigo,
@@ -77,199 +76,187 @@ export function VistaCrupierBlackjack({
 
   const totalShoe = (shoe?.cantidad_mazos ?? 6) * 52;
 
-  const feltStyle: React.CSSProperties = {
-    background: "radial-gradient(ellipse 72% 60% at 50% 28%, #176b41 0%, #0f3d2e 52%, #0a2a20 100%)",
-    borderRadius: "38% 38% 42% 42% / 16% 16% 64% 64%",
-    border: "10px solid #241a12",
-    boxShadow: "inset 0 0 90px rgba(0,0,0,0.6), 0 12px 36px rgba(0,0,0,0.5)",
+  const mesaStyle: React.CSSProperties = {
+    borderRadius: "14px 14px 50% 50% / 14px 14px 84% 84%",
+    backgroundColor: "#292b31",
+    backgroundImage:
+      "radial-gradient(72% 92% at 50% 4%, color-mix(in srgb, #262a60 62%, transparent), transparent 72%), radial-gradient(120% 120% at 50% 120%, color-mix(in srgb, #2b2741 78%, transparent), transparent 70%)",
+    boxShadow: "0 0 0 1px #595d6c, 0 6px 18px rgba(0,0,0,0.55)",
   };
 
   if (!mesa) return null;
 
   return (
-    <main className="mx-auto grid max-w-6xl gap-4 p-4 lg:grid-cols-[1fr_380px]">
-      <div className="flex flex-col gap-4">
-        <header className="panel flex flex-wrap items-center justify-between gap-3 p-4">
-          <div>
-            <a href="/home" className="text-xs text-white/60 underline">← Home</a>
-            <div className="text-xs text-white/50">Blackjack · Crupier</div>
-            <div className="text-2xl font-bold tracking-widest text-oro">{codigo}</div>
+    <div className="min-h-screen bg-noche text-tinta">
+      <header className="fade-b">
+        <nav className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-5 gap-y-2 px-4 py-3 sm:px-7">
+          <a href="/home" className="inline-flex items-center gap-1.5 text-[13px] text-tinta/65 hover:text-acento">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M14.5 5.5L8 12l6.5 6.5" /></svg>
+            Home
+          </a>
+          <div className="h-5 w-px bg-white/15" />
+          <div className="mr-auto flex items-baseline gap-2.5">
+            <span className="text-[15px]">Blackjack · Crupier</span>
+            <span className="font-mono text-xs tracking-[0.2em] text-acento-300">{codigo}</span>
           </div>
-          <div className="text-right text-sm">
-            <div className="text-white/60">La casa</div>
-            <div className="font-semibold text-oro">Vos (crupier + banca)</div>
+          <div className="text-right text-sm leading-tight">
+            <div className="text-[10px] uppercase tracking-[0.1em] text-tinta/50">La casa</div>
+            <div className="font-medium text-acento-300">Vos (crupier + banca)</div>
           </div>
-        </header>
+        </nav>
+      </header>
 
-        {/* Configuración + jugadores (antes de arrancar) */}
-        {enEspera && (
-          <>
-            <ConfigBlackjack
-              codigo={codigo}
-              authUid={authUid}
-              config={config}
-              jugadores={players.map((j) => ({ id: j.id, nombre: j.nombre }))}
-            />
-            <section className="panel flex flex-col gap-2 p-4">
-              <h3 className="font-semibold">Jugadores</h3>
-              {mesa.es_practica ? (
-                <div className="flex gap-2">
-                  <input
-                    value={nombreNuevo}
-                    onChange={(e) => setNombreNuevo(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && agregarJugador()}
-                    placeholder="Nombre (jugador de prueba)"
-                    className="flex-1 rounded-xl bg-white/10 p-2.5"
-                  />
-                  <button className="btn btn-verde" onClick={agregarJugador}>Agregar</button>
-                </div>
-              ) : (
-                <p className="text-xs text-white/50">
-                  Compartí el código con los jugadores; entran y hacen su buy-in de{" "}
-                  {mesa.creditos_minimos} créditos.
-                </p>
-              )}
-              <div className="text-sm text-white/60">
-                {players.map((j) => j.nombre).join(", ") || "todavía nadie"}
-              </div>
-              <p className="text-xs text-white/50">
-                Vos sos la casa: repartís y jugás la mano del dealer. Los jugadores
-                juegan contra la casa (ilimitada), no entre ellos.
-              </p>
-            </section>
-          </>
-        )}
-
-        {/* Mesa de fieltro en media luna: dealer arriba + jugadores en arco */}
-        {ronda && (
-          <div className="relative w-full overflow-hidden" style={feltStyle}>
-            <div className="flex flex-col items-center gap-4 px-3 py-5 sm:px-5">
-              <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-crema/50">
-                Dealer
-              </span>
-              <ManoDealer cartas={dealerCartas} holeRevelada={ronda.hole_revelada} verHole />
-              <LeyendaFieltro
-                pago={config?.blackjack_pago === "6_a_5" ? "6 A 5" : "3 A 2"}
-                limiteMin={config?.apuesta_min}
-                limiteMax={config?.apuesta_max}
+      <main className="mx-auto grid max-w-6xl gap-4 px-4 py-5 sm:px-7 lg:grid-cols-[1fr_320px]">
+        <div className="flex flex-col gap-4">
+          {/* Configuración + jugadores (antes de arrancar) */}
+          {enEspera && (
+            <>
+              <ConfigBlackjack
+                codigo={codigo}
+                authUid={authUid}
+                config={config}
+                jugadores={players.map((j) => ({ id: j.id, nombre: j.nombre }))}
               />
-              <div className="flex w-full flex-wrap items-start justify-center gap-3">
-                {players.map((j) => {
-                  const susManos = manos
-                    .filter((m) => m.jugador_id === j.id)
-                    .sort((a, b) => a.orden_mano - b.orden_mano);
-                  const esBanca = j.id === ronda.banca_jugador_id;
-                  return (
-                    <div
-                      key={j.id}
-                      className={`flex flex-col items-center gap-1 rounded-xl bg-black/25 px-2 py-1.5 ${
-                        esBanca ? "opacity-60" : ""
-                      }`}
-                    >
-                      <div className="text-center text-[11px] font-medium text-crema/80">
-                        {j.nombre}
-                        {esBanca && " (banca)"}
+              <section className="ncard flex flex-col gap-2 border border-white/[0.06] p-4">
+                <h3 className="font-medium">Jugadores</h3>
+                {mesa.es_practica ? (
+                  <div className="flex gap-2">
+                    <input
+                      value={nombreNuevo}
+                      onChange={(e) => setNombreNuevo(e.target.value)}
+                      onKeyDown={(e) => e.key === "Enter" && agregarJugador()}
+                      placeholder="Nombre (jugador de prueba)"
+                      className="ninput flex-1"
+                    />
+                    <button className="nbtn nbtn-primary" onClick={agregarJugador}>Agregar</button>
+                  </div>
+                ) : (
+                  <p className="text-xs text-tinta/50">
+                    Compartí el código con los jugadores; entran y hacen su buy-in de{" "}
+                    {mesa.creditos_minimos} créditos.
+                  </p>
+                )}
+                <div className="text-sm text-tinta/60">
+                  {players.map((j) => j.nombre).join(", ") || "todavía nadie"}
+                </div>
+                <p className="text-xs text-tinta/45">
+                  Vos sos la casa: repartís y jugás la mano del dealer. Los jugadores
+                  juegan contra la casa (ilimitada), no entre ellos.
+                </p>
+              </section>
+            </>
+          )}
+
+          {/* Mesa navy en media luna: dealer arriba + jugadores en arco */}
+          {ronda && (
+            <div className="relative w-full" style={mesaStyle}>
+              <div className="pointer-events-none absolute inset-[10px]" style={{ border: "1px solid rgba(233,233,237,0.12)", borderRadius: "8px 8px 50% 50% / 8px 8px 82% 82%" }} />
+              <div className="absolute right-[4%] top-[8%] grid h-9 w-14 place-items-center rounded border border-white/20 bg-gradient-to-b from-[#3f424d] to-[#292b31] shadow-n-sm">
+                <span className="text-[9px] uppercase tracking-[0.14em] text-tinta/45">Zapato</span>
+              </div>
+
+              <div className="relative flex flex-col items-center gap-4 px-3 py-5 sm:px-5">
+                <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-tinta/45">Crupier</span>
+                <ManoDealer cartas={dealerCartas} holeRevelada={ronda.hole_revelada} verHole />
+                <div className="py-1 text-center">
+                  <div className="text-[12px] font-medium uppercase tracking-[0.2em] text-tinta/30">
+                    Paga {config?.blackjack_pago === "6_a_5" ? "6 : 5" : "3 : 2"} · se planta en 17
+                  </div>
+                </div>
+
+                <div className="flex w-full flex-wrap items-start justify-center gap-3">
+                  {players.map((j) => {
+                    const susManos = manos
+                      .filter((m) => m.jugador_id === j.id)
+                      .sort((a, b) => a.orden_mano - b.orden_mano);
+                    return (
+                      <div key={j.id} className="flex flex-col items-center gap-1 rounded-xl bg-black/25 px-2 py-1.5">
+                        <div className="text-center text-[11px] font-medium text-tinta/80">{j.nombre}</div>
+                        {susManos.length === 0 ? (
+                          <div className="py-2 text-center text-[11px] text-tinta/40">sin apuesta</div>
+                        ) : (
+                          <div className="flex gap-2">
+                            {susManos.map((m) => {
+                              const cs = cartas.filter((c) => c.mano_jugador_id === m.id);
+                              const r = resultados.find((x) => x.mano_jugador_id === m.id);
+                              return (
+                                <div key={m.id} className="flex flex-col items-center gap-0.5">
+                                  <ManoBJ cartas={cs} mano={m} size="sm" destacada={ronda.turno_mano_id === m.id} />
+                                  {r && (
+                                    <span className={`text-[11px] font-bold ${r.fichas_ganadas_o_perdidas >= 0 ? "text-emerald-300" : "text-red-300"}`}>
+                                      {r.fichas_ganadas_o_perdidas >= 0 ? "+" : ""}
+                                      {r.fichas_ganadas_o_perdidas}
+                                    </span>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
                       </div>
-                      {esBanca ? (
-                        <div className="py-2 text-center text-[11px] text-crema/40">es la banca</div>
-                      ) : susManos.length === 0 ? (
-                        <div className="py-2 text-center text-[11px] text-crema/40">sin apuesta</div>
-                      ) : (
-                        <div className="flex gap-2">
-                          {susManos.map((m) => {
-                            const cs = cartas.filter((c) => c.mano_jugador_id === m.id);
-                            const r = resultados.find((x) => x.mano_jugador_id === m.id);
-                            return (
-                              <div key={m.id} className="flex flex-col items-center gap-0.5">
-                                <ManoBJ
-                                  cartas={cs}
-                                  mano={m}
-                                  size="sm"
-                                  destacada={ronda.turno_mano_id === m.id}
-                                />
-                                {r && (
-                                  <span
-                                    className={`text-[11px] font-bold ${
-                                      r.fichas_ganadas_o_perdidas >= 0 ? "text-green-300" : "text-red-300"
-                                    }`}
-                                  >
-                                    {r.fichas_ganadas_o_perdidas >= 0 ? "+" : ""}
-                                    {r.fichas_ganadas_o_perdidas}
-                                  </span>
-                                )}
-                              </div>
-                            );
-                          })}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
+                    );
+                  })}
+                </div>
               </div>
             </div>
-          </div>
-        )}
+          )}
 
-        {/* Controles de fase */}
-        <section className="panel flex flex-wrap items-center gap-2 p-4">
-          {(!rondaActiva) && (
-            <button className="btn btn-oro" disabled={ocupado} onClick={() => post("iniciar-ronda")}>
-              {ronda ? "Próxima ronda" : "Iniciar ronda"}
+          {/* Controles de fase */}
+          <section className="ncard flex flex-wrap items-center gap-2 border border-white/[0.06] p-4">
+            {!rondaActiva && (
+              <button className="nbtn nbtn-primary" disabled={ocupado} onClick={() => post("iniciar-ronda")}>
+                {ronda ? "Próxima ronda" : "Iniciar ronda"}
+              </button>
+            )}
+            {ronda?.estado === "apuestas" && (
+              <button className="nbtn nbtn-primary" disabled={ocupado} onClick={() => post("cerrar-apuestas")}>
+                Cerrar apuestas y repartir
+              </button>
+            )}
+            {ronda?.fase_seguro && (
+              <button className="nbtn nbtn-primary" disabled={ocupado} onClick={() => post("cerrar-seguro")}>
+                Cerrar seguro
+              </button>
+            )}
+            {ronda && (
+              <span className="ml-auto text-sm text-tinta/55">
+                Estado: <b className="text-tinta/80">{ronda.estado}</b>
+              </span>
+            )}
+            <button className={`nbtn nbtn-danger ${ronda ? "" : "ml-auto"}`} disabled={ocupado} onClick={cerrarMesa}>
+              Cerrar mesa
             </button>
-          )}
-          {ronda?.estado === "apuestas" && (
-            <button className="btn btn-oro" disabled={ocupado} onClick={() => post("cerrar-apuestas")}>
-              Cerrar apuestas y repartir
+          </section>
+
+          <Liquidacion codigo={codigo} />
+        </div>
+
+        {/* Columna lateral: shoe digital */}
+        <div className="flex flex-col gap-4 lg:sticky lg:top-4 lg:h-fit">
+          <section className="ncard flex flex-col gap-2 border border-white/[0.06] p-4">
+            <h3 className="font-medium">Shoe digital (RNG)</h3>
+            <div className="text-sm text-tinta/70">
+              Cartas repartidas: <b>{shoe?.cartas_repartidas ?? 0}</b> / {totalShoe}{" "}
+              ({shoe?.cantidad_mazos ?? 6} mazos)
+            </div>
+            <p className="text-xs text-tinta/50">
+              Reparto 100% automático y aleatorio (RNG criptográfico). Rebaraja
+              solo al llegar al 75%.
+            </p>
+            <button className="nbtn nbtn-secondary" disabled={ocupado} onClick={() => post("barajar")}>
+              Rebarajar ahora
             </button>
-          )}
-          {ronda?.fase_seguro && (
-            <button className="btn btn-oro" disabled={ocupado} onClick={() => post("cerrar-seguro")}>
-              Cerrar seguro
-            </button>
-          )}
-          {ronda && (
-            <span className="ml-auto text-sm text-white/60">
-              Estado: <b>{ronda.estado}</b>
-            </span>
-          )}
-          <button
-            className={`rounded-xl bg-red-900/50 px-3 py-2 text-sm text-red-100 hover:bg-red-900/80 disabled:opacity-40 ${ronda ? "" : "ml-auto"}`}
-            disabled={ocupado}
-            onClick={cerrarMesa}
-          >
-            Cerrar mesa
-          </button>
-        </section>
+          </section>
 
-        {/* Liquidación */}
-        <Liquidacion codigo={codigo} />
-      </div>
-
-      {/* Columna lateral: shoe digital */}
-      <div className="flex flex-col gap-4 lg:sticky lg:top-4 lg:h-fit">
-        <section className="panel flex flex-col gap-2 p-4">
-          <h3 className="font-semibold">Shoe digital (RNG)</h3>
-          <div className="text-sm text-white/70">
-            Cartas repartidas: <b>{shoe?.cartas_repartidas ?? 0}</b> / {totalShoe}{" "}
-            ({shoe?.cantidad_mazos ?? 6} mazos)
-          </div>
-          <p className="text-xs text-white/50">
-            El reparto es 100% automático y aleatorio (RNG criptográfico). Rebaraja
-            solo al llegar al 75%. No hace falta escanear ni barajar a mano.
-          </p>
-          <button className="btn btn-gris" disabled={ocupado} onClick={() => post("barajar")}>
-            Rebarajar ahora
-          </button>
-        </section>
-
-        {aviso && (
-          <div className="rounded-lg bg-green-900/40 px-3 py-2 text-sm text-green-100">{aviso}</div>
-        )}
-        {error && (
-          <div className="rounded-lg bg-red-900/50 px-3 py-2 text-sm text-red-100">{error}</div>
-        )}
-      </div>
-    </main>
+          {aviso && (
+            <div className="rounded-md border border-emerald-500/40 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-200">{aviso}</div>
+          )}
+          {error && (
+            <div className="rounded-md border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-200">{error}</div>
+          )}
+        </div>
+      </main>
+    </div>
   );
 }
 
@@ -286,10 +273,10 @@ function Liquidacion({ codigo }: { codigo: string }) {
   }
 
   return (
-    <section className="panel flex flex-col gap-2 p-4">
+    <section className="ncard flex flex-col gap-2 border border-white/[0.06] p-4">
       <div className="flex items-center justify-between">
-        <h3 className="font-semibold">Liquidación</h3>
-        <button className="btn btn-gris !py-1.5 text-sm" onClick={calcular}>Calcular</button>
+        <h3 className="font-medium">Liquidación</h3>
+        <button className="nbtn nbtn-secondary !py-1.5 text-sm" onClick={calcular}>Calcular</button>
       </div>
       {data && (
         <div className="flex flex-col gap-2 text-sm">
@@ -297,14 +284,14 @@ function Liquidacion({ codigo }: { codigo: string }) {
             {data.netos.map((n) => (
               <span
                 key={n.jugador_id}
-                className={`rounded px-2 py-1 ${n.neto >= 0 ? "bg-green-900/40" : "bg-red-900/40"}`}
+                className={`rounded px-2 py-1 ${n.neto >= 0 ? "bg-emerald-500/15 text-emerald-200" : "bg-red-500/15 text-red-200"}`}
               >
                 {n.nombre}: {n.neto >= 0 ? "+" : ""}
                 {n.neto}
               </span>
             ))}
           </div>
-          <div className="text-white/70">
+          <div className="text-tinta/70">
             {data.transacciones.length === 0 ? (
               <span>Todos a mano.</span>
             ) : (
