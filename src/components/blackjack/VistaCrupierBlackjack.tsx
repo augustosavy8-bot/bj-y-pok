@@ -111,12 +111,7 @@ export function VistaCrupierBlackjack({
           {/* Configuración + jugadores (antes de arrancar) */}
           {enEspera && (
             <>
-              <ConfigBlackjack
-                codigo={codigo}
-                authUid={authUid}
-                config={config}
-                jugadores={players.map((j) => ({ id: j.id, nombre: j.nombre }))}
-              />
+              <ConfigBlackjack codigo={codigo} authUid={authUid} config={config} />
               <section className="ncard flex flex-col gap-2 border border-white/[0.06] p-4">
                 <h3 className="font-medium">Jugadores</h3>
                 {mesa.es_practica ? (

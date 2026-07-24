@@ -1,20 +1,18 @@
 import { getSupabaseAdmin } from "@/lib/supabase/server";
 import { verificarCrupier } from "@/lib/server/mesa";
-import { asegurarConfig, jugadoresDeMesa, cargarEstadoBJ } from "@/lib/server/blackjack";
+import { asegurarConfig } from "@/lib/server/blackjack";
 import { json, errorJson, errorFrom } from "@/lib/utils";
 
 export const runtime = "nodejs";
 
 // Crear/actualizar la configuración de la sesión de blackjack.
+// La banca es siempre el crupier (admin); no se configura rotación de banca.
 export async function POST(req: Request, { params }: { params: { codigo: string } }) {
   try {
     const admin = getSupabaseAdmin();
     const mesa = await verificarCrupier(admin, params.codigo);
     const body = await req.json();
     await asegurarConfig(admin, mesa);
-
-    const { jugadores } = await cargarEstadoBJ(admin, mesa.id);
-    const ordenDefault = jugadoresDeMesa(jugadores).map((j) => j.id);
 
     const campos = [
       "cantidad_mazos",
@@ -24,7 +22,6 @@ export async function POST(req: Request, { params }: { params: { codigo: string 
       "permite_double_after_split",
       "permite_surrender",
       "permite_insurance",
-      "rotacion_banca",
       "max_split_hands",
       "apuesta_min",
       "apuesta_max",
@@ -33,17 +30,6 @@ export async function POST(req: Request, { params }: { params: { codigo: string 
 
     const update: Record<string, unknown> = {};
     for (const c of campos) if (body[c] !== undefined) update[c] = body[c];
-    update.orden_banca =
-      Array.isArray(body.orden_banca) && body.orden_banca.length > 0
-        ? body.orden_banca
-        : ordenDefault;
-
-    // Banca fija: guardar el jugador designado; si no es 'fija', limpiarlo.
-    if (update.rotacion_banca === "fija") {
-      update.banca_fija_jugador_id = body.banca_fija_jugador_id ?? null;
-    } else if (update.rotacion_banca !== undefined) {
-      update.banca_fija_jugador_id = null;
-    }
 
     const { data, error } = await admin
       .from("bj_configuracion_sesion")

@@ -365,9 +365,15 @@ export async function cerrarApuestas(admin: DB, mesa: Mesa) {
   const conApuesta = estado.manos.filter((m) => m.apuesta_fichas > 0);
   if (conApuesta.length === 0) throw new Error("Nadie apostó todavía.");
 
-  // Marcar las manos como 'jugando' (se ajusta tras el reparto).
+  // Marcar las manos como 'jugando' y RETENER la apuesta: se descuenta de las
+  // fichas del jugador en vivo (se devuelve el bruto al resolver los pagos).
   for (const m of conApuesta) {
     await admin.from("bj_manos_jugador").update({ estado_mano: "jugando" }).eq("id", m.id);
+    const jug = estado.jugadores.find((j) => j.id === m.jugador_id);
+    if (jug && m.apuesta_fichas > 0) {
+      await admin.from("jugadores").update({ fichas: jug.fichas - m.apuesta_fichas }).eq("id", jug.id);
+      jug.fichas -= m.apuesta_fichas;
+    }
   }
   await admin.from("bj_rondas").update({ estado: "reparto_inicial" }).eq("id", ronda.id);
   // Reparto automático (RNG): 2 cartas por jugador + upcard y hole del dealer.
@@ -563,10 +569,12 @@ export async function registrarSeguro(admin: DB, mesa: Mesa, jugadorId: string, 
   }
   const seguro = Math.floor(mano.apuesta_fichas / 2);
   const jugador = estado.jugadores.find((j) => j.id === jugadorId)!;
-  if (comprometido(estado.manos, jugadorId) + seguro > jugador.fichas) {
+  if (seguro > jugador.fichas) {
     throw new Error("No te alcanzan las fichas para el seguro.");
   }
   await admin.from("bj_manos_jugador").update({ seguro_fichas: seguro }).eq("id", mano.id);
+  // Retener el costo del seguro.
+  await admin.from("jugadores").update({ fichas: jugador.fichas - seguro }).eq("id", jugador.id);
   return { ok: true };
 }
 
@@ -700,7 +708,8 @@ export async function accionJugadorBJ(
   const disp = accionesDisponibles({
     cartas,
     apuesta: mano.apuesta_fichas,
-    fichas: jugador.fichas - comprometido(estado.manos, jugadorId),
+    // Las apuestas ya están retenidas → jugador.fichas es lo disponible real.
+    fichas: jugador.fichas,
     esSplit: !!mano.es_split_de,
     manosDelAsiento,
     config,
@@ -731,6 +740,8 @@ export async function accionJugadorBJ(
     case "double": {
       if (!disp.double) throw new Error("No podés doblar en esta mano.");
       await admin.from("bj_manos_jugador").update({ doblada: true }).eq("id", mano.id);
+      // Retener la apuesta adicional del doble.
+      await admin.from("jugadores").update({ fichas: jugador.fichas - mano.apuesta_fichas }).eq("id", jugador.id);
       // Exactamente 1 carta y se planta (o se pasa).
       const carta = await repartirCarta(admin, mesa.id, ronda.id, { mano_jugador_id: mano.id });
       const e = evaluarMano([...cartas, { valor: carta.valor } as BJCarta]);
@@ -765,6 +776,8 @@ export async function accionJugadorBJ(
         .select()
         .single();
       const nueva = nuevaRaw as BJManoJugador;
+      // Retener la apuesta de la mano nueva del split.
+      await admin.from("jugadores").update({ fichas: jugador.fichas - mano.apuesta_fichas }).eq("id", jugador.id);
       // Mover la 2da carta a la mano nueva.
       await admin
         .from("bj_cartas_asignadas")
@@ -900,11 +913,15 @@ export async function resolverPagos(admin: DB, mesaId: string) {
       blackjackPago: config.blackjack_pago,
     });
 
-    // Aplicar fichas al jugador.
+    // La apuesta ya se retuvo al cerrar apuestas / doblar / split / seguro.
+    // Devolver el BRUTO = comprometido + delta neto (0 si perdió, 2× si ganó).
+    const comprometidoMano =
+      mano.apuesta_fichas * (mano.doblada ? 2 : 1) + (mano.seguro_fichas ?? 0);
+    const retorno = comprometidoMano + pago.delta;
     const jug = estado.jugadores.find((j) => j.id === mano.jugador_id);
     if (jug) {
-      await admin.from("jugadores").update({ fichas: jug.fichas + pago.delta }).eq("id", jug.id);
-      jug.fichas += pago.delta; // por si tiene varias manos (split)
+      await admin.from("jugadores").update({ fichas: jug.fichas + retorno }).eq("id", jug.id);
+      jug.fichas += retorno; // por si tiene varias manos (split)
     }
     netoBanca -= pago.delta; // la banca es la contraparte
 

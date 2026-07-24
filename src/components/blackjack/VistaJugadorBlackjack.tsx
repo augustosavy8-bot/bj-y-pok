@@ -373,7 +373,6 @@ export function VistaJugadorBlackjack({
                 cartas={cartas}
                 jugadorFichas={yo.fichas}
                 manos={manos}
-                jugadorId={yoId}
                 config={config}
                 restante={restante}
                 enviando={enviando}
@@ -429,7 +428,6 @@ function ControlesBJ({
   cartas,
   jugadorFichas,
   manos,
-  jugadorId,
   config,
   restante,
   enviando,
@@ -440,7 +438,6 @@ function ControlesBJ({
   cartas: ReturnType<typeof useBlackjack>["cartas"];
   jugadorFichas: number;
   manos: BJManoJugador[];
-  jugadorId: string;
   config: ReturnType<typeof useBlackjack>["config"];
   restante: number | null;
   enviando: boolean;
@@ -456,14 +453,12 @@ function ControlesBJ({
   const cs = cartas
     .filter((c) => c.mano_jugador_id === manoEnTurno.id)
     .sort((a, b) => a.orden_recibida - b.orden_recibida);
-  const comprometido = manos
-    .filter((m) => m.jugador_id === jugadorId)
-    .reduce((s, m) => s + m.apuesta_fichas * (m.doblada ? 2 : 1) + (m.seguro_fichas ?? 0), 0);
   const manosDelAsiento = manos.filter((m) => m.orden_asiento === manoEnTurno.orden_asiento).length;
   const disp = accionesDisponibles({
     cartas: cs,
     apuesta: manoEnTurno.apuesta_fichas,
-    fichas: jugadorFichas - comprometido,
+    // Las apuestas ya están retenidas → jugadorFichas es lo disponible real.
+    fichas: jugadorFichas,
     esSplit: !!manoEnTurno.es_split_de,
     manosDelAsiento,
     config,
