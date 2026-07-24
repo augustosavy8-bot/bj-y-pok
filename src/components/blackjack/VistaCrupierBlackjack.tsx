@@ -4,13 +4,9 @@ import { useMemo, useState } from "react";
 import { useBlackjack } from "@/lib/useBlackjack";
 import { ManoBJ, ManoDealer } from "@/components/blackjack/ManoBJ";
 import { ConfigBlackjack } from "@/components/blackjack/ConfigBlackjack";
-import { EscanerCarta } from "@/components/EscanerCarta";
 import { FichasMonto } from "@/components/Ficha";
 import { SuperficieFieltro } from "@/components/mesa/SuperficieFieltro";
-import { CamaraCrupier } from "@/components/mesa/CamaraCrupier";
 import { LeyendaFieltro } from "@/components/mesa/LeyendaFieltro";
-import { VALORES, PALOS } from "@/lib/types";
-import type { Valor, Palo } from "@/lib/types";
 
 export function VistaCrupierBlackjack({
   codigo,
@@ -82,35 +78,7 @@ export function VistaCrupierBlackjack({
     setNombreNuevo("");
   }
 
-  // Pista: qué carta corresponde escanear ahora.
-  const pista = useMemo(() => {
-    if (!ronda) return "—";
-    const base = manos.filter((m) => !m.es_split_de).sort((a, b) => a.orden_asiento - b.orden_asiento);
-    const N = base.length;
-    if (ronda.estado === "reparto_inicial") {
-      const k = cartas.length;
-      if (k < N) return `1ª carta — asiento ${base[k].orden_asiento + 1}`;
-      if (k === N) return "upcard del dealer (visible)";
-      if (k < 2 * N + 1) return `2ª carta — asiento ${base[k - (N + 1)].orden_asiento + 1}`;
-      return "hole card del dealer (oculta)";
-    }
-    if (ronda.estado === "turnos_jugadores") {
-      const m = manos.find((x) => x.id === ronda.turno_mano_id);
-      const jug = jugadores.find((j) => j.id === m?.jugador_id);
-      return m ? `carta para ${jug?.nombre} (asiento ${m.orden_asiento + 1})` : "—";
-    }
-    if (ronda.estado === "turno_dealer") return "carta del dealer";
-    return "—";
-  }, [ronda, manos, cartas, jugadores]);
-
-  const puedeEscanear =
-    ronda &&
-    ["reparto_inicial", "turnos_jugadores", "turno_dealer"].includes(ronda.estado) &&
-    !ronda.fase_seguro;
-
   const totalShoe = (shoe?.cantidad_mazos ?? 6) * 52;
-  const avisoBarajar =
-    shoe && config && shoe.manos_desde_barajado >= config.barajar_cada_manos;
 
   if (!mesa) return null;
 
@@ -169,7 +137,7 @@ export function VistaCrupierBlackjack({
               </div>
               <p className="text-xs text-white/50">
                 La banca rota entre estos jugadores según la configuración. El crupier
-                (vos) no es la banca; solo escaneás las cartas.
+                (vos) no es la banca; solo controlás el ritmo de la mesa.
               </p>
             </section>
           </>
@@ -178,11 +146,9 @@ export function VistaCrupierBlackjack({
         {/* Mesa: cámara propia (lo que ven los jugadores) + dealer + manos */}
         {ronda && (
           <SuperficieFieltro className="flex flex-col items-center gap-4 p-3 sm:p-4">
-            <CamaraCrupier
-              activa={players.length > 0}
-              etiqueta="Tu cámara (vista de los jugadores)"
-              className="sm:aspect-[21/9]"
-            />
+            <div className="text-[10px] font-semibold uppercase tracking-[0.2em] text-crema/50">
+              Dealer
+            </div>
             <ManoDealer cartas={dealerCartas} holeRevelada={ronda.hole_revelada} verHole />
             <LeyendaFieltro
               pago={config?.blackjack_pago === "6_a_5" ? "6 A 5" : "3 A 2"}
@@ -280,49 +246,22 @@ export function VistaCrupierBlackjack({
         <Liquidacion codigo={codigo} />
       </div>
 
-      {/* Columna lateral: escáner + shoe */}
+      {/* Columna lateral: shoe digital */}
       <div className="flex flex-col gap-4 lg:sticky lg:top-4 lg:h-fit">
-        {/* Shoe */}
         <section className="panel flex flex-col gap-2 p-4">
-          <h3 className="font-semibold">Shoe</h3>
+          <h3 className="font-semibold">Shoe digital (RNG)</h3>
           <div className="text-sm text-white/70">
-            Cartas repartidas desde el barajado:{" "}
-            <b>{shoe?.cartas_repartidas ?? 0}</b> / {totalShoe} ({shoe?.cantidad_mazos ?? 6} mazos)
+            Cartas repartidas: <b>{shoe?.cartas_repartidas ?? 0}</b> / {totalShoe}{" "}
+            ({shoe?.cantidad_mazos ?? 6} mazos)
           </div>
-          <div className="text-sm text-white/70">
-            Manos desde el barajado: {shoe?.manos_desde_barajado ?? 0} / {config?.barajar_cada_manos ?? 20}
-          </div>
-          {avisoBarajar && (
-            <div className="rounded-lg bg-yellow-900/40 px-3 py-2 text-sm text-yellow-100">
-              Conviene barajar antes de la próxima ronda.
-            </div>
-          )}
+          <p className="text-xs text-white/50">
+            El reparto es 100% automático y aleatorio (RNG criptográfico). Rebaraja
+            solo al llegar al 75%. No hace falta escanear ni barajar a mano.
+          </p>
           <button className="btn btn-gris" disabled={ocupado} onClick={() => post("barajar")}>
-            Acabo de barajar los {shoe?.cantidad_mazos ?? 6} mazos
+            Rebarajar ahora
           </button>
         </section>
-
-        {puedeEscanear ? (
-          <>
-            <div className="panel px-3 py-2 text-center text-sm">
-              Escaneando: <b className="text-oro">{pista}</b>
-            </div>
-            <EscanerCarta
-              codigo={codigo}
-              authUid={authUid}
-              proximaPista={pista}
-              endpoint={`/api/blackjack/${codigo}/carta`}
-              onConfirmada={(m) => setAviso(m)}
-            />
-            <CorregirUltima codigo={codigo} authUid={authUid} onOk={() => setAviso("Corregida")} />
-          </>
-        ) : (
-          <div className="panel p-4 text-center text-sm text-white/60">
-            {ronda?.estado === "apuestas"
-              ? "Esperando las apuestas de los jugadores…"
-              : "No hay cartas para escanear en esta fase."}
-          </div>
-        )}
 
         {aviso && (
           <div className="rounded-lg bg-green-900/40 px-3 py-2 text-sm text-green-100">{aviso}</div>
@@ -332,65 +271,6 @@ export function VistaCrupierBlackjack({
         )}
       </div>
     </main>
-  );
-}
-
-// Corregir la última carta escaneada.
-function CorregirUltima({
-  codigo,
-  authUid,
-  onOk,
-}: {
-  codigo: string;
-  authUid: string;
-  onOk: () => void;
-}) {
-  const [abierto, setAbierto] = useState(false);
-  const [valor, setValor] = useState<Valor>("A");
-  const [palo, setPalo] = useState<Palo>("picas");
-  const [error, setError] = useState<string | null>(null);
-
-  async function guardar() {
-    setError(null);
-    const res = await fetch(`/api/blackjack/${codigo}/corregir-carta`, {
-      method: "PATCH",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ auth_uid: authUid, valor, palo }),
-    });
-    const data = await res.json();
-    if (!res.ok) setError(data?.error ?? "Error");
-    else {
-      setAbierto(false);
-      onOk();
-    }
-  }
-
-  if (!abierto) {
-    return (
-      <button className="btn btn-gris text-sm" onClick={() => setAbierto(true)}>
-        Corregir última carta
-      </button>
-    );
-  }
-  return (
-    <div className="panel flex flex-col gap-2 p-3">
-      <div className="text-sm font-semibold">Corregir última carta</div>
-      <div className="grid grid-cols-2 gap-2">
-        <select className="rounded-lg bg-white/10 p-2" value={valor}
-          onChange={(e) => setValor(e.target.value as Valor)}>
-          {VALORES.map((v) => <option key={v} value={v} className="text-black">{v}</option>)}
-        </select>
-        <select className="rounded-lg bg-white/10 p-2" value={palo}
-          onChange={(e) => setPalo(e.target.value as Palo)}>
-          {PALOS.map((p) => <option key={p} value={p} className="text-black">{p}</option>)}
-        </select>
-      </div>
-      {error && <div className="text-xs text-red-300">{error}</div>}
-      <div className="grid grid-cols-2 gap-2">
-        <button className="btn btn-gris" onClick={() => setAbierto(false)}>Cancelar</button>
-        <button className="btn btn-oro" onClick={guardar}>Guardar</button>
-      </div>
-    </div>
   );
 }
 

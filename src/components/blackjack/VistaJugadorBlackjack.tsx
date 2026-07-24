@@ -7,7 +7,6 @@ import { FichasMonto } from "@/components/Ficha";
 import { SaldoBadge } from "@/components/SaldoBadge";
 import { accionesDisponibles } from "@/lib/blackjack/acciones";
 import { SuperficieFieltro } from "@/components/mesa/SuperficieFieltro";
-import { CamaraCrupier } from "@/components/mesa/CamaraCrupier";
 import { TimerCircular } from "@/components/mesa/TimerCircular";
 import { OverlayResultado, type TipoResultado } from "@/components/mesa/OverlayResultado";
 import { LeyendaFieltro } from "@/components/mesa/LeyendaFieltro";
@@ -206,9 +205,11 @@ export function VistaJugadorBlackjack({
         </div>
       </header>
 
-      {/* Mesa: cámara del crupier + mano del dealer sobre el fieltro */}
+      {/* Mesa: mano del dealer sobre el fieltro */}
       <SuperficieFieltro className="flex flex-col items-center gap-3 p-3">
-        <CamaraCrupier activa={mesa.estado === "jugando"} />
+        <div className="text-[10px] font-semibold uppercase tracking-[0.2em] text-crema/50">
+          Dealer
+        </div>
         <ManoDealer
           cartas={dealerCartas}
           holeRevelada={ronda?.hole_revelada ?? false}

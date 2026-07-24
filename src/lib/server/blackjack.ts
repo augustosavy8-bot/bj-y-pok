@@ -1,5 +1,7 @@
+import { randomInt } from "crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { Mesa, Jugador, LecturaCarta } from "@/lib/types";
+import type { Mesa, Jugador, LecturaCarta, Valor, Palo } from "@/lib/types";
+import { VALORES, PALOS } from "@/lib/types";
 import type {
   BJConfig,
   BJShoe,
@@ -14,6 +16,84 @@ import { calcularPagoMano } from "@/lib/blackjack/pagos";
 import { accionesDisponibles } from "@/lib/blackjack/acciones";
 
 type DB = SupabaseClient;
+type CartaRNG = { valor: Valor; palo: Palo };
+const PENETRACION = 0.75; // rebaraja cuando se repartió el 75% del shoe
+
+// ============================================================
+// Mazo digital (RNG) — reemplaza al escaneo físico
+// ============================================================
+// Construye un shoe de `mazos` barajado con Fisher-Yates + crypto.randomInt
+// (RNG criptográfico, no Math.random).
+function construirShoe(mazos: number): CartaRNG[] {
+  const deck: CartaRNG[] = [];
+  for (let d = 0; d < mazos; d++) {
+    for (const valor of VALORES) {
+      for (const palo of PALOS) deck.push({ valor, palo });
+    }
+  }
+  for (let i = deck.length - 1; i > 0; i--) {
+    const j = randomInt(0, i + 1);
+    [deck[i], deck[j]] = [deck[j], deck[i]];
+  }
+  return deck;
+}
+
+// Roba la próxima carta del shoe persistido y avanza el puntero
+// (cartas_repartidas). Si el shoe está vacío o agotado, lo reconstruye.
+async function robarCarta(admin: DB, mesaId: string): Promise<CartaRNG> {
+  const { data: shoe } = await admin
+    .from("bj_shoe")
+    .select("cartas, cartas_repartidas, cantidad_mazos")
+    .eq("mesa_id", mesaId)
+    .maybeSingle();
+  let cartas = (shoe?.cartas ?? []) as CartaRNG[];
+  let idx = (shoe?.cartas_repartidas as number) ?? 0;
+  const mazos = (shoe?.cantidad_mazos as number) ?? 6;
+
+  if (!cartas.length || idx >= cartas.length) {
+    cartas = construirShoe(mazos);
+    idx = 0;
+    await admin
+      .from("bj_shoe")
+      .update({
+        cartas,
+        cartas_repartidas: 0,
+        manos_desde_barajado: 0,
+        ultimo_barajado_at: new Date().toISOString(),
+      })
+      .eq("mesa_id", mesaId);
+  }
+
+  const carta = cartas[idx];
+  await admin.from("bj_shoe").update({ cartas_repartidas: idx + 1 }).eq("mesa_id", mesaId);
+  return carta;
+}
+
+// Roba una carta y la inserta en el slot indicado, calculando orden_recibida
+// de forma secuencial. Devuelve la carta repartida.
+async function repartirCarta(
+  admin: DB,
+  mesaId: string,
+  rondaId: string,
+  opts: { mano_jugador_id?: string | null; es_carta_dealer?: boolean; es_hole_card?: boolean; revelada?: boolean }
+): Promise<CartaRNG> {
+  const carta = await robarCarta(admin, mesaId);
+  const { count } = await admin
+    .from("bj_cartas_asignadas")
+    .select("id", { count: "exact", head: true })
+    .eq("ronda_id", rondaId);
+  await admin.from("bj_cartas_asignadas").insert({
+    ronda_id: rondaId,
+    mano_jugador_id: opts.mano_jugador_id ?? null,
+    es_carta_dealer: opts.es_carta_dealer ?? false,
+    es_hole_card: opts.es_hole_card ?? false,
+    revelada: opts.revelada ?? true,
+    valor: carta.valor,
+    palo: carta.palo,
+    orden_recibida: (count ?? 0) + 1,
+  });
+  return carta;
+}
 
 // ============================================================
 // Carga de estado
@@ -194,6 +274,28 @@ export async function iniciarRondaBJ(admin: DB, mesa: Mesa) {
     await admin.from("bj_shoe").upsert({ mesa_id: mesa.id, cantidad_mazos: config.cantidad_mazos });
   }
 
+  // Barajar si el shoe está vacío o se pasó la penetración (~75%).
+  const { data: shoeRow } = await admin
+    .from("bj_shoe")
+    .select("cartas, cartas_repartidas, cantidad_mazos")
+    .eq("mesa_id", mesa.id)
+    .maybeSingle();
+  const mazos = (shoeRow?.cantidad_mazos as number) ?? config.cantidad_mazos ?? 6;
+  const cartasShoe = (shoeRow?.cartas ?? []) as unknown[];
+  const repartidas = (shoeRow?.cartas_repartidas as number) ?? 0;
+  const penetrado = cartasShoe.length > 0 && repartidas >= Math.floor(cartasShoe.length * PENETRACION);
+  if (cartasShoe.length === 0 || penetrado) {
+    await admin
+      .from("bj_shoe")
+      .update({
+        cartas: construirShoe(mazos),
+        cartas_repartidas: 0,
+        manos_desde_barajado: 0,
+        ultimo_barajado_at: new Date().toISOString(),
+      })
+      .eq("mesa_id", mesa.id);
+  }
+
   const numero = (await admin.rpc("bj_siguiente_numero_ronda", { p_mesa_id: mesa.id }))
     .data as number;
   const banca = proximaBanca(config, estado.jugadores, estado.ronda, numero);
@@ -266,7 +368,25 @@ export async function cerrarApuestas(admin: DB, mesa: Mesa) {
     await admin.from("bj_manos_jugador").update({ estado_mano: "jugando" }).eq("id", m.id);
   }
   await admin.from("bj_rondas").update({ estado: "reparto_inicial" }).eq("id", ronda.id);
+  // Reparto automático (RNG): 2 cartas por jugador + upcard y hole del dealer.
+  await repartoInicialAuto(admin, mesa.id);
   return { ok: true };
+}
+
+// Reparto inicial automático desde el shoe: 1ª vuelta a jugadores, upcard del
+// dealer, 2ª vuelta a jugadores, hole card del dealer (oculta), y avanza.
+async function repartoInicialAuto(admin: DB, mesaId: string) {
+  const estado = await cargarEstadoBJ(admin, mesaId);
+  if (!estado.ronda) return;
+  const rondaId = estado.ronda.id;
+  const base = manosOrdenadas(estado.manos.filter((m) => !m.es_split_de));
+
+  for (const m of base) await repartirCarta(admin, mesaId, rondaId, { mano_jugador_id: m.id });
+  await repartirCarta(admin, mesaId, rondaId, { es_carta_dealer: true, revelada: true });
+  for (const m of base) await repartirCarta(admin, mesaId, rondaId, { mano_jugador_id: m.id });
+  await repartirCarta(admin, mesaId, rondaId, { es_carta_dealer: true, es_hole_card: true, revelada: false });
+
+  await avanzarTrasReparto(admin, mesaId);
 }
 
 // ============================================================
@@ -585,23 +705,40 @@ export async function accionJugadorBJ(
   });
 
   switch (accion) {
-    case "hit":
-      // El pedido de carta lo materializa el crupier al escanear. No cambia
-      // el estado; sólo renueva el timer.
-      await admin.from("bj_rondas").update({ turno_expira_at: expira(config) }).eq("id", ronda.id);
+    case "hit": {
+      // Roba una carta del shoe y evalúa el resultado.
+      const carta = await repartirCarta(admin, mesa.id, ronda.id, { mano_jugador_id: mano.id });
+      const e = evaluarMano([...cartas, { valor: carta.valor } as BJCarta]);
+      if (e.es_bust) {
+        await admin.from("bj_manos_jugador").update({ estado_mano: "pasado" }).eq("id", mano.id);
+        await avanzarTurno(admin, mesa.id);
+      } else if (e.valor === 21) {
+        await admin.from("bj_manos_jugador").update({ estado_mano: "plantado" }).eq("id", mano.id);
+        await avanzarTurno(admin, mesa.id);
+      } else {
+        await admin.from("bj_rondas").update({ turno_expira_at: expira(config) }).eq("id", ronda.id);
+      }
       return { ok: true };
+    }
 
     case "stand":
       await admin.from("bj_manos_jugador").update({ estado_mano: "plantado" }).eq("id", mano.id);
       await avanzarTurno(admin, mesa.id);
       return { ok: true };
 
-    case "double":
+    case "double": {
       if (!disp.double) throw new Error("No podés doblar en esta mano.");
       await admin.from("bj_manos_jugador").update({ doblada: true }).eq("id", mano.id);
-      // El crupier escanea 1 carta; ahí se planta automáticamente.
-      await admin.from("bj_rondas").update({ turno_expira_at: expira(config) }).eq("id", ronda.id);
+      // Exactamente 1 carta y se planta (o se pasa).
+      const carta = await repartirCarta(admin, mesa.id, ronda.id, { mano_jugador_id: mano.id });
+      const e = evaluarMano([...cartas, { valor: carta.valor } as BJCarta]);
+      await admin
+        .from("bj_manos_jugador")
+        .update({ estado_mano: e.es_bust ? "pasado" : "plantado" })
+        .eq("id", mano.id);
+      await avanzarTurno(admin, mesa.id);
       return { ok: true };
+    }
 
     case "surrender":
       if (!disp.surrender) throw new Error("No podés rendirte ahora.");
@@ -612,7 +749,7 @@ export async function accionJugadorBJ(
     case "split": {
       if (!disp.split) throw new Error("No podés hacer split en esta mano.");
       // Crear la mano nueva y mover una de las dos cartas.
-      const { data: nueva } = await admin
+      const { data: nuevaRaw } = await admin
         .from("bj_manos_jugador")
         .insert({
           ronda_id: ronda.id,
@@ -625,12 +762,34 @@ export async function accionJugadorBJ(
         })
         .select()
         .single();
+      const nueva = nuevaRaw as BJManoJugador;
       // Mover la 2da carta a la mano nueva.
       await admin
         .from("bj_cartas_asignadas")
-        .update({ mano_jugador_id: (nueva as BJManoJugador).id })
+        .update({ mano_jugador_id: nueva.id })
         .eq("id", cartas[1].id);
-      await admin.from("bj_rondas").update({ turno_expira_at: expira(config) }).eq("id", ronda.id);
+
+      // Repartir 1 carta a cada mano (regla de casino).
+      const esAses = cartas[0].valor === "A";
+      const c1 = await repartirCarta(admin, mesa.id, ronda.id, { mano_jugador_id: mano.id });
+      const c2 = await repartirCarta(admin, mesa.id, ronda.id, { mano_jugador_id: nueva.id });
+
+      if (esAses) {
+        // Split de ases: 1 carta por mano y se plantan (salvo 21 = igual planta).
+        await admin.from("bj_manos_jugador").update({ estado_mano: "plantado" }).eq("id", mano.id);
+        await admin.from("bj_manos_jugador").update({ estado_mano: "plantado" }).eq("id", nueva.id);
+        await avanzarTurno(admin, mesa.id);
+      } else {
+        // Sigue jugando la mano original; si ya hizo 21, se planta y avanza.
+        const e1 = evaluarMano([cartas[0] as BJCarta, { valor: c1.valor } as BJCarta]);
+        if (e1.valor === 21) {
+          await admin.from("bj_manos_jugador").update({ estado_mano: "plantado" }).eq("id", mano.id);
+          await avanzarTurno(admin, mesa.id);
+        } else {
+          await admin.from("bj_rondas").update({ turno_expira_at: expira(config) }).eq("id", ronda.id);
+        }
+      }
+      void c2;
       return { ok: true };
     }
 
@@ -666,15 +825,26 @@ async function entrarTurnoDealer(admin: DB, mesaId: string) {
     (m) => m.estado_mano === "plantado" || m.estado_mano === "blackjack"
   );
   if (elegibles.length === 0) {
+    // Nadie sigue vivo: el dealer no juega, se resuelve directo.
     await resolverPagos(admin, mesaId);
     return;
   }
-  // Si el dealer ya no debe pedir con sus 2 cartas → pagos directo.
-  const dealer = cartasDealer(estado.cartas);
-  if (!dealerDebePedir(dealer, config.soft_17_regla)) {
-    await resolverPagos(admin, mesaId);
+  // El dealer juega solo (RNG): pide hasta plantar según la regla.
+  await jugarDealerAuto(admin, mesaId);
+}
+
+// El dealer roba del shoe hasta que debe plantar o se pasa, luego paga.
+async function jugarDealerAuto(admin: DB, mesaId: string) {
+  // Tope de seguridad para evitar cualquier bucle infinito.
+  for (let i = 0; i < 25; i++) {
+    const estado = await cargarEstadoBJ(admin, mesaId);
+    if (!estado.ronda || !estado.config) return;
+    const dealer = cartasDealer(estado.cartas);
+    const e = evaluarMano(dealer);
+    if (e.es_bust || !dealerDebePedir(dealer, estado.config.soft_17_regla)) break;
+    await repartirCarta(admin, mesaId, estado.ronda.id, { es_carta_dealer: true, revelada: true });
   }
-  // Si debe pedir, se espera a que el crupier escanee (cartaDealer).
+  await resolverPagos(admin, mesaId);
 }
 
 async function cartaDealer(
@@ -791,9 +961,16 @@ export async function jugadorEnRondaActivaBJ(
 // Barajar (reset del shoe)
 // ============================================================
 export async function barajarShoe(admin: DB, mesa: Mesa) {
+  const { data: shoe } = await admin
+    .from("bj_shoe")
+    .select("cantidad_mazos")
+    .eq("mesa_id", mesa.id)
+    .maybeSingle();
+  const mazos = (shoe?.cantidad_mazos as number) ?? 6;
   await admin
     .from("bj_shoe")
     .update({
+      cartas: construirShoe(mazos),
       cartas_repartidas: 0,
       manos_desde_barajado: 0,
       ultimo_barajado_at: new Date().toISOString(),
