@@ -1,8 +1,8 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 
-// Rutas accesibles sin sesión.
-const PUBLICAS = ["/login", "/invitacion"];
+// Rutas accesibles sin sesión (incluye los mockups de preview, que son estáticos).
+const PUBLICAS = ["/login", "/invitacion", "/preview-mesa", "/preview-bj-mesa"];
 
 type CookieAEscribir = { name: string; value: string; options?: CookieOptions };
 
