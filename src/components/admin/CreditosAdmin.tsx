@@ -31,7 +31,6 @@ export function CreditosAdmin() {
     const d = await r.json();
     const us = (d.usuarios ?? []) as Usuario[];
     setUsuarios(us);
-    // Saldos en paralelo.
     const entradas = await Promise.all(
       us.map(async (u) => {
         const rr = await fetch(`/api/admin/creditos?user_id=${u.id}`);
@@ -77,22 +76,22 @@ export function CreditosAdmin() {
   }
 
   return (
-    <section className="panel flex flex-col gap-3 p-4">
-      <h2 className="font-semibold">Créditos</h2>
-      {error && <div className="rounded-lg bg-red-900/50 px-3 py-2 text-sm text-red-100">{error}</div>}
+    <section className="ncard flex flex-col gap-3 border border-white/[0.06] p-4">
+      <h2 className="font-medium">Créditos</h2>
+      {error && <div className="rounded-md border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-200">{error}</div>}
       <div className="flex flex-col gap-2">
         {usuarios.map((u) => (
-          <div key={u.id} className="rounded-lg bg-black/20 p-3">
+          <div key={u.id} className="rounded-md bg-white/[0.04] p-3">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="min-w-0">
                 <div className="font-medium">{u.nombre}</div>
-                <div className="text-xs text-white/50">{u.email}</div>
+                <div className="text-xs text-tinta/50">{u.email}</div>
               </div>
               <div className="flex items-center gap-2">
-                <span className="rounded bg-black/30 px-2 py-1 text-sm font-semibold text-oro tabular-nums">
+                <span className="rounded bg-white/[0.06] px-2 py-1 text-sm font-medium tabular-nums text-acento-300">
                   {(saldos[u.id] ?? 0).toLocaleString("es")}
                 </span>
-                <button className="btn btn-gris !px-3 !py-1.5 text-xs" onClick={() => verMovimientos(u.id)}>
+                <button className="nbtn nbtn-secondary !px-3 !py-1.5 text-xs" onClick={() => verMovimientos(u.id)}>
                   {expandido === u.id ? "Ocultar" : "Historial"}
                 </button>
               </div>
@@ -105,15 +104,15 @@ export function CreditosAdmin() {
                 value={montoCarga[u.id] || ""}
                 onChange={(e) => setMontoCarga((m) => ({ ...m, [u.id]: Number(e.target.value) }))}
                 placeholder="Monto"
-                className="w-28 rounded-lg bg-white/10 p-2 text-sm"
+                className="ninput w-28"
               />
               <input
                 value={notaCarga[u.id] || ""}
                 onChange={(e) => setNotaCarga((n) => ({ ...n, [u.id]: e.target.value }))}
                 placeholder="Nota (opcional)"
-                className="flex-1 rounded-lg bg-white/10 p-2 text-sm"
+                className="ninput flex-1"
               />
-              <button className="btn btn-oro !px-3 !py-1.5 text-xs" onClick={() => cargar(u.id)}>
+              <button className="nbtn nbtn-primary !px-3 !py-1.5 text-xs" onClick={() => cargar(u.id)}>
                 Cargar créditos
               </button>
             </div>
@@ -121,25 +120,26 @@ export function CreditosAdmin() {
             {expandido === u.id && (
               <div className="mt-2 overflow-x-auto">
                 <table className="w-full text-xs">
-                  <thead className="text-left text-white/40">
-                    <tr><th className="py-1 pr-2">Fecha</th><th className="py-1 pr-2">Tipo</th><th className="py-1 pr-2 text-right">Monto</th><th className="py-1 text-right">Saldo</th></tr>
+                  <thead className="text-left text-tinta/40">
+                    <tr><th className="py-1 pr-2 font-medium">Fecha</th><th className="py-1 pr-2 font-medium">Tipo</th><th className="py-1 pr-2 text-right font-medium">Monto</th><th className="py-1 text-right font-medium">Saldo</th></tr>
                   </thead>
                   <tbody>
                     {movimientos.map((m) => (
-                      <tr key={m.id} className="border-t border-white/10">
-                        <td className="py-1 pr-2 text-white/50">{new Date(m.created_at).toLocaleString("es", { dateStyle: "short", timeStyle: "short" })}</td>
+                      <tr key={m.id} className="border-t border-white/[0.07]">
+                        <td className="py-1 pr-2 text-tinta/50">{new Date(m.created_at).toLocaleString("es", { dateStyle: "short", timeStyle: "short" })}</td>
                         <td className="py-1 pr-2">{TIPO_LABEL[m.tipo]}</td>
-                        <td className={`py-1 pr-2 text-right tabular-nums ${m.monto >= 0 ? "text-green-400" : "text-red-400"}`}>{m.monto >= 0 ? "+" : ""}{m.monto}</td>
+                        <td className={`py-1 pr-2 text-right tabular-nums ${m.monto >= 0 ? "text-emerald-300" : "text-red-300"}`}>{m.monto >= 0 ? "+" : ""}{m.monto}</td>
                         <td className="py-1 text-right tabular-nums">{m.saldo_resultante}</td>
                       </tr>
                     ))}
-                    {movimientos.length === 0 && <tr><td colSpan={4} className="py-2 text-center text-white/40">Sin movimientos.</td></tr>}
+                    {movimientos.length === 0 && <tr><td colSpan={4} className="py-2 text-center text-tinta/40">Sin movimientos.</td></tr>}
                   </tbody>
                 </table>
               </div>
             )}
           </div>
         ))}
+        {usuarios.length === 0 && <p className="text-sm text-tinta/45">No hay usuarios todavía.</p>}
       </div>
     </section>
   );

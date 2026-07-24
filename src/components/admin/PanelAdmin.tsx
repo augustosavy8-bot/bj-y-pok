@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { AppShell } from "@/components/shell/AppShell";
+import { NocturneShell } from "@/components/nocturne/NocturneShell";
 import { CreditosAdmin } from "@/components/admin/CreditosAdmin";
 import { RetirosAdmin } from "@/components/admin/RetirosAdmin";
 
@@ -86,143 +86,132 @@ export function PanelAdmin({ miId }: { miId: string }) {
   }
 
   return (
-    <AppShell activo="/admin">
-      <div className="mx-auto flex max-w-4xl flex-col gap-6 py-4">
-      <h1 className="text-2xl font-bold text-oro">Panel de administración</h1>
+    <NocturneShell>
+      <div className="mx-auto flex max-w-4xl flex-col gap-6 px-4 py-6 sm:px-6">
+        <h1 className="text-2xl font-medium">Panel de administración</h1>
 
-      {error && (
-        <div className="rounded-lg bg-red-900/50 px-3 py-2 text-sm text-red-100">{error}</div>
-      )}
+        {error && (
+          <div className="rounded-md border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-200">{error}</div>
+        )}
 
-      {/* Créditos y retiros */}
-      <CreditosAdmin />
-      <RetirosAdmin />
+        {/* Créditos y retiros */}
+        <CreditosAdmin />
+        <RetirosAdmin />
 
-      {/* Invitaciones */}
-      <section className="panel flex flex-col gap-3 p-4">
-        <h2 className="font-semibold">Invitaciones</h2>
-        <div className="flex gap-2">
-          <input
-            value={emailInv}
-            onChange={(e) => setEmailInv(e.target.value)}
-            placeholder="Email (opcional)"
-            className="flex-1 rounded-xl bg-white/10 p-2.5"
-          />
-          <button className="btn btn-oro" onClick={generarInvitacion}>Generar invitación</button>
-        </div>
-        <div className="flex flex-col gap-2">
-          {invitaciones.length === 0 && (
-            <p className="text-sm text-white/50">Todavía no generaste invitaciones.</p>
-          )}
-          {invitaciones.map((inv) => {
-            const expirada = estaExpirada(inv);
-            const estado = expirada ? "expirada" : inv.estado;
-            return (
-              <div key={inv.id} className="rounded-lg bg-black/20 p-3 text-sm">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <span className="flex items-center gap-2">
-                    <EstadoBadge estado={estado} />
-                    {inv.email && <span className="text-white/70">{inv.email}</span>}
-                    <span className="text-white/40">
-                      vence {new Date(inv.expires_at).toLocaleDateString("es")}
+        {/* Invitaciones */}
+        <section className="ncard flex flex-col gap-3 border border-white/[0.06] p-4">
+          <h2 className="font-medium">Invitaciones</h2>
+          <div className="flex gap-2">
+            <input
+              value={emailInv}
+              onChange={(e) => setEmailInv(e.target.value)}
+              placeholder="Email (opcional)"
+              className="ninput flex-1"
+            />
+            <button className="nbtn nbtn-primary" onClick={generarInvitacion}>Generar invitación</button>
+          </div>
+          <div className="flex flex-col gap-2">
+            {invitaciones.length === 0 && (
+              <p className="text-sm text-tinta/50">Todavía no generaste invitaciones.</p>
+            )}
+            {invitaciones.map((inv) => {
+              const expirada = estaExpirada(inv);
+              const estado = expirada ? "expirada" : inv.estado;
+              return (
+                <div key={inv.id} className="rounded-md bg-white/[0.04] p-3 text-sm">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <span className="flex items-center gap-2">
+                      <EstadoBadge estado={estado} />
+                      {inv.email && <span className="text-tinta/70">{inv.email}</span>}
+                      <span className="text-tinta/40">
+                        vence {new Date(inv.expires_at).toLocaleDateString("es")}
+                      </span>
                     </span>
-                  </span>
+                    {inv.estado === "pendiente" && !expirada && (
+                      <div className="flex gap-2">
+                        <button
+                          className="nbtn nbtn-secondary !px-3 !py-1.5 text-xs"
+                          onClick={() => {
+                            navigator.clipboard?.writeText(linkDe(inv.token));
+                            setCopiado(inv.id);
+                            setTimeout(() => setCopiado(null), 1500);
+                          }}
+                        >
+                          {copiado === inv.id ? "¡Copiado!" : "Copiar link"}
+                        </button>
+                        <button className="nbtn nbtn-danger !px-3 !py-1.5 text-xs" onClick={() => revocar(inv.id)}>
+                          Revocar
+                        </button>
+                      </div>
+                    )}
+                  </div>
                   {inv.estado === "pendiente" && !expirada && (
-                    <div className="flex gap-2">
-                      <button
-                        className="btn btn-gris !px-3 !py-1.5 text-xs"
-                        onClick={() => {
-                          navigator.clipboard?.writeText(linkDe(inv.token));
-                          setCopiado(inv.id);
-                          setTimeout(() => setCopiado(null), 1500);
-                        }}
-                      >
-                        {copiado === inv.id ? "¡Copiado!" : "Copiar link"}
-                      </button>
-                      <button
-                        className="btn btn-rojo !px-3 !py-1.5 text-xs"
-                        onClick={() => revocar(inv.id)}
-                      >
-                        Revocar
-                      </button>
-                    </div>
+                    <div className="mt-1 break-all font-mono text-xs text-tinta/45">{linkDe(inv.token)}</div>
                   )}
                 </div>
-                {inv.estado === "pendiente" && !expirada && (
-                  <div className="mt-1 break-all font-mono text-xs text-white/50">
-                    {linkDe(inv.token)}
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      </section>
+              );
+            })}
+          </div>
+        </section>
 
-      {/* Usuarios */}
-      <section className="panel flex flex-col gap-3 p-4">
-        <h2 className="font-semibold">Usuarios</h2>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="text-left text-white/50">
-              <tr>
-                <th className="py-1 pr-3">Nombre</th>
-                <th className="py-1 pr-3">Email</th>
-                <th className="py-1 pr-3">Rol</th>
-                <th className="py-1 pr-3">Alta</th>
-                <th className="py-1 pr-3">Estado</th>
-                <th className="py-1"></th>
-              </tr>
-            </thead>
-            <tbody>
-              {usuarios.map((u) => (
-                <tr key={u.id} className="border-t border-white/10">
-                  <td className="py-2 pr-3">{u.nombre}{u.id === miId && " (vos)"}</td>
-                  <td className="py-2 pr-3 text-white/70">{u.email}</td>
-                  <td className="py-2 pr-3">
-                    {u.rol === "admin" ? (
-                      <span className="text-oro">admin</span>
-                    ) : (
-                      "jugador"
-                    )}
-                  </td>
-                  <td className="py-2 pr-3 text-white/50">
-                    {new Date(u.created_at).toLocaleDateString("es")}
-                  </td>
-                  <td className="py-2 pr-3">
-                    {u.activo ? (
-                      <span className="text-green-400">activo</span>
-                    ) : (
-                      <span className="text-red-400">inactivo</span>
-                    )}
-                  </td>
-                  <td className="py-2 text-right">
-                    {u.id !== miId && (
-                      <button
-                        className={`btn !px-3 !py-1.5 text-xs ${u.activo ? "btn-rojo" : "btn-verde"}`}
-                        onClick={() => toggleActivo(u)}
-                      >
-                        {u.activo ? "Desactivar" : "Reactivar"}
-                      </button>
-                    )}
-                  </td>
+        {/* Usuarios */}
+        <section className="ncard flex flex-col gap-3 border border-white/[0.06] p-4">
+          <h2 className="font-medium">Usuarios</h2>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="text-left text-[11px] uppercase tracking-[0.08em] text-tinta/50">
+                <tr>
+                  <th className="py-1.5 pr-3 font-medium">Nombre</th>
+                  <th className="py-1.5 pr-3 font-medium">Email</th>
+                  <th className="py-1.5 pr-3 font-medium">Rol</th>
+                  <th className="py-1.5 pr-3 font-medium">Alta</th>
+                  <th className="py-1.5 pr-3 font-medium">Estado</th>
+                  <th className="py-1.5"></th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </section>
+              </thead>
+              <tbody>
+                {usuarios.map((u) => (
+                  <tr key={u.id} className="border-t border-white/[0.07]">
+                    <td className="py-2 pr-3">{u.nombre}{u.id === miId && " (vos)"}</td>
+                    <td className="py-2 pr-3 text-tinta/70">{u.email}</td>
+                    <td className="py-2 pr-3">
+                      {u.rol === "admin" ? <span className="text-acento-300">admin</span> : "jugador"}
+                    </td>
+                    <td className="py-2 pr-3 text-tinta/50">{new Date(u.created_at).toLocaleDateString("es")}</td>
+                    <td className="py-2 pr-3">
+                      {u.activo ? (
+                        <span className="text-emerald-300">activo</span>
+                      ) : (
+                        <span className="text-red-300">inactivo</span>
+                      )}
+                    </td>
+                    <td className="py-2 text-right">
+                      {u.id !== miId && (
+                        <button
+                          className={`nbtn !px-3 !py-1.5 text-xs ${u.activo ? "nbtn-danger" : "nbtn-primary"}`}
+                          onClick={() => toggleActivo(u)}
+                        >
+                          {u.activo ? "Desactivar" : "Reactivar"}
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
       </div>
-    </AppShell>
+    </NocturneShell>
   );
 }
 
 function EstadoBadge({ estado }: { estado: string }) {
   const color: Record<string, string> = {
-    pendiente: "bg-blue-900/50 text-blue-200",
-    usada: "bg-green-900/50 text-green-200",
-    expirada: "bg-white/10 text-white/50",
-    revocada: "bg-red-900/50 text-red-200",
+    pendiente: "bg-acento-800 text-acento-100",
+    usada: "bg-emerald-500/20 text-emerald-200",
+    expirada: "bg-white/10 text-tinta/50",
+    revocada: "bg-red-500/20 text-red-200",
   };
   return (
     <span className={`rounded px-2 py-0.5 text-xs font-medium ${color[estado] ?? ""}`}>
