@@ -1,13 +1,21 @@
 import type { Metadata, Viewport } from "next";
+import { Inter } from "next/font/google";
 import "./globals.css";
 
+const inter = Inter({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+  variable: "--font-inter",
+  display: "swap",
+});
+
 export const metadata: Metadata = {
-  title: "Mesa de Poker",
-  description: "Texas Hold'em con crupier físico y cartas por cámara",
+  title: "Nocturna — mesas de casino",
+  description: "Blackjack y póker con reglas publicadas y RNG del lado del servidor.",
 };
 
 export const viewport: Viewport = {
-  themeColor: "#0f3d2e",
+  themeColor: "#161826",
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
@@ -19,8 +27,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="es">
-      <body className="fieltro min-h-screen antialiased">{children}</body>
+    <html lang="es" className={inter.variable}>
+      <body className="min-h-screen antialiased">{children}</body>
     </html>
   );
 }
