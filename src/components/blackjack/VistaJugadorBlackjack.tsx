@@ -3,12 +3,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useBlackjack } from "@/lib/useBlackjack";
 import { ManoBJ, ManoDealer } from "@/components/blackjack/ManoBJ";
-import { FichasMonto, Ficha } from "@/components/Ficha";
-import { SaldoBadge } from "@/components/SaldoBadge";
+import { Ficha } from "@/components/Ficha";
 import { accionesDisponibles } from "@/lib/blackjack/acciones";
 import { TimerCircular } from "@/components/mesa/TimerCircular";
 import { OverlayResultado, type TipoResultado } from "@/components/mesa/OverlayResultado";
-import { LeyendaFieltro } from "@/components/mesa/LeyendaFieltro";
 import { BotonSonido } from "@/components/mesa/BotonSonido";
 import { FichasVolando } from "@/components/mesa/FichasVolando";
 import { reproducir } from "@/lib/sonidos";
@@ -178,239 +176,250 @@ export function VistaJugadorBlackjack({
   const miManoTurno = manos.find((m) => m.id === ronda?.turno_mano_id && m.jugador_id === yoId);
   const esMiTurno = ronda?.estado === "turnos_jugadores" && !!miManoTurno;
 
-  const feltStyle: React.CSSProperties = {
-    background: "radial-gradient(ellipse 72% 60% at 50% 30%, #176b41 0%, #0f3d2e 52%, #0a2a20 100%)",
-    borderRadius: "44% 44% 47% 47% / 15% 15% 80% 80%",
-    border: "10px solid #241a12",
-    boxShadow: "inset 0 0 90px rgba(0,0,0,0.6), 0 12px 36px rgba(0,0,0,0.5)",
+  const mesaStyle: React.CSSProperties = {
+    borderRadius: "14px 14px 50% 50% / 14px 14px 86% 86%",
+    backgroundColor: "#292b31",
+    backgroundImage:
+      "radial-gradient(72% 92% at 50% 4%, color-mix(in srgb, #262a60 62%, transparent), transparent 72%), radial-gradient(120% 120% at 50% 120%, color-mix(in srgb, #2b2741 78%, transparent), transparent 70%)",
+    boxShadow: "0 0 0 1px #595d6c, 0 6px 18px rgba(0,0,0,0.55)",
   };
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-lg flex-col gap-3 p-3 pb-6">
-      <div className="flex items-center justify-between gap-2">
-        <a href="/home" className="text-sm text-white/60 underline">← Home</a>
-        <div className="flex items-center gap-2">
-          <BotonSonido />
-          <SaldoBadge />
-          <button
-            className="rounded-full bg-red-900/50 px-3 py-1 text-xs text-red-100 hover:bg-red-900/80"
-            onClick={salirDeMesa}
-          >
-            Salir
+    <div className="flex min-h-screen flex-col bg-noche text-tinta">
+      {/* Header de mesa */}
+      <header className="fade-b">
+        <nav className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-5 gap-y-2 px-4 py-3 sm:px-7">
+          <button onClick={salirDeMesa} className="inline-flex items-center gap-1.5 text-[13px] text-tinta/65 hover:text-acento">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M14.5 5.5L8 12l6.5 6.5" /></svg>
+            Salir de la mesa
           </button>
-        </div>
-      </div>
-      <div className="flex items-center justify-between">
-        <div>
-          <div className="text-xs text-white/50">Blackjack · {codigo}</div>
-          <div className="font-bold text-oro">
-            {ronda ? `Ronda #${ronda.numero_ronda}` : "Esperando ronda"}
+          <div className="h-5 w-px bg-white/15" />
+          <div className="mr-auto flex items-baseline gap-2.5">
+            <span className="text-[15px]">Blackjack</span>
+            <span className="text-xs tabular-nums text-tinta/50">
+              {codigo}{config ? ` · ${config.apuesta_min}–${config.apuesta_max}` : ""}
+              {ronda ? ` · ronda ${ronda.numero_ronda}` : ""}
+            </span>
           </div>
-        </div>
-        <div className="text-right">
-          <FichasMonto monto={yo.fichas} />
-          {soyBanca && <div className="text-xs font-bold text-oro">SOS LA BANCA</div>}
-        </div>
-      </div>
-
-      {/* Mesa de fieltro en media luna (contenido en flujo para no solapar) */}
-      <div className="relative mt-1 w-full overflow-hidden" style={feltStyle}>
-        <div className="flex flex-col items-center gap-2 px-3 pb-4 pt-4">
-          {/* Dealer */}
-          <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-crema/50">Dealer</span>
-          <ManoDealer cartas={dealerCartas} holeRevelada={ronda?.hole_revelada ?? false} verHole={soyBanca} />
-
-          {/* Leyenda impresa en el fieltro */}
-          <LeyendaFieltro
-            pago={config?.blackjack_pago === "6_a_5" ? "6 A 5" : "3 A 2"}
-            limiteMin={config?.apuesta_min}
-            limiteMax={config?.apuesta_max}
-          />
-
-          {/* Otros jugadores en arco */}
-          {otros.length > 0 && (
-            <div className="flex w-full flex-wrap items-start justify-around gap-x-2 gap-y-3">
-              {otros.map((o) => {
-                const suMano = manos.find((m) => m.jugador_id === o.id && !m.es_split_de);
-                const suCartas = suMano ? cartas.filter((c) => c.mano_jugador_id === suMano.id) : [];
-                return (
-                  <div key={o.id} className="flex flex-col items-center gap-0.5">
-                    <ManoBJ
-                      cartas={suCartas}
-                      mano={suMano}
-                      size="sm"
-                      destacada={!!suMano && ronda?.turno_mano_id === suMano.id}
-                    />
-                    <div className="text-[11px] font-medium text-crema/80">{o.nombre}</div>
-                    {suMano && suMano.apuesta_fichas > 0 && (
-                      <span className="inline-flex items-center gap-1 rounded bg-black/40 px-1.5 text-[10px] font-semibold tabular-nums text-crema/80">
-                        <Ficha monto={suMano.apuesta_fichas} size={14} /> {suMano.apuesta_fichas}
-                      </span>
-                    )}
-                  </div>
-                );
-              })}
+          <div className="flex items-center gap-4">
+            <div className="flex flex-col items-end leading-tight">
+              <span className="text-[10px] uppercase tracking-[0.1em] text-tinta/50">Saldo</span>
+              <span className="text-sm tabular-nums">{yo.fichas.toLocaleString("es")}</span>
             </div>
-          )}
+            {manoBase && manoBase.apuesta_fichas > 0 && (
+              <div className="flex flex-col items-end leading-tight">
+                <span className="text-[10px] uppercase tracking-[0.1em] text-tinta/50">Apuesta</span>
+                <span className="text-sm tabular-nums text-acento-300">{manoBase.apuesta_fichas}</span>
+              </div>
+            )}
+            <BotonSonido />
+          </div>
+        </nav>
+      </header>
 
-          {/* Mi asiento (destacado en turno) */}
-          <div className="mt-1 flex flex-col items-center gap-1">
-            {soyBanca ? (
-              <div className="py-4 text-sm font-bold text-oro">Sos la banca</div>
-            ) : (
-              <>
-                <div className="flex flex-wrap items-end justify-center gap-3">
-                  {misManos.length > 0 ? (
-                    misManos.map((m) => {
-                      const cs = cartas.filter((c) => c.mano_jugador_id === m.id);
-                      const r = resultadoDe(m.id);
+      <div className="mx-auto grid w-full max-w-6xl flex-1 grid-cols-1 gap-6 px-4 py-5 sm:px-7 lg:grid-cols-[minmax(0,1fr)_272px]">
+        {/* Columna de la mesa */}
+        <div>
+          <div className="relative mx-auto w-full max-w-[900px]">
+            <div className="relative w-full" style={mesaStyle}>
+              {/* Borde interior */}
+              <div className="pointer-events-none absolute inset-[10px]" style={{ border: "1px solid rgba(233,233,237,0.12)", borderRadius: "8px 8px 50% 50% / 8px 8px 84% 84%" }} />
+              {/* Zapato */}
+              <div className="absolute right-[4%] top-[7%] grid h-9 w-14 place-items-center rounded border border-white/20 bg-gradient-to-b from-[#3f424d] to-[#292b31] shadow-n-sm">
+                <span className="text-[9px] uppercase tracking-[0.14em] text-tinta/45">Zapato</span>
+              </div>
+
+              <div className="relative flex flex-col items-center gap-2 px-4 pb-6 pt-5">
+                {/* Dealer */}
+                <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-tinta/45">Crupier</span>
+                <ManoDealer cartas={dealerCartas} holeRevelada={ronda?.hole_revelada ?? false} verHole={soyBanca} />
+
+                {/* Leyenda impresa */}
+                {(!ronda || dealerCartas.length === 0) && (
+                  <div className="py-3 text-center">
+                    <div className="text-[13px] font-medium uppercase tracking-[0.24em] text-tinta/30">Blackjack paga 3 : 2</div>
+                    <div className="mt-1 text-[10px] uppercase tracking-[0.2em] text-tinta/20">El crupier se planta en 17 · seguro 2 : 1</div>
+                  </div>
+                )}
+
+                {/* Otros jugadores en arco */}
+                {otros.length > 0 && (
+                  <div className="flex w-full flex-wrap items-start justify-around gap-x-2 gap-y-3">
+                    {otros.map((o) => {
+                      const suMano = manos.find((m) => m.jugador_id === o.id && !m.es_split_de);
+                      const suCartas = suMano ? cartas.filter((c) => c.mano_jugador_id === suMano.id) : [];
                       return (
-                        <div key={m.id} className="flex flex-col items-center gap-0.5">
-                          <ManoBJ cartas={cs} mano={m} destacada={ronda?.turno_mano_id === m.id} />
-                          {r && (
-                            <span className={`text-[11px] font-bold ${r.fichas_ganadas_o_perdidas >= 0 ? "text-green-300" : "text-red-300"}`}>
-                              {r.fichas_ganadas_o_perdidas >= 0 ? "+" : ""}{r.fichas_ganadas_o_perdidas}
+                        <div key={o.id} className="flex flex-col items-center gap-0.5">
+                          <ManoBJ cartas={suCartas} mano={suMano} size="sm" destacada={!!suMano && ronda?.turno_mano_id === suMano.id} />
+                          <div className="text-[11px] font-medium text-tinta/75">{o.nombre}</div>
+                          {suMano && suMano.apuesta_fichas > 0 && (
+                            <span className="inline-flex items-center gap-1 rounded bg-black/40 px-1.5 text-[10px] font-semibold tabular-nums text-tinta/80">
+                              <Ficha monto={suMano.apuesta_fichas} size={14} /> {suMano.apuesta_fichas}
                             </span>
                           )}
                         </div>
                       );
-                    })
-                  ) : (
-                    <span className="py-6 text-sm text-crema/50">Sin mano esta ronda</span>
-                  )}
-                </div>
+                    })}
+                  </div>
+                )}
 
-                {/* Spot de apuesta (aro dorado en turno) */}
-                <div
-                  className={`relative mt-1 flex h-12 w-28 items-center justify-center rounded-[50%] ${
-                    esMiTurno
-                      ? "border-2 border-oro/70 bg-oro/10 shadow-[0_0_18px_rgba(224,182,77,0.25)]"
-                      : "border border-dashed border-oro/30 bg-black/15"
-                  }`}
+                {/* Mi silla */}
+                <div className="mt-1 flex flex-col items-center gap-1.5">
+                  <div className="flex flex-wrap items-end justify-center gap-3">
+                    {misManos.length > 0 ? (
+                      misManos.map((m) => {
+                        const cs = cartas.filter((c) => c.mano_jugador_id === m.id);
+                        const r = resultadoDe(m.id);
+                        return (
+                          <div key={m.id} className="flex flex-col items-center gap-0.5">
+                            <ManoBJ cartas={cs} mano={m} destacada={ronda?.turno_mano_id === m.id} />
+                            {r && (
+                              <span className={`text-[11px] font-bold ${r.fichas_ganadas_o_perdidas >= 0 ? "text-emerald-300" : "text-red-300"}`}>
+                                {r.fichas_ganadas_o_perdidas >= 0 ? "+" : ""}{r.fichas_ganadas_o_perdidas}
+                              </span>
+                            )}
+                          </div>
+                        );
+                      })
+                    ) : (
+                      <span className="py-6 text-sm text-tinta/45">Sin mano esta ronda</span>
+                    )}
+                  </div>
+
+                  {/* Spot: aro de acento en turno */}
+                  <div
+                    className={`relative flex h-12 w-28 items-center justify-center rounded-[50%] ${
+                      esMiTurno
+                        ? "border border-acento bg-acento/10 shadow-[0_0_0_6px_color-mix(in_srgb,var(--color-accent)_10%,transparent)]"
+                        : "border border-dashed border-white/20 bg-black/15"
+                    }`}
+                  >
+                    {manoBase && manoBase.apuesta_fichas > 0 ? (
+                      <span className="inline-flex items-center gap-1.5">
+                        <Ficha monto={manoBase.apuesta_fichas} size={26} />
+                        <span className="text-sm font-semibold tabular-nums text-acento-300">{manoBase.apuesta_fichas}</span>
+                      </span>
+                    ) : (
+                      <span className="text-[10px] uppercase tracking-[0.1em] text-acento/70">Tu silla</span>
+                    )}
+                  </div>
+                  <div className="text-center leading-tight">
+                    <div className="text-sm font-medium text-tinta">Vos</div>
+                    <div className="text-xs tabular-nums text-tinta/55">{yo.fichas.toLocaleString("es")}</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Overlay de resultado */}
+              {mostrarResultado && (
+                <div className="absolute inset-0 z-20 flex items-center justify-center">
+                  <OverlayResultado tipo={tipoResultadoBJ} monto={netoResultado} />
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Controles bajo la mesa */}
+          <div className="mx-auto mt-4 flex max-w-[560px] flex-col gap-3">
+            {ronda?.estado === "apuestas" && (
+              <>
+                <div className="flex flex-wrap items-center justify-center gap-2">
+                  {FICHAS_RAPIDAS.map((v) => (
+                    <button
+                      key={v}
+                      onClick={() => setApuesta((a) => Math.min(a + v, config?.apuesta_max ?? 500, yo.fichas))}
+                      className="grid h-12 w-12 place-items-center rounded-full border border-white/15 bg-[#292b31] text-[13px] font-medium tabular-nums text-tinta transition hover:border-acento hover:text-acento-300"
+                    >
+                      {v}
+                    </button>
+                  ))}
+                  <div className="mx-1 h-8 w-px bg-white/12" />
+                  <button className="nbtn nbtn-secondary" onClick={() => setApuesta(0)}>Limpiar</button>
+                </div>
+                {ultimaApuesta > 0 && (
+                  <div className="flex justify-center gap-2">
+                    <button className="nbtn nbtn-secondary" onClick={() => setApuesta(Math.min(ultimaApuesta, config?.apuesta_max ?? 500, yo.fichas))}>
+                      Rebet {ultimaApuesta.toLocaleString("es")}
+                    </button>
+                    <button className="nbtn nbtn-secondary" onClick={() => setApuesta(Math.min(ultimaApuesta * 2, config?.apuesta_max ?? 500, yo.fichas))}>
+                      Rebet x2
+                    </button>
+                  </div>
+                )}
+                <button
+                  className="nbtn nbtn-primary py-2.5"
+                  disabled={enviando || apuesta < (config?.apuesta_min ?? 1)}
+                  onClick={apostar}
                 >
-                  {manoBase && manoBase.apuesta_fichas > 0 ? (
-                    <span className="inline-flex items-center gap-1.5">
-                      <Ficha monto={manoBase.apuesta_fichas} size={26} />
-                      <span className="text-sm font-semibold tabular-nums text-oro">{manoBase.apuesta_fichas}</span>
-                    </span>
-                  ) : (
-                    <span className="text-[10px] uppercase tracking-wide text-crema/40">Tu apuesta</span>
-                  )}
-                </div>
-                <div className="text-center leading-tight">
-                  <div className="text-base font-bold text-oro">Vos</div>
-                  <div className="text-xs tabular-nums text-crema/60">{yo.fichas.toLocaleString("es")} fichas</div>
-                </div>
+                  Apostar {apuesta.toLocaleString("es")}
+                </button>
               </>
             )}
-          </div>
-        </div>
 
-        {/* Overlay de resultado */}
-        {mostrarResultado && (
-          <div className="absolute inset-0 z-20 flex items-center justify-center">
-            <OverlayResultado tipo={tipoResultadoBJ} monto={netoResultado} />
-          </div>
-        )}
-      </div>
+            {ronda?.fase_seguro && manoBase && (
+              <div className="ncard flex flex-col gap-2 border border-white/[0.06] p-3">
+                <div className="text-sm">El crupier muestra un As. ¿Seguro? (cuesta {Math.floor(manoBase.apuesta_fichas / 2)})</div>
+                <div className="grid grid-cols-2 gap-2">
+                  <button className="nbtn nbtn-secondary" disabled={enviando} onClick={() => seguro(false)}>No</button>
+                  <button className="nbtn nbtn-primary" disabled={enviando} onClick={() => seguro(true)}>Sí, asegurar</button>
+                </div>
+              </div>
+            )}
 
-      {/* Controles según fase */}
-      {!soyBanca && ronda?.estado === "apuestas" && (
-        <section className="panel flex flex-col gap-2 p-3">
-          <div className="flex items-center justify-between text-sm">
-            <span>Tu apuesta</span>
-            <span className="font-bold text-oro">{apuesta.toLocaleString("es")}</span>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {FICHAS_RAPIDAS.map((v) => (
-              <button
-                key={v}
-                className="btn btn-gris !px-3 !py-1.5 text-sm"
-                onClick={() => setApuesta((a) => Math.min(a + v, config?.apuesta_max ?? 500, yo.fichas))}
-              >
-                +{v}
-              </button>
-            ))}
-            <button className="btn btn-gris !px-3 !py-1.5 text-sm" onClick={() => setApuesta(0)}>
-              Limpiar
-            </button>
-          </div>
-          {ultimaApuesta > 0 && (
-            <div className="flex gap-2">
-              <button
-                className="btn btn-verde flex-1 !py-2 text-sm"
-                onClick={() => setApuesta(Math.min(ultimaApuesta, config?.apuesta_max ?? 500, yo.fichas))}
-              >
-                Rebet {ultimaApuesta.toLocaleString("es")}
-              </button>
-              <button
-                className="btn btn-gris flex-1 !py-2 text-sm"
-                onClick={() => setApuesta(Math.min(ultimaApuesta * 2, config?.apuesta_max ?? 500, yo.fichas))}
-              >
-                Rebet x2
-              </button>
-            </div>
-          )}
-          <button
-            className="btn btn-oro"
-            disabled={enviando || apuesta < (config?.apuesta_min ?? 1)}
-            onClick={apostar}
-          >
-            Apostar {apuesta.toLocaleString("es")}
-          </button>
-          <div className="text-xs text-white/50">
-            Min {config?.apuesta_min} · Max {config?.apuesta_max}
-            {manoBase && manoBase.apuesta_fichas > 0 && (
-              <> · apuesta actual: {manoBase.apuesta_fichas}</>
+            {ronda?.estado === "turnos_jugadores" && (
+              <ControlesBJ
+                manoEnTurno={manos.find((m) => m.id === ronda.turno_mano_id)}
+                esMia={manos.find((m) => m.id === ronda.turno_mano_id)?.jugador_id === yoId}
+                cartas={cartas}
+                jugadorFichas={yo.fichas}
+                manos={manos}
+                jugadorId={yoId}
+                config={config}
+                restante={restante}
+                enviando={enviando}
+                onAccion={actuar}
+              />
+            )}
+
+            {ronda?.estado === "terminada" && (
+              <div className="ncard border border-white/[0.06] p-3 text-center text-sm text-tinta/60">
+                Ronda terminada. Esperá a que el crupier inicie la próxima.
+              </div>
+            )}
+
+            {error && (
+              <div className="rounded-md border border-red-500/40 bg-red-500/10 px-3 py-2 text-center text-sm text-red-200">{error}</div>
             )}
           </div>
-        </section>
-      )}
-
-      {!soyBanca && ronda?.fase_seguro && manoBase && (
-        <section className="panel flex flex-col gap-2 p-3">
-          <div className="text-sm">
-            El dealer muestra un As. ¿Tomás seguro? (cuesta {Math.floor(manoBase.apuesta_fichas / 2)})
-          </div>
-          <div className="grid grid-cols-2 gap-2">
-            <button className="btn btn-gris" disabled={enviando} onClick={() => seguro(false)}>
-              No
-            </button>
-            <button className="btn btn-oro" disabled={enviando} onClick={() => seguro(true)}>
-              Sí, asegurar
-            </button>
-          </div>
-        </section>
-      )}
-
-      {!soyBanca && ronda?.estado === "turnos_jugadores" && (
-        <ControlesBJ
-          codigo={codigo}
-          manoEnTurno={manos.find((m) => m.id === ronda.turno_mano_id)}
-          esMia={manos.find((m) => m.id === ronda.turno_mano_id)?.jugador_id === yoId}
-          cartas={cartas}
-          jugadorFichas={yo.fichas}
-          manos={manos}
-          jugadorId={yoId}
-          config={config}
-          restante={restante}
-          enviando={enviando}
-          onAccion={actuar}
-        />
-      )}
-
-      {ronda?.estado === "terminada" && (
-        <div className="panel p-3 text-center text-sm text-white/70">
-          Ronda terminada. Esperá a que el crupier inicie la próxima.
         </div>
-      )}
 
-      {error && (
-        <div className="rounded-lg bg-red-900/50 px-3 py-2 text-sm text-red-100">{error}</div>
-      )}
+        {/* Aside: reglas de la mesa */}
+        <aside className="flex flex-col gap-3">
+          <div className="ncard p-4 shadow-n-sm">
+            <span className="text-[10px] uppercase tracking-[0.1em] text-acento">Reglas de la mesa</span>
+            <div className="mt-2 flex flex-col gap-2">
+              {[
+                { l: "Blackjack paga", v: config?.blackjack_pago === "6_a_5" ? "6 : 5" : "3 : 2" },
+                { l: "El crupier se planta en", v: "17" },
+                { l: "Mazos en el zapato", v: String(config?.cantidad_mazos ?? 6) },
+                { l: "Límites", v: config ? `${config.apuesta_min} – ${config.apuesta_max}` : "—" },
+              ].map((r) => (
+                <div key={r.l} className="flex items-baseline justify-between gap-3 text-[13px]">
+                  <span className="text-tinta/65">{r.l}</span>
+                  <span className="font-medium tabular-nums">{r.v}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+          <p className="text-[11px] leading-relaxed text-tinta/40">
+            Zapato de {config?.cantidad_mazos ?? 6} mazos, barajado con RNG del lado del servidor
+            (se rebaraja al 75%). Jugás contra la casa. +18 · juego responsable.
+          </p>
+        </aside>
+      </div>
 
       <FichasVolando disparo={disparoFicha} monto={apuesta || ultimaApuesta || 25} />
-    </main>
+    </div>
   );
 }
 
@@ -426,7 +435,6 @@ function ControlesBJ({
   enviando,
   onAccion,
 }: {
-  codigo: string;
   manoEnTurno?: BJManoJugador;
   esMia: boolean;
   cartas: ReturnType<typeof useBlackjack>["cartas"];
@@ -440,7 +448,7 @@ function ControlesBJ({
 }) {
   if (!esMia || !manoEnTurno || !config) {
     return (
-      <div className="panel px-4 py-3 text-center text-white/60">
+      <div className="ncard border border-white/[0.06] px-4 py-3 text-center text-sm text-tinta/55">
         {esMia ? "Preparando…" : "Esperando a los demás jugadores…"}
       </div>
     );
@@ -462,29 +470,24 @@ function ControlesBJ({
   });
 
   return (
-    <section className="panel flex flex-col gap-2 p-3">
-      <div className="flex items-center justify-between text-sm">
-        <span className="font-semibold text-oro">Tu turno</span>
-        <TimerCircular restante={restante} total={config.segundos_por_turno} size={38}>
-          <span className={`text-xs font-bold tabular-nums ${restante !== null && restante <= 5 ? "text-red-400" : "text-white/70"}`}>
+    <div className="flex flex-col gap-2">
+      <div className="flex items-center justify-center gap-2 text-sm">
+        <TimerCircular restante={restante} total={config.segundos_por_turno} size={34}>
+          <span className={`text-[11px] font-bold tabular-nums ${restante !== null && restante <= 5 ? "text-red-300" : "text-tinta/70"}`}>
             {restante ?? "—"}
           </span>
         </TimerCircular>
+        <span className="font-medium text-acento-300">Tu turno</span>
       </div>
-      <div className="grid grid-cols-2 gap-2">
-        <button className="btn btn-verde" disabled={enviando || !disp.hit}
-          onClick={() => onAccion(manoEnTurno.id, "hit")}>Pedir (hit)</button>
-        <button className="btn btn-gris" disabled={enviando || !disp.stand}
-          onClick={() => onAccion(manoEnTurno.id, "stand")}>Plantarse</button>
-        <button className="btn btn-oro" disabled={enviando || !disp.double}
-          onClick={() => onAccion(manoEnTurno.id, "double")}>Doblar</button>
-        <button className="btn btn-oro" disabled={enviando || !disp.split}
-          onClick={() => onAccion(manoEnTurno.id, "split")}>Split</button>
+      <div className="flex flex-wrap items-center justify-center gap-2">
+        <button className="nbtn nbtn-primary px-5" disabled={enviando || !disp.hit} onClick={() => onAccion(manoEnTurno.id, "hit")}>Pedir</button>
+        <button className="nbtn nbtn-secondary px-5" disabled={enviando || !disp.stand} onClick={() => onAccion(manoEnTurno.id, "stand")}>Plantarse</button>
+        <button className="nbtn nbtn-secondary px-5" disabled={enviando || !disp.double} onClick={() => onAccion(manoEnTurno.id, "double")}>Doblar</button>
+        <button className="nbtn nbtn-secondary px-5" disabled={enviando || !disp.split} onClick={() => onAccion(manoEnTurno.id, "split")}>Split</button>
         {disp.surrender && (
-          <button className="btn btn-rojo col-span-2" disabled={enviando}
-            onClick={() => onAccion(manoEnTurno.id, "surrender")}>Rendirse</button>
+          <button className="nbtn nbtn-danger px-5" disabled={enviando} onClick={() => onAccion(manoEnTurno.id, "surrender")}>Rendirse</button>
         )}
       </div>
-    </section>
+    </div>
   );
 }
