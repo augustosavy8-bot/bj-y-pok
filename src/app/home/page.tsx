@@ -304,11 +304,9 @@ function CrearMesa({
 }) {
   const [abierto, setAbierto] = useState(false);
   const [juego, setJuego] = useState<Juego>(cat === "blackjack" ? "blackjack" : "poker_holdem");
-  const [esPractica, setEsPractica] = useState(true);
-  const [creditosMin, setCreditosMin] = useState(100);
+  const [creditosMin, setCreditosMin] = useState(500);
   const [ciegaChica, setCiegaChica] = useState(10);
   const [ciegaGrande, setCiegaGrande] = useState(20);
-  const [fichas, setFichas] = useState(1000);
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -321,11 +319,10 @@ function CrearMesa({
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           tipo_juego: juego,
-          es_practica: esPractica,
-          creditos_minimos: esPractica ? 0 : creditosMin,
+          es_practica: false,
+          creditos_minimos: creditosMin,
           ciega_chica: ciegaChica,
           ciega_grande: ciegaGrande,
-          fichas_iniciales: fichas,
         }),
       });
       const d = await r.json();
@@ -363,29 +360,22 @@ function CrearMesa({
               </button>
             ))}
           </div>
-          <label className="flex items-center gap-2 text-sm text-tinta/80">
-            <input type="checkbox" checked={esPractica} onChange={(e) => setEsPractica(e.target.checked)} />
-            Práctica (sin créditos reales)
-          </label>
-          {!esPractica && (
+          <label className="text-sm text-tinta/80">
+            <span className="text-tinta/70">Créditos mínimos para sentarse</span>
             <input
               type="number"
               min={1}
               value={creditosMin}
               onChange={(e) => setCreditosMin(Number(e.target.value))}
               placeholder="Buy-in mínimo"
-              className="ninput"
+              className="ninput mt-1"
             />
-          )}
+          </label>
           {juego === "poker_holdem" && (
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-2 gap-2">
               <input type="number" value={ciegaChica} onChange={(e) => setCiegaChica(Number(e.target.value))} className="ninput" title="Ciega chica" />
               <input type="number" value={ciegaGrande} onChange={(e) => setCiegaGrande(Number(e.target.value))} className="ninput" title="Ciega grande" />
-              <input type="number" value={fichas} onChange={(e) => setFichas(Number(e.target.value))} disabled={!esPractica} className="ninput disabled:opacity-40" title="Fichas" />
             </div>
-          )}
-          {juego === "blackjack" && esPractica && (
-            <input type="number" value={fichas} onChange={(e) => setFichas(Number(e.target.value))} className="ninput" title="Fichas iniciales" />
           )}
           <div className="flex gap-2">
             <button className="nbtn nbtn-secondary flex-1" onClick={() => setAbierto(false)}>

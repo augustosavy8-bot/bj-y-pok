@@ -44,8 +44,8 @@ export function ConfigBlackjack({
     permite_surrender: config?.permite_surrender ?? true,
     permite_insurance: config?.permite_insurance ?? true,
     max_split_hands: config?.max_split_hands ?? 4,
-    apuesta_min: config?.apuesta_min ?? 10,
-    apuesta_max: config?.apuesta_max ?? 500,
+    apuesta_min: config?.apuesta_min ?? 500,
+    apuesta_max: config?.apuesta_max ?? 10000,
     segundos_por_turno: config?.segundos_por_turno ?? 30,
   });
   const [guardando, setGuardando] = useState(false);

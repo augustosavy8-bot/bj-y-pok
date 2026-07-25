@@ -52,18 +52,31 @@ export async function registrarMovimiento(
 }
 
 /**
- * Al sentarse en una mesa REAL, se juega con los créditos reales del usuario:
- *  - Blackjack: el stack (fichas) es un ESPEJO del saldo; no se cobra buy-in.
- *    Cada apuesta/pago mueve el ledger directamente (ver ajustarFichasBJ).
+ * Al sentarse en una mesa se juega con los créditos reales del usuario:
+ *  - Blackjack: SIEMPRE real. El stack (fichas) es un ESPEJO del saldo; no hay
+ *    buy-in ni modo práctica. Cada apuesta/pago mueve el ledger directamente
+ *    (ver ajustarFichasBJ). Sólo se exige un saldo mínimo para sentarse.
  *  - Poker: entra con TODO su saldo real como stack (se cashea al salir), porque
- *    el juego necesita fichas en la mesa para apostar/all-in/side-pots.
- * En mesas de práctica no toca créditos: devuelve fichas_iniciales.
+ *    el juego necesita fichas en la mesa para apostar/all-in/side-pots. En mesas
+ *    de práctica no toca créditos: devuelve fichas_iniciales.
  */
 export async function buyInMesa(
   admin: SupabaseClient,
   mesa: Mesa,
   userId: string
 ): Promise<{ fichas: number; cobroCreditos: boolean }> {
+  // Blackjack: siempre créditos reales, sin importar es_practica.
+  if (mesa.tipo_juego === "blackjack") {
+    const saldo = await saldoActual(admin, userId);
+    if (mesa.creditos_minimos > 0 && saldo < mesa.creditos_minimos) {
+      throw new SaldoError(
+        `Necesitás al menos ${mesa.creditos_minimos} créditos para sentarte, tenés ${saldo}.`
+      );
+    }
+    return { fichas: saldo, cobroCreditos: false };
+  }
+
+  // Poker en práctica: fichas gratis, sin tocar créditos.
   if (mesa.es_practica || mesa.creditos_minimos <= 0) {
     return { fichas: mesa.fichas_iniciales, cobroCreditos: false };
   }
@@ -74,12 +87,7 @@ export async function buyInMesa(
     );
   }
 
-  // Blackjack: se juega directo de los créditos; el stack sólo espeja el saldo.
-  if (mesa.tipo_juego === "blackjack") {
-    return { fichas: saldo, cobroCreditos: false };
-  }
-
-  // Poker: mover todo el saldo real a la mesa como stack.
+  // Poker real: mover todo el saldo real a la mesa como stack.
   await registrarMovimiento(admin, {
     userId,
     tipo: "buy_in_mesa",
@@ -92,10 +100,10 @@ export async function buyInMesa(
 }
 
 /**
- * Ajuste de fichas para BLACKJACK. En práctica mueve el stack directo. En mesas
- * reales el stack es un espejo del saldo real: registra el movimiento en el
- * ledger de créditos y sincroniza `fichas` con el nuevo saldo. Devuelve las
- * fichas resultantes.
+ * Ajuste de fichas para BLACKJACK. El stack es un espejo del saldo real:
+ * registra el movimiento en el ledger de créditos y sincroniza `fichas` con el
+ * nuevo saldo. Devuelve las fichas resultantes. (Un asiento sin auth_uid mueve
+ * sólo el stack, pero esos asientos ya no se crean.)
  */
 export async function ajustarFichasBJ(
   admin: SupabaseClient,
@@ -105,7 +113,9 @@ export async function ajustarFichasBJ(
   tipo: TipoMovimientoCredito,
   notas: string
 ): Promise<number> {
-  const real = !mesa.es_practica && mesa.creditos_minimos > 0 && !!jugador.auth_uid;
+  // Blackjack es siempre real: cualquier jugador con identidad mueve créditos.
+  // (Sólo los asientos sin auth_uid —que ya no se crean— quedan fuera del ledger.)
+  const real = !!jugador.auth_uid;
   if (!real) {
     const nueva = jugador.fichas + delta;
     await admin.from("jugadores").update({ fichas: nueva }).eq("id", jugador.id);

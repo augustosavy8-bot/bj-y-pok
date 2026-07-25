@@ -12,7 +12,7 @@ import { FichasVolando } from "@/components/mesa/FichasVolando";
 import { reproducir } from "@/lib/sonidos";
 import type { AccionBJ, BJManoJugador } from "@/lib/blackjack/types";
 
-const FICHAS_RAPIDAS = [5, 10, 25, 50, 100];
+const FICHAS_RAPIDAS = [500, 1000, 2500, 5000, 10000];
 
 export function VistaJugadorBlackjack({
   codigo,
@@ -346,7 +346,7 @@ export function VistaJugadorBlackjack({
                   {FICHAS_RAPIDAS.map((v) => (
                     <button
                       key={v}
-                      onClick={() => setApuesta((a) => Math.min(a + v, config?.apuesta_max ?? 500, yo.fichas))}
+                      onClick={() => setApuesta((a) => Math.min(a + v, config?.apuesta_max ?? 10000, yo.fichas))}
                       className="grid h-12 w-12 place-items-center rounded-full border border-white/15 bg-[#292b31] text-[13px] font-medium tabular-nums text-tinta transition hover:border-acento hover:text-acento-300"
                     >
                       {v}
@@ -357,10 +357,10 @@ export function VistaJugadorBlackjack({
                 </div>
                 {ultimaApuesta > 0 && (
                   <div className="flex justify-center gap-2">
-                    <button className="nbtn nbtn-secondary" onClick={() => setApuesta(Math.min(ultimaApuesta, config?.apuesta_max ?? 500, yo.fichas))}>
+                    <button className="nbtn nbtn-secondary" onClick={() => setApuesta(Math.min(ultimaApuesta, config?.apuesta_max ?? 10000, yo.fichas))}>
                       Rebet {ultimaApuesta.toLocaleString("es")}
                     </button>
-                    <button className="nbtn nbtn-secondary" onClick={() => setApuesta(Math.min(ultimaApuesta * 2, config?.apuesta_max ?? 500, yo.fichas))}>
+                    <button className="nbtn nbtn-secondary" onClick={() => setApuesta(Math.min(ultimaApuesta * 2, config?.apuesta_max ?? 10000, yo.fichas))}>
                       Rebet x2
                     </button>
                   </div>
