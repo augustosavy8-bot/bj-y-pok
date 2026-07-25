@@ -53,7 +53,16 @@ export function ManoBJ({
       <div className="flex gap-1.5">
         {orden.length > 0 ? (
           orden.map((c, i) => (
-            <CartaFlip key={c.id} valor={c.valor} palo={c.palo} size={size} flip delay={i * 0.08} />
+            <CartaFlip
+              key={c.id}
+              valor={c.valor}
+              palo={c.palo}
+              size={size}
+              flip
+              deal
+              delay={i * 0.24}
+              origen={{ x: 90, y: -130, rotate: -16 }}
+            />
           ))
         ) : (
           <DorsoCarta size={size} />
@@ -106,7 +115,16 @@ export function ManoDealer({
       {val && <InsigniaValor>{val}</InsigniaValor>}
       <div className="flex gap-1.5">
         {visibles.map((c, i) => (
-          <CartaFlip key={c.id} valor={c.valor} palo={c.palo} size="md" flip delay={i * 0.08} />
+          <CartaFlip
+            key={c.id}
+            valor={c.valor}
+            palo={c.palo}
+            size="md"
+            flip
+            deal
+            delay={i * 0.24}
+            origen={{ x: 60, y: -90, rotate: -14 }}
+          />
         ))}
         {(ocultas > 0 || faltaHole) && <DorsoCarta size="md" />}
       </div>
