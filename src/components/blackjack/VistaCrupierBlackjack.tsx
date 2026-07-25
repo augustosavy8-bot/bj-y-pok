@@ -2,7 +2,11 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useBlackjack } from "@/lib/useBlackjack";
-import { ManoBJ, ManoDealer } from "@/components/blackjack/ManoBJ";
+import {
+  MesaBlackjack,
+  chipsDeMonto,
+  type AsientoMesa,
+} from "@/components/blackjack/MesaBlackjack";
 import { ConfigBlackjack } from "@/components/blackjack/ConfigBlackjack";
 
 // Modo automático: tiempos (ms) de espera antes de cada paso del loop.
@@ -160,13 +164,28 @@ export function VistaCrupierBlackjack({
 
   const totalShoe = (shoe?.cantidad_mazos ?? 6) * 52;
 
-  const mesaStyle: React.CSSProperties = {
-    borderRadius: "14px 14px 50% 50% / 14px 14px 84% 84%",
-    backgroundColor: "#292b31",
-    backgroundImage:
-      "radial-gradient(72% 92% at 50% 4%, color-mix(in srgb, #262a60 62%, transparent), transparent 72%), radial-gradient(120% 120% at 50% 120%, color-mix(in srgb, #2b2741 78%, transparent), transparent 70%)",
-    boxShadow: "0 0 0 1px #595d6c, 0 6px 18px rgba(0,0,0,0.55)",
-  };
+  // Asientos para la mesa unificada. El crupier no es un asiento: todos los
+  // jugadores van sobre el arco (sin "yo"). El crupier ve la hole card.
+  const asientos: AsientoMesa[] = players.map((j) => {
+    const susManos = manos
+      .filter((m) => m.jugador_id === j.id)
+      .sort((a, b) => a.orden_mano - b.orden_mano);
+    const suApuesta = susManos.reduce((s, m) => s + (m.apuesta_fichas || 0), 0);
+    return {
+      id: j.id,
+      nombre: j.nombre,
+      esYo: false,
+      fichas: j.fichas,
+      chips: chipsDeMonto(j.id, suApuesta),
+      manos: susManos.map((m) => ({
+        mano: m,
+        cartas: cartas.filter((c) => c.mano_jugador_id === m.id),
+        enTurno: ronda?.turno_mano_id === m.id,
+        resultado: resultados.find((r) => r.mano_jugador_id === m.id),
+      })),
+    } satisfies AsientoMesa;
+  });
+  const pagoLabel = `Blackjack paga ${config?.blackjack_pago === "6_a_5" ? "6 : 5" : "3 : 2"}`;
 
   if (!mesa) return null;
 
@@ -226,57 +245,37 @@ export function VistaCrupierBlackjack({
             </>
           )}
 
-          {/* Mesa navy en media luna: dealer arriba + jugadores en arco */}
+          {/* Mesa unificada (misma que ve el jugador). El crupier ve la hole. */}
           {ronda && (
-            <div className="relative w-full" style={mesaStyle}>
-              <div className="pointer-events-none absolute inset-[10px]" style={{ border: "1px solid rgba(233,233,237,0.12)", borderRadius: "8px 8px 50% 50% / 8px 8px 82% 82%" }} />
-              <div className="absolute right-[4%] top-[8%] grid h-9 w-14 place-items-center rounded border border-white/20 bg-gradient-to-b from-[#3f424d] to-[#292b31] shadow-n-sm">
-                <span className="text-[9px] uppercase tracking-[0.14em] text-tinta/45">Zapato</span>
-              </div>
+            <div>
+              <MesaBlackjack
+                dealerCartas={dealerCartas}
+                holeRevelada={ronda.hole_revelada}
+                verHole
+                asientos={asientos}
+                hayCartasEnMesa={dealerCartas.length > 0 || cartas.length > 0}
+                pagoLabel={pagoLabel}
+                mostrarLeyenda={dealerCartas.length === 0}
+              />
 
-              <div className="relative flex flex-col items-center gap-4 px-3 py-5 sm:px-5">
-                <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-tinta/45">Crupier</span>
-                <ManoDealer cartas={dealerCartas} holeRevelada={ronda.hole_revelada} verHole />
-                <div className="py-1 text-center">
-                  <div className="text-[12px] font-medium uppercase tracking-[0.2em] text-tinta/30">
-                    Paga {config?.blackjack_pago === "6_a_5" ? "6 : 5" : "3 : 2"} · se planta en 17
-                  </div>
-                </div>
-
-                <div className="flex w-full flex-wrap items-start justify-center gap-3">
-                  {players.map((j) => {
-                    const susManos = manos
-                      .filter((m) => m.jugador_id === j.id)
-                      .sort((a, b) => a.orden_mano - b.orden_mano);
+              {/* Resultados por mano (+/-) al terminar la ronda */}
+              {resultados.length > 0 && (
+                <div className="mt-1 flex flex-wrap justify-center gap-x-3 gap-y-1 text-[11px] font-bold">
+                  {resultados.map((r) => {
+                    const mano = manos.find((m) => m.id === r.mano_jugador_id);
+                    const jug = players.find((p) => p.id === mano?.jugador_id);
                     return (
-                      <div key={j.id} className="flex flex-col items-center gap-1 rounded-xl bg-black/25 px-2 py-1.5">
-                        <div className="text-center text-[11px] font-medium text-tinta/80">{j.nombre}</div>
-                        {susManos.length === 0 ? (
-                          <div className="py-2 text-center text-[11px] text-tinta/40">sin apuesta</div>
-                        ) : (
-                          <div className="flex gap-2">
-                            {susManos.map((m) => {
-                              const cs = cartas.filter((c) => c.mano_jugador_id === m.id);
-                              const r = resultados.find((x) => x.mano_jugador_id === m.id);
-                              return (
-                                <div key={m.id} className="flex flex-col items-center gap-0.5">
-                                  <ManoBJ cartas={cs} mano={m} size="sm" destacada={ronda.turno_mano_id === m.id} />
-                                  {r && (
-                                    <span className={`text-[11px] font-bold ${r.fichas_ganadas_o_perdidas >= 0 ? "text-emerald-300" : "text-red-300"}`}>
-                                      {r.fichas_ganadas_o_perdidas >= 0 ? "+" : ""}
-                                      {r.fichas_ganadas_o_perdidas}
-                                    </span>
-                                  )}
-                                </div>
-                              );
-                            })}
-                          </div>
-                        )}
-                      </div>
+                      <span
+                        key={r.id}
+                        className={r.fichas_ganadas_o_perdidas >= 0 ? "text-emerald-300" : "text-red-300"}
+                      >
+                        {jug?.nombre ?? "—"}: {r.fichas_ganadas_o_perdidas >= 0 ? "+" : ""}
+                        {r.fichas_ganadas_o_perdidas}
+                      </span>
                     );
                   })}
                 </div>
-              </div>
+              )}
             </div>
           )}
 

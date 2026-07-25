@@ -55,6 +55,26 @@ function etiquetaChip(v: number): string {
   return String(v);
 }
 
+// Descompone un monto en fichas (denominaciones de la mesa) para el stack visual.
+export function descomponerFichas(monto: number): number[] {
+  const denoms = [10000, 5000, 2500, 1000, 500];
+  const out: number[] = [];
+  let r = monto;
+  for (const d of denoms) {
+    while (r >= d && out.length < 24) {
+      out.push(d);
+      r -= d;
+    }
+  }
+  if (r > 0 && out.length < 24) out.push(r);
+  return out;
+}
+
+// Fichas apostadas de un asiento (stack), derivadas de un monto. Ids estables.
+export function chipsDeMonto(seatId: string, monto: number): FichaApuesta[] {
+  return descomponerFichas(monto).map((valor, i) => ({ id: `chip-${seatId}-${i}-${valor}`, valor }));
+}
+
 function hashId(id: string): number {
   let h = 0;
   for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) | 0;

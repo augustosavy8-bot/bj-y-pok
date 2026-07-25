@@ -2,7 +2,12 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useBlackjack } from "@/lib/useBlackjack";
-import { MesaBlackjack, type AsientoMesa } from "@/components/blackjack/MesaBlackjack";
+import {
+  MesaBlackjack,
+  chipsDeMonto,
+  descomponerFichas,
+  type AsientoMesa,
+} from "@/components/blackjack/MesaBlackjack";
 import { accionesDisponibles } from "@/lib/blackjack/acciones";
 import { TimerCircular } from "@/components/mesa/TimerCircular";
 import { OverlayResultado, type TipoResultado } from "@/components/mesa/OverlayResultado";
@@ -11,21 +16,6 @@ import { reproducir } from "@/lib/sonidos";
 import type { AccionBJ, BJManoJugador } from "@/lib/blackjack/types";
 
 const FICHAS_RAPIDAS = [500, 1000, 2500, 5000, 10000];
-
-// Descompone un monto en fichas (denominaciones de la mesa) para el stack visual.
-function descomponerFichas(monto: number): number[] {
-  const denoms = [10000, 5000, 2500, 1000, 500];
-  const out: number[] = [];
-  let r = monto;
-  for (const d of denoms) {
-    while (r >= d && out.length < 24) {
-      out.push(d);
-      r -= d;
-    }
-  }
-  if (r > 0 && out.length < 24) out.push(r);
-  return out;
-}
 
 export function VistaJugadorBlackjack({
   codigo,
@@ -209,10 +199,6 @@ export function VistaJugadorBlackjack({
 
   const resultadoDe = (manoId: string) => resultados.find((r) => r.mano_jugador_id === manoId);
 
-  // Fichas apostadas de los demás: se derivan de su apuesta (stack estático).
-  const chipsDe = (o: string, sumaApuesta: number) =>
-    descomponerFichas(sumaApuesta).map((valor, i) => ({ id: `chip-${o}-${i}-${valor}`, valor }));
-
   // Asientos de la mesa: vos al centro, el resto sobre el arco.
   const asientos: AsientoMesa[] = [
     {
@@ -224,7 +210,7 @@ export function VistaJugadorBlackjack({
       // Si no hay (p. ej. recargué la página), las derivo de mi apuesta real.
       chips: chipsApuesta.length
         ? chipsApuesta.map((c) => ({ id: `chip-${c.id}`, valor: c.valor }))
-        : chipsDe(yoId, misManos.reduce((s, m) => s + (m.apuesta_fichas || 0), 0)),
+        : chipsDeMonto(yoId, misManos.reduce((s, m) => s + (m.apuesta_fichas || 0), 0)),
       manos: misManos.map((m) => ({
         mano: m,
         cartas: cartas.filter((c) => c.mano_jugador_id === m.id),
@@ -242,7 +228,7 @@ export function VistaJugadorBlackjack({
         nombre: o.nombre,
         esYo: false,
         fichas: o.fichas,
-        chips: chipsDe(o.id, suApuesta),
+        chips: chipsDeMonto(o.id, suApuesta),
         manos: susManos.map((m) => ({
           mano: m,
           cartas: cartas.filter((c) => c.mano_jugador_id === m.id),
