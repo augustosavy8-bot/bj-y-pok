@@ -52,8 +52,11 @@ export async function registrarMovimiento(
 }
 
 /**
- * Buy-in de una mesa REAL (no práctica): valida saldo >= creditos_minimos,
- * descuenta y devuelve la cantidad que entra como fichas.
+ * Al sentarse en una mesa REAL, se juega con los créditos reales del usuario:
+ *  - Blackjack: el stack (fichas) es un ESPEJO del saldo; no se cobra buy-in.
+ *    Cada apuesta/pago mueve el ledger directamente (ver ajustarFichasBJ).
+ *  - Poker: entra con TODO su saldo real como stack (se cashea al salir), porque
+ *    el juego necesita fichas en la mesa para apostar/all-in/side-pots.
  * En mesas de práctica no toca créditos: devuelve fichas_iniciales.
  */
 export async function buyInMesa(
@@ -70,13 +73,52 @@ export async function buyInMesa(
       `Necesitás al menos ${mesa.creditos_minimos} créditos para entrar a esta mesa, tenés ${saldo}.`
     );
   }
+
+  // Blackjack: se juega directo de los créditos; el stack sólo espeja el saldo.
+  if (mesa.tipo_juego === "blackjack") {
+    return { fichas: saldo, cobroCreditos: false };
+  }
+
+  // Poker: mover todo el saldo real a la mesa como stack.
   await registrarMovimiento(admin, {
     userId,
     tipo: "buy_in_mesa",
-    monto: -mesa.creditos_minimos,
+    monto: -saldo,
     mesaId: mesa.id,
     realizadoPor: userId,
     notas: `Buy-in mesa ${mesa.codigo_sala}`,
   });
-  return { fichas: mesa.creditos_minimos, cobroCreditos: true };
+  return { fichas: saldo, cobroCreditos: true };
+}
+
+/**
+ * Ajuste de fichas para BLACKJACK. En práctica mueve el stack directo. En mesas
+ * reales el stack es un espejo del saldo real: registra el movimiento en el
+ * ledger de créditos y sincroniza `fichas` con el nuevo saldo. Devuelve las
+ * fichas resultantes.
+ */
+export async function ajustarFichasBJ(
+  admin: SupabaseClient,
+  mesa: Mesa,
+  jugador: { id: string; auth_uid: string | null; fichas: number },
+  delta: number,
+  tipo: TipoMovimientoCredito,
+  notas: string
+): Promise<number> {
+  const real = !mesa.es_practica && mesa.creditos_minimos > 0 && !!jugador.auth_uid;
+  if (!real) {
+    const nueva = jugador.fichas + delta;
+    await admin.from("jugadores").update({ fichas: nueva }).eq("id", jugador.id);
+    return nueva;
+  }
+  const nuevoSaldo = await registrarMovimiento(admin, {
+    userId: jugador.auth_uid!,
+    tipo,
+    monto: delta,
+    mesaId: mesa.id,
+    realizadoPor: jugador.auth_uid!,
+    notas,
+  });
+  await admin.from("jugadores").update({ fichas: nuevoSaldo }).eq("id", jugador.id);
+  return nuevoSaldo;
 }

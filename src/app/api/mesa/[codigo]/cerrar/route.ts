@@ -30,9 +30,13 @@ export async function POST(_req: Request, { params }: { params: { codigo: string
       .neq("estado", "eliminado");
     const jugadores = (jugRaw ?? []) as Jugador[];
 
+    // Cash-out solo en POKER real (su stack se movió a la mesa). En blackjack
+    // las fichas espejan el saldo: la plata ya está en los créditos.
+    const cashoutAplica =
+      !mesa.es_practica && mesa.creditos_minimos > 0 && mesa.tipo_juego !== "blackjack";
     let totalCashOut = 0;
     for (const j of jugadores) {
-      if (j.auth_uid && !mesa.es_practica && mesa.creditos_minimos > 0 && j.fichas > 0) {
+      if (cashoutAplica && j.auth_uid && j.fichas > 0) {
         await registrarMovimiento(admin, {
           userId: j.auth_uid,
           tipo: "cash_out_mesa",

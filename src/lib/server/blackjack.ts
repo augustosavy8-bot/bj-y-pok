@@ -14,6 +14,7 @@ import { evaluarMano } from "@/lib/blackjack/hand";
 import { dealerDebePedir } from "@/lib/blackjack/dealer";
 import { calcularPagoMano } from "@/lib/blackjack/pagos";
 import { accionesDisponibles } from "@/lib/blackjack/acciones";
+import { ajustarFichasBJ } from "@/lib/server/creditos";
 
 type DB = SupabaseClient;
 type CartaRNG = { valor: Valor; palo: Palo };
@@ -365,14 +366,13 @@ export async function cerrarApuestas(admin: DB, mesa: Mesa) {
   const conApuesta = estado.manos.filter((m) => m.apuesta_fichas > 0);
   if (conApuesta.length === 0) throw new Error("Nadie apostó todavía.");
 
-  // Marcar las manos como 'jugando' y RETENER la apuesta: se descuenta de las
-  // fichas del jugador en vivo (se devuelve el bruto al resolver los pagos).
+  // Marcar las manos como 'jugando' y RETENER la apuesta: se descuenta de los
+  // créditos reales del jugador (en mesas reales) o del stack (en práctica).
   for (const m of conApuesta) {
     await admin.from("bj_manos_jugador").update({ estado_mano: "jugando" }).eq("id", m.id);
     const jug = estado.jugadores.find((j) => j.id === m.jugador_id);
     if (jug && m.apuesta_fichas > 0) {
-      await admin.from("jugadores").update({ fichas: jug.fichas - m.apuesta_fichas }).eq("id", jug.id);
-      jug.fichas -= m.apuesta_fichas;
+      jug.fichas = await ajustarFichasBJ(admin, mesa, jug, -m.apuesta_fichas, "buy_in_mesa", `Apuesta BJ ${mesa.codigo_sala}`);
     }
   }
   await admin.from("bj_rondas").update({ estado: "reparto_inicial" }).eq("id", ronda.id);
@@ -574,7 +574,7 @@ export async function registrarSeguro(admin: DB, mesa: Mesa, jugadorId: string, 
   }
   await admin.from("bj_manos_jugador").update({ seguro_fichas: seguro }).eq("id", mano.id);
   // Retener el costo del seguro.
-  await admin.from("jugadores").update({ fichas: jugador.fichas - seguro }).eq("id", jugador.id);
+  await ajustarFichasBJ(admin, mesa, jugador, -seguro, "buy_in_mesa", `Seguro BJ ${mesa.codigo_sala}`);
   return { ok: true };
 }
 
@@ -741,7 +741,7 @@ export async function accionJugadorBJ(
       if (!disp.double) throw new Error("No podés doblar en esta mano.");
       await admin.from("bj_manos_jugador").update({ doblada: true }).eq("id", mano.id);
       // Retener la apuesta adicional del doble.
-      await admin.from("jugadores").update({ fichas: jugador.fichas - mano.apuesta_fichas }).eq("id", jugador.id);
+      jugador.fichas = await ajustarFichasBJ(admin, mesa, jugador, -mano.apuesta_fichas, "buy_in_mesa", `Doble BJ ${mesa.codigo_sala}`);
       // Exactamente 1 carta y se planta (o se pasa).
       const carta = await repartirCarta(admin, mesa.id, ronda.id, { mano_jugador_id: mano.id });
       const e = evaluarMano([...cartas, { valor: carta.valor } as BJCarta]);
@@ -777,7 +777,7 @@ export async function accionJugadorBJ(
         .single();
       const nueva = nuevaRaw as BJManoJugador;
       // Retener la apuesta de la mano nueva del split.
-      await admin.from("jugadores").update({ fichas: jugador.fichas - mano.apuesta_fichas }).eq("id", jugador.id);
+      jugador.fichas = await ajustarFichasBJ(admin, mesa, jugador, -mano.apuesta_fichas, "buy_in_mesa", `Split BJ ${mesa.codigo_sala}`);
       // Mover la 2da carta a la mano nueva.
       await admin
         .from("bj_cartas_asignadas")
@@ -919,9 +919,8 @@ export async function resolverPagos(admin: DB, mesaId: string) {
       mano.apuesta_fichas * (mano.doblada ? 2 : 1) + (mano.seguro_fichas ?? 0);
     const retorno = comprometidoMano + pago.delta;
     const jug = estado.jugadores.find((j) => j.id === mano.jugador_id);
-    if (jug) {
-      await admin.from("jugadores").update({ fichas: jug.fichas + retorno }).eq("id", jug.id);
-      jug.fichas += retorno; // por si tiene varias manos (split)
+    if (jug && retorno !== 0) {
+      jug.fichas = await ajustarFichasBJ(admin, estado.mesa, jug, retorno, "cash_out_mesa", `Pago BJ ${estado.mesa.codigo_sala}`);
     }
     netoBanca -= pago.delta; // la banca es la contraparte
 

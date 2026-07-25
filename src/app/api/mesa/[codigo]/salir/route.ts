@@ -51,7 +51,14 @@ export async function POST(_req: Request, { params }: { params: { codigo: string
       .single();
     const fichas = (actualRaw as { fichas: number }).fichas;
 
-    if (!mesa.es_practica && mesa.creditos_minimos > 0 && fichas > 0) {
+    // Cash-out solo en POKER real: su stack se movió a la mesa. En blackjack
+    // las fichas espejan el saldo y la plata ya está en los créditos.
+    if (
+      !mesa.es_practica &&
+      mesa.creditos_minimos > 0 &&
+      mesa.tipo_juego !== "blackjack" &&
+      fichas > 0
+    ) {
       await registrarMovimiento(admin, {
         userId: user.id,
         tipo: "cash_out_mesa",
