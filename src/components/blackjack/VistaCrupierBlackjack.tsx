@@ -1,9 +1,14 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useBlackjack } from "@/lib/useBlackjack";
 import { ManoBJ, ManoDealer } from "@/components/blackjack/ManoBJ";
 import { ConfigBlackjack } from "@/components/blackjack/ConfigBlackjack";
+
+// Modo automático: tiempos (ms) de espera antes de cada paso del loop.
+const AUTO_ESPERA_APUESTAS = 25_000; // ventana para que la gente apueste
+const AUTO_ESPERA_PROXIMA = 6_000; // deja ver el resultado antes de repartir de nuevo
+const AUTO_ESPERA_SEGURO = 8_000; // ventana para decidir el seguro
 
 export function VistaCrupierBlackjack({
   codigo,
@@ -25,6 +30,85 @@ export function VistaCrupierBlackjack({
   const dealerCartas = useMemo(() => cartas.filter((c) => c.es_carta_dealer), [cartas]);
   const enEspera = mesa?.estado === "esperando";
   const rondaActiva = ronda && ronda.estado !== "terminada";
+
+  // ── Modo automático: la mesa gira sola sin que el crupier apriete nada ──
+  const claveAuto = `bj-auto-${codigo}`;
+  const [auto, setAuto] = useState(false);
+  const [cuenta, setCuenta] = useState<number | null>(null);
+  const autoEnCurso = useRef(false);
+
+  useEffect(() => {
+    setAuto(localStorage.getItem(claveAuto) === "1");
+  }, [claveAuto]);
+
+  function toggleAuto() {
+    setAuto((a) => {
+      const n = !a;
+      localStorage.setItem(claveAuto, n ? "1" : "0");
+      return n;
+    });
+  }
+
+  // Dispara un paso del loop sin pisar otra llamada en vuelo.
+  async function autoPost(endpoint: string) {
+    if (autoEnCurso.current) return;
+    autoEnCurso.current = true;
+    try {
+      await fetch(`/api/blackjack/${codigo}/${endpoint}`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ auth_uid: authUid }),
+      });
+    } catch {
+      /* reintenta en el próximo ciclo del efecto */
+    } finally {
+      autoEnCurso.current = false;
+    }
+  }
+
+  const hayApuesta = useMemo(() => manos.some((m) => m.apuesta_fichas > 0), [manos]);
+  const cantJugadores = players.length;
+  const sinRondaActiva = !ronda || ronda.estado === "terminada";
+
+  // Decide y agenda el próximo paso automático según el estado de la ronda.
+  useEffect(() => {
+    if (!auto || !mesa || mesa.estado === "terminada") {
+      setCuenta(null);
+      return;
+    }
+
+    let endpoint: string | null = null;
+    let delay = 0;
+    if (ronda?.fase_seguro) {
+      endpoint = "cerrar-seguro";
+      delay = AUTO_ESPERA_SEGURO;
+    } else if (ronda?.estado === "apuestas") {
+      // Solo repartimos si alguien apostó; si no, seguimos esperando.
+      endpoint = hayApuesta ? "cerrar-apuestas" : null;
+      delay = AUTO_ESPERA_APUESTAS;
+    } else if (sinRondaActiva && cantJugadores >= 1) {
+      endpoint = "iniciar-ronda";
+      delay = ronda ? AUTO_ESPERA_PROXIMA : 3_000;
+    }
+
+    if (!endpoint) {
+      setCuenta(null);
+      return;
+    }
+
+    let restante = Math.ceil(delay / 1000);
+    setCuenta(restante);
+    const iv = setInterval(() => {
+      restante -= 1;
+      setCuenta(Math.max(0, restante));
+    }, 1000);
+    const to = setTimeout(() => autoPost(endpoint!), delay);
+    return () => {
+      clearInterval(iv);
+      clearTimeout(to);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [auto, mesa?.estado, ronda?.id, ronda?.estado, ronda?.fase_seguro, hayApuesta, cantJugadores]);
 
   async function post(endpoint: string, body: Record<string, unknown> = {}) {
     setOcupado(true);
@@ -195,6 +279,33 @@ export function VistaCrupierBlackjack({
               </div>
             </div>
           )}
+
+          {/* Modo automático: la mesa gira sola */}
+          <section className="ncard flex flex-wrap items-center gap-3 border border-white/[0.06] p-4">
+            <button
+              type="button"
+              role="switch"
+              aria-checked={auto}
+              onClick={toggleAuto}
+              className={`relative h-6 w-11 shrink-0 rounded-full transition ${auto ? "bg-acento" : "bg-white/15"}`}
+            >
+              <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition-all ${auto ? "left-[22px]" : "left-0.5"}`} />
+            </button>
+            <div className="flex flex-col leading-tight">
+              <span className="text-sm font-medium">Modo automático</span>
+              <span className="text-[11px] text-tinta/50">
+                La mesa arranca rondas, cierra apuestas y sigue sola. Los jugadores solo apuestan y juegan su turno.
+              </span>
+            </div>
+            {auto && cuenta !== null && (
+              <span className="ml-auto rounded-md border border-acento/40 bg-acento/10 px-2.5 py-1 text-sm tabular-nums text-acento-300">
+                Próximo paso en {cuenta}s
+              </span>
+            )}
+            {auto && cuenta === null && ronda?.estado === "apuestas" && !hayApuesta && (
+              <span className="ml-auto text-[11px] text-tinta/50">Esperando la primera apuesta…</span>
+            )}
+          </section>
 
           {/* Controles de fase */}
           <section className="ncard flex flex-wrap items-center gap-2 border border-white/[0.06] p-4">
