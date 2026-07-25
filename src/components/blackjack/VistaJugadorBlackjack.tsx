@@ -7,11 +7,25 @@ import { accionesDisponibles } from "@/lib/blackjack/acciones";
 import { TimerCircular } from "@/components/mesa/TimerCircular";
 import { OverlayResultado, type TipoResultado } from "@/components/mesa/OverlayResultado";
 import { BotonSonido } from "@/components/mesa/BotonSonido";
-import { FichasVolando } from "@/components/mesa/FichasVolando";
 import { reproducir } from "@/lib/sonidos";
 import type { AccionBJ, BJManoJugador } from "@/lib/blackjack/types";
 
 const FICHAS_RAPIDAS = [500, 1000, 2500, 5000, 10000];
+
+// Descompone un monto en fichas (denominaciones de la mesa) para el stack visual.
+function descomponerFichas(monto: number): number[] {
+  const denoms = [10000, 5000, 2500, 1000, 500];
+  const out: number[] = [];
+  let r = monto;
+  for (const d of denoms) {
+    while (r >= d && out.length < 24) {
+      out.push(d);
+      r -= d;
+    }
+  }
+  if (r > 0 && out.length < 24) out.push(r);
+  return out;
+}
 
 export function VistaJugadorBlackjack({
   codigo,
@@ -25,17 +39,24 @@ export function VistaJugadorBlackjack({
   const { mesa, jugadores, config, ronda, manos, cartas, resultados } = useBlackjack(codigo);
   const [enviando, setEnviando] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [apuesta, setApuesta] = useState(0);
+  // La apuesta se arma como una LISTA de fichas (para el stack que vuela y queda).
+  const [chipsApuesta, setChipsApuesta] = useState<{ id: number; valor: number }[]>([]);
+  const chipIdRef = useRef(0);
+  const apuesta = chipsApuesta.reduce((s, c) => s + c.valor, 0);
   const [restante, setRestante] = useState<number | null>(null);
   const [mostrarResultado, setMostrarResultado] = useState(false);
   const [ultimaApuesta, setUltimaApuesta] = useState(0);
-  const [disparoFicha, setDisparoFicha] = useState(0);
   const claveUltima = `bj-ultima-apuesta-${codigo}-${yoId}`;
 
   useEffect(() => {
     const v = Number(localStorage.getItem(claveUltima) ?? 0);
     if (v > 0) setUltimaApuesta(v);
   }, [claveUltima]);
+
+  // Limpiar las fichas puestas al empezar una mano nueva.
+  useEffect(() => {
+    setChipsApuesta([]);
+  }, [ronda?.id]);
 
   const yo = jugadores.find((j) => j.id === yoId);
   const soyBanca = ronda?.banca_jugador_id === yoId;
@@ -70,9 +91,24 @@ export function VistaJugadorBlackjack({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ronda?.turno_mano_id, ronda?.turno_expira_at, ronda?.estado]);
 
-  async function apostar() {
+  // Agregar / limpiar / setear la apuesta como fichas (con tope de mesa y saldo).
+  function agregarChip(v: number) {
+    const tope = Math.min(config?.apuesta_max ?? 10000, yo?.fichas ?? Infinity);
+    if (apuesta + v > tope) return;
     reproducir("ficha");
-    if (apuesta > 0) setDisparoFicha((d) => d + 1);
+    chipIdRef.current += 1;
+    setChipsApuesta((cs) => [...cs, { id: chipIdRef.current, valor: v }]);
+  }
+  function setApuestaDesde(monto: number) {
+    const tope = Math.min(config?.apuesta_max ?? 10000, yo?.fichas ?? Infinity);
+    const m = Math.min(monto, tope);
+    if (m > 0) reproducir("ficha");
+    setChipsApuesta(
+      descomponerFichas(m).map((valor) => ({ id: (chipIdRef.current += 1), valor }))
+    );
+  }
+
+  async function apostar() {
     setEnviando(true);
     setError(null);
     try {
@@ -173,6 +209,10 @@ export function VistaJugadorBlackjack({
 
   const resultadoDe = (manoId: string) => resultados.find((r) => r.mano_jugador_id === manoId);
 
+  // Fichas apostadas de los demás: se derivan de su apuesta (stack estático).
+  const chipsDe = (o: string, sumaApuesta: number) =>
+    descomponerFichas(sumaApuesta).map((valor, i) => ({ id: `chip-${o}-${i}-${valor}`, valor }));
+
   // Asientos de la mesa: vos al centro, el resto sobre el arco.
   const asientos: AsientoMesa[] = [
     {
@@ -180,6 +220,11 @@ export function VistaJugadorBlackjack({
       nombre: "Vos",
       esYo: true,
       fichas: yo.fichas,
+      // Mis fichas: las que armé recién (vuelan y quedan, estado local inmediato).
+      // Si no hay (p. ej. recargué la página), las derivo de mi apuesta real.
+      chips: chipsApuesta.length
+        ? chipsApuesta.map((c) => ({ id: `chip-${c.id}`, valor: c.valor }))
+        : chipsDe(yoId, misManos.reduce((s, m) => s + (m.apuesta_fichas || 0), 0)),
       manos: misManos.map((m) => ({
         mano: m,
         cartas: cartas.filter((c) => c.mano_jugador_id === m.id),
@@ -191,11 +236,13 @@ export function VistaJugadorBlackjack({
       const susManos = manos
         .filter((m) => m.jugador_id === o.id)
         .sort((a, b) => a.orden_mano - b.orden_mano);
+      const suApuesta = susManos.reduce((s, m) => s + (m.apuesta_fichas || 0), 0);
       return {
         id: o.id,
         nombre: o.nombre,
         esYo: false,
         fichas: o.fichas,
+        chips: chipsDe(o.id, suApuesta),
         manos: susManos.map((m) => ({
           mano: m,
           cartas: cartas.filter((c) => c.mano_jugador_id === m.id),
@@ -290,21 +337,21 @@ export function VistaJugadorBlackjack({
                   {FICHAS_RAPIDAS.map((v) => (
                     <button
                       key={v}
-                      onClick={() => setApuesta((a) => Math.min(a + v, config?.apuesta_max ?? 10000, yo.fichas))}
-                      className="grid h-12 w-12 place-items-center rounded-full border border-white/15 bg-[#292b31] text-[13px] font-medium tabular-nums text-tinta transition hover:border-acento hover:text-acento-300"
+                      onClick={() => agregarChip(v)}
+                      className="grid h-12 w-12 place-items-center rounded-full border border-white/15 bg-[#292b31] text-[12px] font-semibold tabular-nums text-tinta transition hover:-translate-y-0.5 hover:border-acento hover:text-acento-300 active:translate-y-0.5"
                     >
-                      {v}
+                      {v >= 1000 ? `${v / 1000}k` : v}
                     </button>
                   ))}
                   <div className="mx-1 h-8 w-px bg-white/12" />
-                  <button className="nbtn nbtn-secondary" onClick={() => setApuesta(0)}>Limpiar</button>
+                  <button className="nbtn nbtn-secondary" onClick={() => setChipsApuesta([])}>Limpiar</button>
                 </div>
                 {ultimaApuesta > 0 && (
                   <div className="flex justify-center gap-2">
-                    <button className="nbtn nbtn-secondary" onClick={() => setApuesta(Math.min(ultimaApuesta, config?.apuesta_max ?? 10000, yo.fichas))}>
+                    <button className="nbtn nbtn-secondary" onClick={() => setApuestaDesde(ultimaApuesta)}>
                       Rebet {ultimaApuesta.toLocaleString("es")}
                     </button>
-                    <button className="nbtn nbtn-secondary" onClick={() => setApuesta(Math.min(ultimaApuesta * 2, config?.apuesta_max ?? 10000, yo.fichas))}>
+                    <button className="nbtn nbtn-secondary" onClick={() => setApuestaDesde(ultimaApuesta * 2)}>
                       Rebet x2
                     </button>
                   </div>
@@ -379,8 +426,6 @@ export function VistaJugadorBlackjack({
           </p>
         </aside>
       </div>
-
-      <FichasVolando disparo={disparoFicha} monto={apuesta || ultimaApuesta || 25} />
     </div>
   );
 }
