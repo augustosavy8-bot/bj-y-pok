@@ -24,6 +24,48 @@ export async function GET() {
   }
 }
 
+// Crear un usuario directo desde el panel (sin link de invitación).
+// Signup sigue cerrado: solo un admin puede llegar acá (requerirAdmin).
+export async function POST(req: Request) {
+  try {
+    const adminPerfil = await requerirAdmin();
+    const admin = getSupabaseAdmin();
+    const body = await req.json();
+    const nombre = (body?.nombre ?? "").toString().trim().slice(0, 60);
+    const email = (body?.email ?? "").toString().trim().toLowerCase();
+    const password = (body?.password ?? "").toString();
+    const rol = body?.rol === "admin" ? "admin" : "jugador";
+
+    if (!nombre) return errorJson("Poné un nombre.", 400);
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return errorJson("Email inválido.", 400);
+    if (password.length < 8) return errorJson("La contraseña debe tener al menos 8 caracteres.", 400);
+
+    const { data: creado, error: errCreate } = await admin.auth.admin.createUser({
+      email,
+      password,
+      email_confirm: true,
+      user_metadata: { nombre },
+    });
+    if (errCreate || !creado.user) {
+      const msg = /already registered|exists/i.test(errCreate?.message ?? "")
+        ? "Ya existe una cuenta con ese email."
+        : "No se pudo crear la cuenta: " + (errCreate?.message ?? "");
+      return errorJson(msg, 400);
+    }
+
+    // El trigger creó el perfil; completar nombre, rol e invitado_por.
+    const { error: errPerfil } = await admin
+      .from("perfiles")
+      .update({ nombre, rol, invitado_por: adminPerfil.id })
+      .eq("id", creado.user.id);
+    if (errPerfil) return errorJson("Cuenta creada pero no se pudo completar el perfil: " + errPerfil.message, 500);
+
+    return json({ ok: true, id: creado.user.id, email });
+  } catch (e) {
+    return manejarError(e);
+  }
+}
+
 // Activar / desactivar un usuario.
 export async function PATCH(req: Request) {
   try {

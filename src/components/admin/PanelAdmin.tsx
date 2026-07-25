@@ -29,6 +29,11 @@ export function PanelAdmin({ miId }: { miId: string }) {
   const [error, setError] = useState<string | null>(null);
   const [copiado, setCopiado] = useState<string | null>(null);
 
+  // Alta directa de usuario (sin link de invitación).
+  const [nuevo, setNuevo] = useState({ nombre: "", email: "", password: "", rol: "jugador" });
+  const [creando, setCreando] = useState(false);
+  const [okAlta, setOkAlta] = useState<string | null>(null);
+
   const cargar = useCallback(async () => {
     const [u, i] = await Promise.all([
       fetch("/api/admin/usuarios").then((r) => r.json()),
@@ -67,6 +72,30 @@ export function PanelAdmin({ miId }: { miId: string }) {
     }
   }
 
+  async function crearUsuario() {
+    setError(null);
+    setOkAlta(null);
+    setCreando(true);
+    try {
+      const res = await fetch("/api/admin/usuarios", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(nuevo),
+      });
+      const data = await res.json();
+      if (!res.ok) setError(data?.error ?? "Error");
+      else {
+        setOkAlta(`Usuario ${data.email} creado. Ya puede ingresar con su email y contraseña.`);
+        setNuevo({ nombre: "", email: "", password: "", rol: "jugador" });
+        cargar();
+      }
+    } catch {
+      setError("Error de red");
+    } finally {
+      setCreando(false);
+    }
+  }
+
   async function revocar(id: string) {
     await fetch("/api/admin/invitaciones", {
       method: "PATCH",
@@ -98,9 +127,80 @@ export function PanelAdmin({ miId }: { miId: string }) {
         <CreditosAdmin />
         <RetirosAdmin />
 
-        {/* Invitaciones */}
+        {/* Crear usuario directo */}
+        <section className="ncard flex flex-col gap-3 border border-white/[0.06] p-4">
+          <div>
+            <h2 className="font-medium">Crear usuario</h2>
+            <p className="text-xs text-tinta/50">
+              Alta directa: la cuenta queda lista al instante. Pasale el email y la contraseña a la persona.
+            </p>
+          </div>
+          {okAlta && (
+            <div className="rounded-md border border-emerald-500/40 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-200">
+              {okAlta}
+            </div>
+          )}
+          <div className="grid gap-2 sm:grid-cols-2">
+            <label className="text-xs text-tinta/70">
+              Nombre
+              <input
+                value={nuevo.nombre}
+                onChange={(e) => setNuevo((n) => ({ ...n, nombre: e.target.value }))}
+                className="ninput mt-1"
+                placeholder="Juan Pérez"
+              />
+            </label>
+            <label className="text-xs text-tinta/70">
+              Email
+              <input
+                type="email"
+                value={nuevo.email}
+                onChange={(e) => setNuevo((n) => ({ ...n, email: e.target.value }))}
+                className="ninput mt-1"
+                placeholder="juan@email.com"
+                autoComplete="off"
+              />
+            </label>
+            <label className="text-xs text-tinta/70">
+              Contraseña (mín. 8)
+              <input
+                type="text"
+                value={nuevo.password}
+                onChange={(e) => setNuevo((n) => ({ ...n, password: e.target.value }))}
+                className="ninput mt-1 font-mono"
+                placeholder="mín. 8 caracteres"
+                autoComplete="off"
+              />
+            </label>
+            <label className="text-xs text-tinta/70">
+              Rol
+              <select
+                value={nuevo.rol}
+                onChange={(e) => setNuevo((n) => ({ ...n, rol: e.target.value }))}
+                className="ninput mt-1"
+              >
+                <option value="jugador" className="text-black">Jugador</option>
+                <option value="admin" className="text-black">Admin</option>
+              </select>
+            </label>
+          </div>
+          <div>
+            <button
+              className="nbtn nbtn-primary"
+              onClick={crearUsuario}
+              disabled={creando || !nuevo.nombre.trim() || !nuevo.email.trim() || nuevo.password.length < 8}
+            >
+              {creando ? "Creando…" : "Crear usuario"}
+            </button>
+          </div>
+        </section>
+
+        {/* Invitaciones (alternativa: link para que la persona se dé de alta sola) */}
         <section className="ncard flex flex-col gap-3 border border-white/[0.06] p-4">
           <h2 className="font-medium">Invitaciones</h2>
+          <p className="text-xs text-tinta/50">
+            Alternativa al alta directa: generás un link y la persona elige su propia contraseña.
+          </p>
           <div className="flex gap-2">
             <input
               value={emailInv}
