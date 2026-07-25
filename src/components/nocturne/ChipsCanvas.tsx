@@ -2,11 +2,35 @@
 
 import { useEffect, useRef } from "react";
 
-// Fichas cayendo lento detrás del hero. Atmósfera, no protagonista:
-// opacidad baja, se desvanecen antes del borde inferior. Respeta
+// Fichas cayendo lento detrás del hero. Atmósfera, no protagonista: fichas con
+// volumen (cara + canto + muescas + aro), opacidad baja y se desvanecen antes
+// del borde inferior. El cursor sobre el hero las empuja apenas. Respeta
 // prefers-reduced-motion (dibuja un cuadro estático).
+const PALETA = [
+  { cara: "#3b3468", canto: "#241f3c", borde: "#8f83c9" },
+  { cara: "#262a60", canto: "#171a3d", borde: "#4c5397" },
+  { cara: "#33363f", canto: "#1f2126", borde: "#75798c" },
+  { cara: "#292b31", canto: "#191a1f", borde: "#595d6c" },
+];
+
+type Chip = {
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  r: number;
+  t: number;
+  rot: number;
+  vr: number;
+  a: number;
+  p: (typeof PALETA)[number];
+};
+
 export function ChipsCanvas({ density = 0.45 }: { density?: number }) {
   const ref = useRef<HTMLCanvasElement>(null);
+  // Densidad viva sin re-montar el canvas.
+  const densidad = useRef(density);
+  densidad.current = density;
 
   useEffect(() => {
     const canvas = ref.current;
@@ -16,90 +40,133 @@ export function ChipsCanvas({ density = 0.45 }: { density?: number }) {
 
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     let raf = 0;
-    let w = 0;
-    let h = 0;
-    const dpr = Math.min(window.devicePixelRatio || 1, 2);
-
-    type Chip = { x: number; y: number; r: number; vy: number; rot: number; vr: number; hue: number };
+    let W = 0;
+    let H = 0;
     let chips: Chip[] = [];
+    const viento = { x: -9999, activo: false };
 
     function resize() {
-      const parent = canvas!.parentElement;
-      w = parent?.clientWidth ?? window.innerWidth;
-      h = parent?.clientHeight ?? 400;
-      canvas!.width = w * dpr;
-      canvas!.height = h * dpr;
-      canvas!.style.width = w + "px";
-      canvas!.style.height = h + "px";
+      const dpr = Math.min(2, window.devicePixelRatio || 1);
+      W = canvas!.clientWidth;
+      H = canvas!.clientHeight;
+      canvas!.width = Math.max(1, Math.round(W * dpr));
+      canvas!.height = Math.max(1, Math.round(H * dpr));
       ctx!.setTransform(dpr, 0, 0, dpr, 0, 0);
-      const n = Math.round((w / 90) * density * 6);
-      chips = Array.from({ length: n }, () => nueva(true));
+      chips = [];
     }
 
-    function nueva(inicial: boolean): Chip {
-      return {
-        x: Math.random() * w,
-        y: inicial ? Math.random() * h : -20,
-        r: 8 + Math.random() * 14,
-        vy: 0.15 + Math.random() * 0.35,
+    const target = () => Math.round(densidad.current * 26);
+
+    function spawn(alturaAlAzar: boolean) {
+      const r = 9 + Math.random() * 9;
+      chips.push({
+        x: 20 + Math.random() * Math.max(1, W - 40),
+        y: alturaAlAzar ? Math.random() * H : -30 - Math.random() * 120,
+        vx: (Math.random() - 0.5) * 0.25,
+        vy: 0.35 + Math.random() * 0.75,
+        r,
+        t: r * 0.36,
         rot: Math.random() * Math.PI,
-        vr: (Math.random() - 0.5) * 0.01,
-        hue: Math.random() < 0.5 ? 250 : 255,
-      };
+        vr: (Math.random() - 0.5) * 0.035,
+        a: 0.16 + Math.random() * 0.2,
+        p: PALETA[(Math.random() * PALETA.length) | 0],
+      });
     }
 
-    function dibujarChip(c: Chip) {
-      const alpha = 0.16 + Math.min(0.2, c.r / 110);
-      // Desvanecer cerca del borde inferior.
-      const fade = c.y > h * 0.7 ? Math.max(0, 1 - (c.y - h * 0.7) / (h * 0.3)) : 1;
+    function dibujar(ch: Chip) {
+      const cerca = 1 - Math.max(0, (ch.y - H * 0.62) / (H * 0.42));
       ctx!.save();
-      ctx!.translate(c.x, c.y);
-      ctx!.rotate(c.rot);
-      ctx!.globalAlpha = alpha * fade;
-      ctx!.strokeStyle = `hsl(${c.hue} 45% 72%)`;
-      ctx!.lineWidth = 1.4;
+      ctx!.globalAlpha = Math.max(0, ch.a * Math.min(1, cerca));
+      ctx!.translate(ch.x, ch.y);
+      ctx!.scale(1, 0.6);
+      // Canto (elipse desplazada hacia abajo).
       ctx!.beginPath();
-      ctx!.arc(0, 0, c.r, 0, Math.PI * 2);
-      ctx!.stroke();
+      ctx!.arc(0, ch.t / 0.6, ch.r, 0, Math.PI * 2);
+      ctx!.fillStyle = ch.p.canto;
+      ctx!.fill();
+      // Cara.
+      ctx!.rotate(ch.rot);
       ctx!.beginPath();
-      ctx!.arc(0, 0, c.r * 0.6, 0, Math.PI * 2);
-      ctx!.globalAlpha = alpha * fade * 0.6;
-      ctx!.stroke();
-      // Marcas del borde de la ficha.
-      ctx!.globalAlpha = alpha * fade * 0.5;
-      for (let i = 0; i < 8; i++) {
-        const a = (i / 8) * Math.PI * 2;
+      ctx!.arc(0, 0, ch.r, 0, Math.PI * 2);
+      ctx!.fillStyle = ch.p.cara;
+      ctx!.fill();
+      // Muescas del borde.
+      ctx!.strokeStyle = ch.p.borde;
+      const lw = Math.max(1.6, ch.r * 0.2);
+      ctx!.lineWidth = lw;
+      for (let i = 0; i < 6; i++) {
+        const a = (i * Math.PI) / 3;
         ctx!.beginPath();
-        ctx!.moveTo(Math.cos(a) * c.r, Math.sin(a) * c.r);
-        ctx!.lineTo(Math.cos(a) * (c.r - 3.5), Math.sin(a) * (c.r - 3.5));
+        ctx!.arc(0, 0, ch.r - lw * 0.5, a - 0.19, a + 0.19);
         ctx!.stroke();
       }
+      // Aro interior.
+      ctx!.lineWidth = 1;
+      ctx!.beginPath();
+      ctx!.arc(0, 0, ch.r * 0.52, 0, Math.PI * 2);
+      ctx!.stroke();
       ctx!.restore();
     }
 
-    function frame() {
-      ctx!.clearRect(0, 0, w, h);
-      for (const c of chips) {
-        c.y += c.vy;
-        c.rot += c.vr;
-        if (c.y - c.r > h) Object.assign(c, nueva(false));
-        dibujarChip(c);
+    function step() {
+      raf = requestAnimationFrame(step);
+      if (!W || !H) return;
+      ctx!.clearRect(0, 0, W, H);
+      const tgt = target();
+      while (chips.length < tgt) spawn(chips.length < tgt - 1);
+      for (let i = chips.length - 1; i >= 0; i--) {
+        const ch = chips[i];
+        ch.y += ch.vy;
+        ch.x += ch.vx;
+        ch.rot += ch.vr;
+        if (viento.activo) {
+          const dx = ch.x - viento.x;
+          const ad = Math.abs(dx);
+          if (ad < 170) ch.vx += (dx > 0 ? 1 : -1) * (1 - ad / 170) * 0.02;
+        }
+        ch.vx *= 0.985;
+        if (ch.y > H + 30 || chips.length > tgt + 4) {
+          chips.splice(i, 1);
+          continue;
+        }
+        dibujar(ch);
       }
-      raf = requestAnimationFrame(frame);
     }
 
     resize();
+    const ro = new ResizeObserver(resize);
+    ro.observe(canvas);
+
+    // Empuje con el cursor: se lee sobre el contenedor del canvas (el hero).
+    const parent = canvas.parentElement;
+    const onMove = (e: PointerEvent) => {
+      const rect = canvas.getBoundingClientRect();
+      viento.x = e.clientX - rect.left;
+      viento.activo = true;
+    };
+    const onLeave = () => {
+      viento.activo = false;
+    };
+    parent?.addEventListener("pointermove", onMove);
+    parent?.addEventListener("pointerleave", onLeave);
+
     if (reduce) {
-      chips.forEach(dibujarChip);
+      const n = target();
+      for (let i = 0; i < n; i++) spawn(true);
+      chips.forEach(dibujar);
     } else {
-      raf = requestAnimationFrame(frame);
+      raf = requestAnimationFrame(step);
     }
-    window.addEventListener("resize", resize);
+
     return () => {
       cancelAnimationFrame(raf);
-      window.removeEventListener("resize", resize);
+      ro.disconnect();
+      parent?.removeEventListener("pointermove", onMove);
+      parent?.removeEventListener("pointerleave", onLeave);
     };
-  }, [density]);
+    // Solo se monta una vez; la densidad se lee viva desde el ref.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return <canvas ref={ref} className="pointer-events-none absolute inset-0 h-full w-full" aria-hidden />;
 }

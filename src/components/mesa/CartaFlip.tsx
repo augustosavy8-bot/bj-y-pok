@@ -49,36 +49,45 @@ export function CartaFlip({
     ? { x: origen?.x ?? 0, y: origen?.y ?? -110, rotate: origen?.rotate ?? -6, opacity: 0 }
     : { opacity: 0 };
 
+  // Momento en que arranca el giro dorso→cara (después de aterrizar el vuelo).
+  const inicioFlip = delay + (deal ? 0.26 : 0);
+
   return (
     <motion.div
-      style={{ width: w, height: h, perspective: 800 }}
+      style={{ width: w, height: h, perspective: 700 }}
       initial={initEntrada}
       animate={{ x: 0, y: 0, rotate: 0, opacity: 1 }}
-      transition={{ delay, duration: 0.45, ease: [0.2, 0.7, 0.3, 1] }}
+      transition={{ delay, duration: 0.47, ease: [0.22, 0.72, 0.2, 1] }}
     >
       <motion.div
         style={{ position: "relative", width: "100%", height: "100%", transformStyle: "preserve-3d" }}
         initial={{ rotateY: flip ? 180 : 0 }}
         animate={{ rotateY: 0 }}
         transition={{
-          delay: delay + (deal ? 0.26 : 0),
-          duration: flip ? 0.42 : 0,
-          ease: [0.3, 0.8, 0.4, 1],
+          delay: inicioFlip,
+          duration: flip ? 0.34 : 0,
+          ease: [0.3, 0.7, 0.2, 1],
         }}
       >
-        <div style={{ position: "absolute", inset: 0, backfaceVisibility: "hidden" }}>
+        {/* Cara: aparece por opacidad a mitad del giro (no dependemos de
+            backface-visibility, poco confiable entre navegadores). */}
+        <motion.div
+          style={{ position: "absolute", inset: 0, zIndex: 2 }}
+          initial={{ opacity: flip ? 0 : 1 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: inicioFlip + (flip ? 0.13 : 0), duration: 0.2, ease: "linear" }}
+        >
           <Carta valor={valor} palo={palo} size={size} />
-        </div>
-        <div
-          style={{
-            position: "absolute",
-            inset: 0,
-            backfaceVisibility: "hidden",
-            transform: "rotateY(180deg)",
-          }}
+        </motion.div>
+        {/* Dorso: se cruza en opacidad hacia afuera mientras la cara entra. */}
+        <motion.div
+          style={{ position: "absolute", inset: 0, zIndex: 1, transform: "rotateY(180deg)" }}
+          initial={{ opacity: flip ? 1 : 0 }}
+          animate={{ opacity: 0 }}
+          transition={{ delay: inicioFlip, duration: 0.2, ease: "linear" }}
         >
           <DorsoCarta size={size} />
-        </div>
+        </motion.div>
       </motion.div>
     </motion.div>
   );
