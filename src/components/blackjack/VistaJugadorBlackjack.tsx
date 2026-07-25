@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useBlackjack } from "@/lib/useBlackjack";
 import {
   MesaBlackjack,
+  MS_VENTANA_APUESTAS,
   chipsDeMonto,
   descomponerFichas,
   type AsientoMesa,
@@ -47,6 +48,20 @@ export function VistaJugadorBlackjack({
   useEffect(() => {
     setChipsApuesta([]);
   }, [ronda?.id]);
+
+  // Cuenta regresiva de la ventana de apuestas (10s desde que abre la ronda).
+  const [segsApuestas, setSegsApuestas] = useState<number | null>(null);
+  useEffect(() => {
+    if (ronda?.estado !== "apuestas" || !ronda.created_at) {
+      setSegsApuestas(null);
+      return;
+    }
+    const fin = new Date(ronda.created_at).getTime() + MS_VENTANA_APUESTAS;
+    const tick = () => setSegsApuestas(Math.max(0, Math.ceil((fin - Date.now()) / 1000)));
+    tick();
+    const iv = setInterval(tick, 500);
+    return () => clearInterval(iv);
+  }, [ronda?.estado, ronda?.created_at]);
 
   const yo = jugadores.find((j) => j.id === yoId);
   const soyBanca = ronda?.banca_jugador_id === yoId;
@@ -286,6 +301,7 @@ export function VistaJugadorBlackjack({
               hayCartasEnMesa={hayCartasEnMesa}
               pagoLabel={pagoLabel}
               mostrarLeyenda={!ronda || dealerCartas.length === 0}
+              turnoExpiraAt={ronda?.estado === "turnos_jugadores" ? ronda.turno_expira_at : null}
             />
 
             {/* Resultados por mano (+/-) debajo de la mesa */}
@@ -320,6 +336,20 @@ export function VistaJugadorBlackjack({
           <div className="mx-auto mt-4 flex max-w-[560px] flex-col gap-3">
             {ronda?.estado === "apuestas" && (
               <>
+                <div className="flex items-center justify-center gap-2 text-sm">
+                  <span className="text-tinta/70">Hacé tu apuesta</span>
+                  {segsApuestas != null && (
+                    <span
+                      className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 font-bold tabular-nums ${
+                        segsApuestas <= 3
+                          ? "animate-pulse border-red-400/50 bg-red-500/15 text-red-200"
+                          : "border-acento/40 bg-acento/10 text-acento-300"
+                      }`}
+                    >
+                      cierra en {segsApuestas}s
+                    </span>
+                  )}
+                </div>
                 <div className="flex flex-wrap items-center justify-center gap-2">
                   {FICHAS_RAPIDAS.map((v) => (
                     <button
@@ -367,6 +397,11 @@ export function VistaJugadorBlackjack({
               <ControlesBJ
                 manoEnTurno={manos.find((m) => m.id === ronda.turno_mano_id)}
                 esMia={manos.find((m) => m.id === ronda.turno_mano_id)?.jugador_id === yoId}
+                nombreEnTurno={
+                  jugadores.find(
+                    (j) => j.id === manos.find((m) => m.id === ronda.turno_mano_id)?.jugador_id
+                  )?.nombre
+                }
                 cartas={cartas}
                 jugadorFichas={yo.fichas}
                 manos={manos}
@@ -420,6 +455,7 @@ export function VistaJugadorBlackjack({
 function ControlesBJ({
   manoEnTurno,
   esMia,
+  nombreEnTurno,
   cartas,
   jugadorFichas,
   manos,
@@ -430,6 +466,7 @@ function ControlesBJ({
 }: {
   manoEnTurno?: BJManoJugador;
   esMia: boolean;
+  nombreEnTurno?: string;
   cartas: ReturnType<typeof useBlackjack>["cartas"];
   jugadorFichas: number;
   manos: BJManoJugador[];
@@ -440,8 +477,23 @@ function ControlesBJ({
 }) {
   if (!esMia || !manoEnTurno || !config) {
     return (
-      <div className="ncard border border-white/[0.06] px-4 py-3 text-center text-sm text-tinta/55">
-        {esMia ? "Preparando…" : "Esperando a los demás jugadores…"}
+      <div className="ncard flex items-center justify-center gap-2 border border-white/[0.06] px-4 py-3 text-center text-sm text-tinta/60">
+        {esMia ? (
+          "Preparando…"
+        ) : (
+          <>
+            <span className="relative flex h-2 w-2">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-acento/70" />
+              <span className="relative inline-flex h-2 w-2 rounded-full bg-acento" />
+            </span>
+            <span>
+              Esperando a <b className="text-tinta/85">{nombreEnTurno ?? "otro jugador"}</b>
+              {restante != null && (
+                <span className="tabular-nums text-tinta/50"> · {restante}s</span>
+              )}
+            </span>
+          </>
+        )}
       </div>
     );
   }

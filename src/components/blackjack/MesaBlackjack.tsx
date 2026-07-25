@@ -155,6 +155,9 @@ function useAterrizaje(ids: string[], step: number, onLand?: () => void) {
   return landed;
 }
 
+// Ventana de apuestas (ms) — usada para la cuenta regresiva compartida.
+export const MS_VENTANA_APUESTAS = 10_000;
+
 export function MesaBlackjack({
   dealerCartas,
   holeRevelada,
@@ -163,6 +166,7 @@ export function MesaBlackjack({
   hayCartasEnMesa,
   pagoLabel,
   mostrarLeyenda,
+  turnoExpiraAt,
 }: {
   dealerCartas: BJCarta[];
   holeRevelada: boolean;
@@ -171,8 +175,24 @@ export function MesaBlackjack({
   hayCartasEnMesa: boolean;
   pagoLabel: string;
   mostrarLeyenda: boolean;
+  // Cuándo vence el turno actual (ISO) → cuenta regresiva viva en el asiento activo.
+  turnoExpiraAt?: string | null;
 }) {
   const compacto = useEsCompacto();
+
+  // Cuenta regresiva del turno (segundos), compartida por todos los clientes.
+  const [segsTurno, setSegsTurno] = useState<number | null>(null);
+  useEffect(() => {
+    if (!turnoExpiraAt) {
+      setSegsTurno(null);
+      return;
+    }
+    const fin = new Date(turnoExpiraAt).getTime();
+    const tick = () => setSegsTurno(Math.max(0, Math.ceil((fin - Date.now()) / 1000)));
+    tick();
+    const iv = setInterval(tick, 500);
+    return () => clearInterval(iv);
+  }, [turnoExpiraAt]);
   const reduce =
     typeof window !== "undefined" &&
     window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -396,6 +416,32 @@ export function MesaBlackjack({
           <span className="text-[9px] font-semibold uppercase tracking-[0.2em] text-tinta/45">Crupier</span>
         </div>
 
+        {/* Halo del asiento: glow fijo en el TUYO (para encontrarte) y aro
+            pulsante en el asiento al que se le está esperando el turno. */}
+        {ordenados.map(({ asiento, pos }) => {
+          const enTurno = asiento.manos.some((m) => m.enTurno);
+          if (!asiento.esYo && !enTurno) return null;
+          const size = compacto ? 104 : 136;
+          return (
+            <div
+              key={`halo-${asiento.id}`}
+              className={`pointer-events-none absolute rounded-full ${enTurno ? "animate-pulse" : ""}`}
+              style={{
+                left: `${pos.x}%`,
+                top: `${pos.y}%`,
+                transform: "translate(-50%,-50%)",
+                width: size,
+                height: size,
+                zIndex: 2,
+                background: enTurno
+                  ? "radial-gradient(closest-side, color-mix(in srgb, #9184d9 30%, transparent), transparent 72%)"
+                  : "radial-gradient(closest-side, color-mix(in srgb, #9184d9 15%, transparent), transparent 70%)",
+                boxShadow: enTurno ? "0 0 0 1px color-mix(in srgb, #9184d9 55%, transparent)" : undefined,
+              }}
+            />
+          );
+        })}
+
         {/* Fichas apostadas (vuelan desde abajo y quedan apiladas) */}
         {fichasRender.map(({ ficha, spot, colDx, lift, row }) => {
           const enVuelo = !fichaAterrizo(ficha.id);
@@ -458,14 +504,26 @@ export function MesaBlackjack({
                   {apuesta.toLocaleString("es")}
                 </div>
               )}
-              <div
-                className={`max-w-full truncate text-center text-[11px] font-medium ${
-                  enTurno ? "text-acento-300" : "text-tinta"
-                }`}
-              >
-                {enTurno && <span className="mr-1 text-acento">●</span>}
-                {asiento.esYo ? "Vos" : asiento.nombre}
+              <div className="flex max-w-full items-center gap-1">
+                {asiento.esYo ? (
+                  <span className="rounded bg-acento px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white shadow-[0_0_10px_rgba(145,132,217,0.6)]">
+                    Vos
+                  </span>
+                ) : (
+                  <span
+                    className={`truncate text-[11px] font-medium ${
+                      enTurno ? "font-semibold text-acento-300" : "text-tinta"
+                    }`}
+                  >
+                    {asiento.nombre}
+                  </span>
+                )}
               </div>
+              {enTurno && (
+                <span className="animate-pulse rounded-full border border-acento/50 bg-acento/15 px-2 py-0.5 text-[10px] font-bold tabular-nums text-acento-300">
+                  {segsTurno != null ? `${segsTurno}s` : "turno"}
+                </span>
+              )}
               {typeof asiento.fichas === "number" && (
                 <div className="text-[10px] tabular-nums text-tinta/50">
                   {asiento.fichas.toLocaleString("es")}

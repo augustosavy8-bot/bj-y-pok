@@ -10,7 +10,7 @@ import {
 import { ConfigBlackjack } from "@/components/blackjack/ConfigBlackjack";
 
 // Modo automático: tiempos (ms) de espera antes de cada paso del loop.
-const AUTO_ESPERA_APUESTAS = 25_000; // ventana para que la gente apueste
+const AUTO_ESPERA_APUESTAS = 10_000; // ventana para que la gente apueste (10s)
 const AUTO_ESPERA_PROXIMA = 6_000; // deja ver el resultado antes de repartir de nuevo
 const AUTO_ESPERA_SEGURO = 8_000; // ventana para decidir el seguro
 
@@ -89,7 +89,10 @@ export function VistaCrupierBlackjack({
     } else if (ronda?.estado === "apuestas") {
       // Solo repartimos si alguien apostó; si no, seguimos esperando.
       endpoint = hayApuesta ? "cerrar-apuestas" : null;
-      delay = AUTO_ESPERA_APUESTAS;
+      // Alinear el cierre con created_at+10s para que la cuenta regresiva que
+      // ven los jugadores coincida con el cierre real.
+      const abierto = ronda.created_at ? Date.now() - new Date(ronda.created_at).getTime() : 0;
+      delay = Math.max(1_000, AUTO_ESPERA_APUESTAS - abierto);
     } else if (sinRondaActiva && cantJugadores >= 1) {
       endpoint = "iniciar-ronda";
       delay = ronda ? AUTO_ESPERA_PROXIMA : 3_000;
@@ -256,6 +259,7 @@ export function VistaCrupierBlackjack({
                 hayCartasEnMesa={dealerCartas.length > 0 || cartas.length > 0}
                 pagoLabel={pagoLabel}
                 mostrarLeyenda={dealerCartas.length === 0}
+                turnoExpiraAt={ronda.estado === "turnos_jugadores" ? ronda.turno_expira_at : null}
               />
 
               {/* Resultados por mano (+/-) al terminar la ronda */}
