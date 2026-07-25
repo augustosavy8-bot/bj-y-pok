@@ -263,7 +263,7 @@ export function MesaBlackjack({
         const e = evaluarMano(orden);
         pills.push({
           key: `pill-${m.mano.id}`,
-          pos: { x: baseX, y: pos.y - (compacto ? 14 : 12) },
+          pos: { x: baseX, y: pos.y - (compacto ? 11 : 9) },
           texto: e.es_blackjack ? "BJ" : `${e.valor}`,
           bust: e.es_bust,
         });
@@ -283,7 +283,7 @@ export function MesaBlackjack({
   ordenados.forEach(({ asiento, pos }) => {
     const chips = asiento.chips ?? [];
     if (!chips.length) return;
-    const spot: Punto = { x: pos.x, y: pos.y + (compacto ? 7 : 6) };
+    const spot: Punto = { x: pos.x, y: pos.y + 10 };
     const valores = Array.from(new Set(chips.map((c) => c.valor))).sort((a, b) => a - b);
     const filas: Record<number, number> = {};
     chips.forEach((ficha) => {
@@ -428,7 +428,7 @@ export function MesaBlackjack({
               className="pointer-events-none absolute flex flex-col items-center gap-0.5"
               style={{
                 left: `${pos.x}%`,
-                top: `${pos.y + (compacto ? 16 : 14)}%`,
+                top: `${pos.y + (compacto ? 18 : 16)}%`,
                 transform: "translate(-50%, 0)",
                 width: compacto ? 86 : 108,
               }}

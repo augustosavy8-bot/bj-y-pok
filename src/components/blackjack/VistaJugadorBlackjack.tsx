@@ -321,9 +321,10 @@ export function VistaJugadorBlackjack({
               </div>
             )}
 
-            {/* Overlay de resultado */}
+            {/* Overlay de resultado: en la franja vacía entre el crupier y vos,
+                para no taparte la mano. */}
             {mostrarResultado && (
-              <div className="absolute inset-0 z-20 flex items-center justify-center">
+              <div className="pointer-events-none absolute inset-x-0 top-[40%] z-30 flex -translate-y-1/2 justify-center">
                 <OverlayResultado tipo={tipoResultadoBJ} monto={netoResultado} />
               </div>
             )}
