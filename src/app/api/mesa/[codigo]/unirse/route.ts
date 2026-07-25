@@ -38,8 +38,11 @@ export async function POST(
       }
     }
 
-    if (mesa.estado !== "esperando") {
-      return errorJson("La partida ya empezó; no se puede entrar ahora.", 409);
+    // Se puede entrar mientras la mesa está "esperando" o "jugando": el nuevo
+    // jugador queda sentado y entra en la próxima ronda de apuestas. Solo se
+    // bloquea si la mesa ya terminó.
+    if (mesa.estado === "terminada") {
+      return errorJson("La mesa ya terminó; no se puede entrar.", 409);
     }
 
     const { data: perfil } = await admin
