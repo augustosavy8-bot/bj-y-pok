@@ -50,10 +50,10 @@ function useEsCompacto(): boolean {
 // Coordenadas de los asientos sobre el arco. "Vos" queda en el centro (más
 // abajo/cerca) y el resto se reparte simétrico hacia los costados (más arriba).
 function posicionesAsientos(n: number, compacto: boolean): Punto[] {
-  const xL = compacto ? 11 : 16;
-  const xR = compacto ? 89 : 84;
-  const yCentro = compacto ? 77 : 72;
-  const caida = compacto ? 15 : 13; // cuánto suben los asientos de los extremos
+  const xL = compacto ? 12 : 16;
+  const xR = compacto ? 88 : 84;
+  const yCentro = compacto ? 62 : 60;
+  const caida = compacto ? 12 : 11; // cuánto suben los asientos de los extremos
   const half = (xR - xL) / 2;
   return Array.from({ length: n }, (_, k) => {
     const frac = n === 1 ? 0.5 : k / (n - 1);
@@ -228,7 +228,8 @@ export function MesaBlackjack({
         const e = evaluarMano(orden);
         pills.push({
           key: `pill-${m.mano.id}`,
-          pos: { x: baseX, y: pos.y + (compacto ? 15 : 13) },
+          // El total va ARRIBA de la mano (abajo queda el bloque nombre/fichas).
+          pos: { x: baseX, y: pos.y - (compacto ? 14 : 12) },
           texto: e.es_blackjack ? "BJ" : `${e.valor}`,
           bust: e.es_bust,
         });
@@ -315,42 +316,42 @@ export function MesaBlackjack({
           <span className="text-[9px] font-semibold uppercase tracking-[0.2em] text-tinta/45">Crupier</span>
         </div>
 
-        {/* Spots de los asientos (aro + nombre + fichas) */}
+        {/* Bloque del asiento: apuesta + nombre + fichas, anclado DEBAJO de la
+            mano y creciendo hacia abajo (no se pisa con los controles). */}
         {ordenados.map(({ asiento, pos }) => {
           const enTurno = asiento.manos.some((m) => m.enTurno);
           const apuesta = asiento.manos.reduce((s, m) => s + (m.mano.apuesta_fichas || 0), 0);
           return (
             <div
               key={`spot-${asiento.id}`}
-              className="pointer-events-none absolute flex flex-col items-center"
-              style={{ left: `${pos.x}%`, top: `${pos.y + (compacto ? 25 : 22)}%`, transform: "translate(-50%,-50%)" }}
+              className="pointer-events-none absolute flex flex-col items-center gap-0.5"
+              style={{
+                left: `${pos.x}%`,
+                top: `${pos.y + (compacto ? 9 : 8)}%`,
+                transform: "translate(-50%, 0)",
+                width: compacto ? 82 : 104,
+              }}
             >
-              <div
-                className="grid place-items-center rounded-full"
-                style={{
-                  width: compacto ? 40 : 52,
-                  height: compacto ? 40 : 52,
-                  border: enTurno ? "1px solid #9184d9" : "1px dashed rgba(255,255,255,0.18)",
-                  background: enTurno ? "color-mix(in srgb,#9184d9 10%, transparent)" : "rgba(0,0,0,0.15)",
-                  boxShadow: enTurno ? "0 0 0 6px color-mix(in srgb,#9184d9 10%, transparent)" : "none",
-                }}
-              >
-                {apuesta > 0 ? (
-                  <Ficha monto={apuesta} size={compacto ? 22 : 28} />
-                ) : (
-                  <span className="text-[8px] uppercase tracking-[0.1em] text-tinta/45">
-                    {asiento.esYo ? "Vos" : ""}
+              {apuesta > 0 && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-black/40 px-2 py-0.5">
+                  <Ficha monto={apuesta} size={compacto ? 15 : 18} />
+                  <span className="text-[11px] font-semibold tabular-nums text-acento-300">
+                    {apuesta.toLocaleString("es")}
                   </span>
-                )}
-              </div>
-              <div className="mt-1 max-w-[84px] truncate text-center text-[11px] font-medium text-tinta">
+                </span>
+              )}
+              <div
+                className={`max-w-full truncate text-center text-[11px] font-medium ${
+                  enTurno ? "text-acento-300" : "text-tinta"
+                }`}
+              >
+                {enTurno && <span className="mr-1 text-acento">●</span>}
                 {asiento.esYo ? "Vos" : asiento.nombre}
               </div>
-              {apuesta > 0 && (
-                <div className="text-[10px] tabular-nums text-acento-300">{apuesta.toLocaleString("es")}</div>
-              )}
               {typeof asiento.fichas === "number" && (
-                <div className="text-[10px] tabular-nums text-tinta/50">{asiento.fichas.toLocaleString("es")}</div>
+                <div className="text-[10px] tabular-nums text-tinta/50">
+                  {asiento.fichas.toLocaleString("es")}
+                </div>
               )}
             </div>
           );
