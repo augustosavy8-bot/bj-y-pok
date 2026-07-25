@@ -2,8 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useBlackjack } from "@/lib/useBlackjack";
-import { ManoBJ, ManoDealer } from "@/components/blackjack/ManoBJ";
-import { Ficha } from "@/components/Ficha";
+import { MesaBlackjack, type AsientoMesa } from "@/components/blackjack/MesaBlackjack";
 import { accionesDisponibles } from "@/lib/blackjack/acciones";
 import { TimerCircular } from "@/components/mesa/TimerCircular";
 import { OverlayResultado, type TipoResultado } from "@/components/mesa/OverlayResultado";
@@ -173,43 +172,41 @@ export function VistaJugadorBlackjack({
   );
 
   const resultadoDe = (manoId: string) => resultados.find((r) => r.mano_jugador_id === manoId);
-  const miManoTurno = manos.find((m) => m.id === ronda?.turno_mano_id && m.jugador_id === yoId);
-  const esMiTurno = ronda?.estado === "turnos_jugadores" && !!miManoTurno;
 
-  // Repartimos a los demás jugadores en los dos costados de la mesa,
-  // alternando, para que se vean "sentados al lado" y no en una fila que se
-  // amontona en mobile.
-  const izquierda = otros.filter((_, i) => i % 2 === 0);
-  const derecha = otros.filter((_, i) => i % 2 === 1);
+  // Asientos de la mesa: vos al centro, el resto sobre el arco.
+  const asientos: AsientoMesa[] = [
+    {
+      id: yoId,
+      nombre: "Vos",
+      esYo: true,
+      fichas: yo.fichas,
+      manos: misManos.map((m) => ({
+        mano: m,
+        cartas: cartas.filter((c) => c.mano_jugador_id === m.id),
+        enTurno: ronda?.turno_mano_id === m.id,
+        resultado: resultadoDe(m.id),
+      })),
+    },
+    ...otros.map((o) => {
+      const susManos = manos
+        .filter((m) => m.jugador_id === o.id)
+        .sort((a, b) => a.orden_mano - b.orden_mano);
+      return {
+        id: o.id,
+        nombre: o.nombre,
+        esYo: false,
+        fichas: o.fichas,
+        manos: susManos.map((m) => ({
+          mano: m,
+          cartas: cartas.filter((c) => c.mano_jugador_id === m.id),
+          enTurno: ronda?.turno_mano_id === m.id,
+        })),
+      } satisfies AsientoMesa;
+    }),
+  ];
 
-  const renderOtro = (o: (typeof otros)[number]) => {
-    const suMano = manos.find((m) => m.jugador_id === o.id && !m.es_split_de);
-    const suCartas = suMano ? cartas.filter((c) => c.mano_jugador_id === suMano.id) : [];
-    return (
-      <div key={o.id} className="flex flex-col items-center gap-0.5">
-        <ManoBJ
-          cartas={suCartas}
-          mano={suMano}
-          size="sm"
-          destacada={!!suMano && ronda?.turno_mano_id === suMano.id}
-        />
-        <div className="max-w-[80px] truncate text-[11px] font-medium text-tinta/75">{o.nombre}</div>
-        {suMano && suMano.apuesta_fichas > 0 && (
-          <span className="inline-flex items-center gap-1 rounded bg-black/40 px-1.5 text-[10px] font-semibold tabular-nums text-tinta/80">
-            <Ficha monto={suMano.apuesta_fichas} size={14} /> {suMano.apuesta_fichas}
-          </span>
-        )}
-      </div>
-    );
-  };
-
-  const mesaStyle: React.CSSProperties = {
-    borderRadius: "14px 14px 50% 50% / 14px 14px 86% 86%",
-    backgroundColor: "#292b31",
-    backgroundImage:
-      "radial-gradient(72% 92% at 50% 4%, color-mix(in srgb, #262a60 62%, transparent), transparent 72%), radial-gradient(120% 120% at 50% 120%, color-mix(in srgb, #2b2741 78%, transparent), transparent 70%)",
-    boxShadow: "0 0 0 1px #595d6c, 0 6px 18px rgba(0,0,0,0.55)",
-  };
+  const hayCartasEnMesa = dealerCartas.length > 0 || cartas.length > 0;
+  const pagoLabel = `Blackjack paga ${config?.blackjack_pago === "6_a_5" ? "6 : 5" : "3 : 2"}`;
 
   return (
     <div className="flex min-h-screen flex-col bg-noche text-tinta">
@@ -247,95 +244,42 @@ export function VistaJugadorBlackjack({
       <div className="mx-auto grid w-full max-w-6xl flex-1 grid-cols-1 gap-6 px-4 py-5 sm:px-7 lg:grid-cols-[minmax(0,1fr)_272px]">
         {/* Columna de la mesa */}
         <div>
-          <div className="relative mx-auto w-full max-w-[900px]">
-            <div className="relative w-full" style={mesaStyle}>
-              {/* Borde interior */}
-              <div className="pointer-events-none absolute inset-[10px]" style={{ border: "1px solid rgba(233,233,237,0.12)", borderRadius: "8px 8px 50% 50% / 8px 8px 84% 84%" }} />
-              {/* Zapato */}
-              <div className="absolute right-[4%] top-[7%] grid h-9 w-14 place-items-center rounded border border-white/20 bg-gradient-to-b from-[#3f424d] to-[#292b31] shadow-n-sm">
-                <span className="text-[9px] uppercase tracking-[0.14em] text-tinta/45">Zapato</span>
-              </div>
+          <div className="relative mx-auto w-full max-w-[980px]">
+            <MesaBlackjack
+              dealerCartas={dealerCartas}
+              holeRevelada={ronda?.hole_revelada ?? false}
+              verHole={soyBanca}
+              asientos={asientos}
+              hayCartasEnMesa={hayCartasEnMesa}
+              pagoLabel={pagoLabel}
+              mostrarLeyenda={!ronda || dealerCartas.length === 0}
+            />
 
-              <div className="relative flex flex-col items-center gap-2 px-3 pb-6 pt-5 sm:px-4">
-                {/* Dealer */}
-                <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-tinta/45">Crupier</span>
-                <ManoDealer cartas={dealerCartas} holeRevelada={ronda?.hole_revelada ?? false} verHole={soyBanca} />
-
-                {/* Leyenda impresa */}
-                {(!ronda || dealerCartas.length === 0) && (
-                  <div className="py-3 text-center">
-                    <div className="text-[13px] font-medium uppercase tracking-[0.24em] text-tinta/30">Blackjack paga 3 : 2</div>
-                    <div className="mt-1 text-[10px] uppercase tracking-[0.2em] text-tinta/20">El crupier se planta en 17 · seguro 2 : 1</div>
-                  </div>
-                )}
-
-                {/* Jugadores: los demás a los costados, vos al centro */}
-                <div className="mt-1 grid w-full grid-cols-[minmax(0,auto)_minmax(0,1fr)_minmax(0,auto)] items-end gap-x-1.5 gap-y-2 sm:gap-x-4">
-                  {/* Costado izquierdo */}
-                  <div className="flex flex-col items-center gap-3">
-                    {izquierda.map((o) => renderOtro(o))}
-                  </div>
-
-                  {/* Mi silla (centro) */}
-                  <div className="flex flex-col items-center gap-1.5">
-                    <div className="flex flex-wrap items-end justify-center gap-2 sm:gap-3">
-                      {misManos.length > 0 ? (
-                        misManos.map((m) => {
-                          const cs = cartas.filter((c) => c.mano_jugador_id === m.id);
-                          const r = resultadoDe(m.id);
-                          return (
-                            <div key={m.id} className="flex flex-col items-center gap-0.5">
-                              <ManoBJ cartas={cs} mano={m} destacada={ronda?.turno_mano_id === m.id} />
-                              {r && (
-                                <span className={`text-[11px] font-bold ${r.fichas_ganadas_o_perdidas >= 0 ? "text-emerald-300" : "text-red-300"}`}>
-                                  {r.fichas_ganadas_o_perdidas >= 0 ? "+" : ""}{r.fichas_ganadas_o_perdidas}
-                                </span>
-                              )}
-                            </div>
-                          );
-                        })
-                      ) : (
-                        <span className="py-6 text-sm text-tinta/45">Sin mano esta ronda</span>
-                      )}
-                    </div>
-
-                    {/* Spot: aro de acento en turno */}
-                    <div
-                      className={`relative flex h-12 w-28 items-center justify-center rounded-[50%] ${
-                        esMiTurno
-                          ? "border border-acento bg-acento/10 shadow-[0_0_0_6px_color-mix(in_srgb,var(--color-accent)_10%,transparent)]"
-                          : "border border-dashed border-white/20 bg-black/15"
-                      }`}
+            {/* Resultados por mano (+/-) debajo de la mesa */}
+            {misResultados.length > 0 && (
+              <div className="mt-1 flex flex-wrap justify-center gap-2">
+                {misManos.map((m) => {
+                  const r = resultadoDe(m.id);
+                  if (!r) return null;
+                  return (
+                    <span
+                      key={m.id}
+                      className={`text-[11px] font-bold ${r.fichas_ganadas_o_perdidas >= 0 ? "text-emerald-300" : "text-red-300"}`}
                     >
-                      {manoBase && manoBase.apuesta_fichas > 0 ? (
-                        <span className="inline-flex items-center gap-1.5">
-                          <Ficha monto={manoBase.apuesta_fichas} size={26} />
-                          <span className="text-sm font-semibold tabular-nums text-acento-300">{manoBase.apuesta_fichas}</span>
-                        </span>
-                      ) : (
-                        <span className="text-[10px] uppercase tracking-[0.1em] text-acento/70">Tu silla</span>
-                      )}
-                    </div>
-                    <div className="text-center leading-tight">
-                      <div className="text-sm font-medium text-tinta">Vos</div>
-                      <div className="text-xs tabular-nums text-tinta/55">{yo.fichas.toLocaleString("es")}</div>
-                    </div>
-                  </div>
-
-                  {/* Costado derecho */}
-                  <div className="flex flex-col items-center gap-3">
-                    {derecha.map((o) => renderOtro(o))}
-                  </div>
-                </div>
+                      {r.fichas_ganadas_o_perdidas >= 0 ? "+" : ""}
+                      {r.fichas_ganadas_o_perdidas}
+                    </span>
+                  );
+                })}
               </div>
+            )}
 
-              {/* Overlay de resultado */}
-              {mostrarResultado && (
-                <div className="absolute inset-0 z-20 flex items-center justify-center">
-                  <OverlayResultado tipo={tipoResultadoBJ} monto={netoResultado} />
-                </div>
-              )}
-            </div>
+            {/* Overlay de resultado */}
+            {mostrarResultado && (
+              <div className="absolute inset-0 z-20 flex items-center justify-center">
+                <OverlayResultado tipo={tipoResultadoBJ} monto={netoResultado} />
+              </div>
+            )}
           </div>
 
           {/* Controles bajo la mesa */}
