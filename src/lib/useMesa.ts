@@ -13,9 +13,15 @@ export interface EstadoMesa {
   cargando: boolean;
 }
 
+// Ver la nota en useBlackjack: una jugada dispara varias escrituras seguidas y
+// sin agrupar se recargaba el estado completo por cada una.
+const MS_AGRUPAR = 140;
+
+type Payload = { new?: Record<string, unknown>; old?: Record<string, unknown> };
+
 /**
- * Suscribe a la mesa por código y mantiene el estado sincronizado vía Realtime.
- * Ante cualquier cambio en las tablas relevantes, refresca el estado.
+ * Suscribe a la mesa por código y mantiene el estado sincronizado vía Realtime,
+ * agrupando ráfagas de eventos y filtrando lo que no es de esta mesa/mano.
  */
 export function useMesa(codigo: string): EstadoMesa & { refrescar: () => void } {
   const supabase = getSupabaseBrowser();
@@ -27,86 +33,138 @@ export function useMesa(codigo: string): EstadoMesa & { refrescar: () => void } 
     acciones: [],
     cargando: true,
   });
+
+  const [mesaId, setMesaId] = useState<string | null>(null);
+
+  const vivo = useRef(true);
+  const enVuelo = useRef(false);
+  const pendiente = useRef(false);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const mesaIdRef = useRef<string | null>(null);
   const manoIdRef = useRef<string | null>(null);
 
   const cargar = useCallback(async () => {
-    const { data: mesa } = await supabase
-      .from("mesas")
-      .select("*")
-      .eq("codigo_sala", codigo.toUpperCase())
-      .maybeSingle();
-    if (!mesa) {
-      setEstado((e) => ({ ...e, cargando: false }));
+    if (enVuelo.current) {
+      pendiente.current = true;
       return;
     }
-    const mesaId = (mesa as Mesa).id;
-
-    const [{ data: jugadores }, { data: manos }] = await Promise.all([
-      supabase.from("jugadores").select("*").eq("mesa_id", mesaId).order("posicion"),
-      supabase
-        .from("manos")
-        .select("*")
-        .eq("mesa_id", mesaId)
-        .order("numero_mano", { ascending: false })
-        .limit(1),
-    ]);
-
-    const mano = (manos?.[0] ?? null) as Mano | null;
-    manoIdRef.current = mano?.id ?? null;
-
-    let cartas: Carta[] = [];
-    let acciones: Accion[] = [];
-    if (mano) {
-      const [{ data: c }, { data: a }] = await Promise.all([
-        supabase.from("cartas").select("*").eq("mano_id", mano.id).order("orden_escaneo"),
-        supabase
-          .from("acciones")
+    enVuelo.current = true;
+    try {
+      let mesa: Mesa | null = null;
+      if (mesaIdRef.current) {
+        const { data } = await supabase
+          .from("mesas")
           .select("*")
-          .eq("mano_id", mano.id)
-          .order("created_at"),
-      ]);
-      cartas = (c ?? []) as Carta[];
-      acciones = (a ?? []) as Accion[];
-    }
+          .eq("id", mesaIdRef.current)
+          .maybeSingle();
+        mesa = (data ?? null) as Mesa | null;
+      } else {
+        const { data } = await supabase
+          .from("mesas")
+          .select("*")
+          .eq("codigo_sala", codigo.toUpperCase())
+          .maybeSingle();
+        mesa = (data ?? null) as Mesa | null;
+        if (mesa) {
+          mesaIdRef.current = mesa.id;
+          setMesaId(mesa.id);
+        }
+      }
 
-    setEstado({
-      mesa: mesa as Mesa,
-      jugadores: (jugadores ?? []) as Jugador[],
-      mano,
-      cartas,
-      acciones,
-      cargando: false,
-    });
+      if (!mesa) {
+        if (vivo.current) setEstado((e) => ({ ...e, cargando: false }));
+        return;
+      }
+
+      const [{ data: jugadores }, { data: manos }] = await Promise.all([
+        supabase.from("jugadores").select("*").eq("mesa_id", mesa.id).order("posicion"),
+        supabase
+          .from("manos")
+          .select("*")
+          .eq("mesa_id", mesa.id)
+          .order("numero_mano", { ascending: false })
+          .limit(1),
+      ]);
+
+      const mano = (manos?.[0] ?? null) as Mano | null;
+      manoIdRef.current = mano?.id ?? null;
+
+      let cartas: Carta[] = [];
+      let acciones: Accion[] = [];
+      if (mano) {
+        const [{ data: c }, { data: a }] = await Promise.all([
+          supabase.from("cartas").select("*").eq("mano_id", mano.id).order("orden_escaneo"),
+          supabase.from("acciones").select("*").eq("mano_id", mano.id).order("created_at"),
+        ]);
+        cartas = (c ?? []) as Carta[];
+        acciones = (a ?? []) as Accion[];
+      }
+
+      if (!vivo.current) return;
+      setEstado({
+        mesa,
+        jugadores: (jugadores ?? []) as Jugador[],
+        mano,
+        cartas,
+        acciones,
+        cargando: false,
+      });
+    } finally {
+      enVuelo.current = false;
+      if (pendiente.current && vivo.current) {
+        pendiente.current = false;
+        timer.current = setTimeout(() => void cargar(), 0);
+      }
+    }
   }, [codigo, supabase]);
 
+  const programar = useCallback(() => {
+    if (timer.current) clearTimeout(timer.current);
+    timer.current = setTimeout(() => void cargar(), MS_AGRUPAR);
+  }, [cargar]);
+
   useEffect(() => {
-    let activo = true;
-    cargar();
-
-    const canal = supabase
-      .channel(`mesa-${codigo}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "mesas" }, () => {
-        if (activo) cargar();
-      })
-      .on("postgres_changes", { event: "*", schema: "public", table: "jugadores" }, () => {
-        if (activo) cargar();
-      })
-      .on("postgres_changes", { event: "*", schema: "public", table: "manos" }, () => {
-        if (activo) cargar();
-      })
-      .on("postgres_changes", { event: "*", schema: "public", table: "cartas" }, () => {
-        if (activo) cargar();
-      })
-      .on("postgres_changes", { event: "*", schema: "public", table: "acciones" }, () => {
-        if (activo) cargar();
-      })
-      .subscribe();
-
+    vivo.current = true;
+    void cargar();
     return () => {
-      activo = false;
+      vivo.current = false;
+      if (timer.current) clearTimeout(timer.current);
+    };
+  }, [cargar]);
+
+  useEffect(() => {
+    if (!mesaId) return;
+
+    const canal = supabase.channel(`mesa-${mesaId}`);
+
+    for (const tabla of ["jugadores", "manos"]) {
+      canal.on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: tabla, filter: `mesa_id=eq.${mesaId}` },
+        programar
+      );
+    }
+    canal.on(
+      "postgres_changes",
+      { event: "*", schema: "public", table: "mesas", filter: `id=eq.${mesaId}` },
+      programar
+    );
+
+    // cartas y acciones cuelgan de la mano: se filtran contra la mano actual.
+    const porMano = (payload: Payload) => {
+      const id = (payload.new?.mano_id ?? payload.old?.mano_id) as string | undefined;
+      if (id && id !== manoIdRef.current) return;
+      programar();
+    };
+    for (const tabla of ["cartas", "acciones"]) {
+      canal.on("postgres_changes", { event: "*", schema: "public", table: tabla }, porMano);
+    }
+
+    canal.subscribe();
+    return () => {
       supabase.removeChannel(canal);
     };
-  }, [codigo, cargar, supabase]);
+  }, [mesaId, supabase, programar]);
 
   return { ...estado, refrescar: cargar };
 }

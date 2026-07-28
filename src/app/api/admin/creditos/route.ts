@@ -11,13 +11,24 @@ function manejar(e: unknown) {
   return errorJson(e instanceof Error ? e.message : "Error", 500);
 }
 
-// Saldo + movimientos de un usuario (para el panel admin).
+// Sin user_id → saldos de TODOS en una sola consulta (el panel los pedía de a
+// uno: con N usuarios eran N+1 requests y la pantalla tardaba en abrir).
+// Con user_id → saldo + movimientos de ese usuario.
 export async function GET(req: Request) {
   try {
     await requerirAdmin();
     const admin = getSupabaseAdmin();
     const userId = new URL(req.url).searchParams.get("user_id");
-    if (!userId) return errorJson("Falta user_id.", 400);
+
+    if (!userId) {
+      const { data, error } = await admin.rpc("saldos_todos");
+      if (error) return errorJson(error.message, 500);
+      const saldos: Record<string, number> = {};
+      for (const f of (data ?? []) as { user_id: string; saldo: number }[]) {
+        saldos[f.user_id] = Number(f.saldo) || 0;
+      }
+      return json({ saldos });
+    }
     const [saldo, mov] = await Promise.all([
       saldoActual(admin, userId),
       admin

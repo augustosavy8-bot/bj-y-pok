@@ -27,19 +27,18 @@ export function CreditosAdmin() {
   const [error, setError] = useState<string | null>(null);
   const [enviando, setEnviando] = useState<string | null>(null);
 
+  // Dos requests en total (usuarios + todos los saldos), no una por usuario.
   const cargarUsuarios = useCallback(async () => {
-    const r = await fetch("/api/admin/usuarios");
-    const d = await r.json();
-    const us = (d.usuarios ?? []) as Usuario[];
-    setUsuarios(us);
-    const entradas = await Promise.all(
-      us.map(async (u) => {
-        const rr = await fetch(`/api/admin/creditos?user_id=${u.id}`);
-        const dd = rr.ok ? await rr.json() : { saldo: 0 };
-        return [u.id, dd.saldo as number] as const;
-      })
-    );
-    setSaldos(Object.fromEntries(entradas));
+    const [rUsuarios, rSaldos] = await Promise.all([
+      fetch("/api/admin/usuarios"),
+      fetch("/api/admin/creditos"),
+    ]);
+    const d = await rUsuarios.json();
+    setUsuarios((d.usuarios ?? []) as Usuario[]);
+    if (rSaldos.ok) {
+      const s = await rSaldos.json();
+      setSaldos((s.saldos ?? {}) as Record<string, number>);
+    }
   }, []);
 
   useEffect(() => {
