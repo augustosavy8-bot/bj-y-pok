@@ -25,6 +25,7 @@ export function CreditosAdmin() {
   const [montoCarga, setMontoCarga] = useState<Record<string, number>>({});
   const [notaCarga, setNotaCarga] = useState<Record<string, string>>({});
   const [error, setError] = useState<string | null>(null);
+  const [enviando, setEnviando] = useState<string | null>(null);
 
   const cargarUsuarios = useCallback(async () => {
     const r = await fetch("/api/admin/usuarios");
@@ -56,22 +57,53 @@ export function CreditosAdmin() {
     setExpandido(userId);
   }
 
-  async function cargar(userId: string) {
+  // signo: +1 acredita (tipo "carga"), -1 descuenta (tipo "ajuste").
+  async function mover(userId: string, signo: 1 | -1) {
     setError(null);
     const monto = montoCarga[userId] || 0;
     if (monto <= 0) return;
-    const r = await fetch("/api/admin/creditos", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ user_id: userId, monto, tipo: "carga", notas: notaCarga[userId] || null }),
-    });
-    const d = await r.json();
-    if (!r.ok) setError(d?.error ?? "Error");
-    else {
-      setMontoCarga((m) => ({ ...m, [userId]: 0 }));
-      setNotaCarga((n) => ({ ...n, [userId]: "" }));
-      cargarUsuarios();
-      if (expandido === userId) verMovimientos(userId);
+
+    const usuario = usuarios.find((u) => u.id === userId);
+    const saldo = saldos[userId] ?? 0;
+
+    if (signo === -1) {
+      if (monto > saldo) {
+        setError(
+          `${usuario?.nombre ?? "El usuario"} tiene ${saldo.toLocaleString("es")} créditos: no se le pueden bajar ${monto.toLocaleString("es")}.`
+        );
+        return;
+      }
+      const ok = confirm(
+        `¿Bajarle ${monto.toLocaleString("es")} créditos a ${usuario?.nombre ?? "este usuario"}?\n\n` +
+          `Saldo actual: ${saldo.toLocaleString("es")}\n` +
+          `Quedaría en: ${(saldo - monto).toLocaleString("es")}\n\n` +
+          `Queda registrado en su historial como ajuste.`
+      );
+      if (!ok) return;
+    }
+
+    setEnviando(userId);
+    try {
+      const r = await fetch("/api/admin/creditos", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          user_id: userId,
+          monto: signo * monto,
+          tipo: signo === 1 ? "carga" : "ajuste",
+          notas: notaCarga[userId] || null,
+        }),
+      });
+      const d = await r.json();
+      if (!r.ok) setError(d?.error ?? "Error");
+      else {
+        setMontoCarga((m) => ({ ...m, [userId]: 0 }));
+        setNotaCarga((n) => ({ ...n, [userId]: "" }));
+        cargarUsuarios();
+        if (expandido === userId) verMovimientos(userId);
+      }
+    } finally {
+      setEnviando(null);
     }
   }
 
@@ -109,11 +141,23 @@ export function CreditosAdmin() {
               <input
                 value={notaCarga[u.id] || ""}
                 onChange={(e) => setNotaCarga((n) => ({ ...n, [u.id]: e.target.value }))}
-                placeholder="Nota (opcional)"
+                placeholder="Motivo (opcional)"
                 className="ninput flex-1"
               />
-              <button className="nbtn nbtn-primary !px-3 !py-1.5 text-xs" onClick={() => cargar(u.id)}>
-                Cargar créditos
+              <button
+                className="nbtn nbtn-primary !px-3 !py-1.5 text-xs"
+                disabled={enviando === u.id}
+                onClick={() => mover(u.id, 1)}
+              >
+                Cargar
+              </button>
+              <button
+                className="nbtn nbtn-danger !px-3 !py-1.5 text-xs"
+                disabled={enviando === u.id}
+                onClick={() => mover(u.id, -1)}
+                title="Descontar créditos sin que el jugador haya pedido un retiro"
+              >
+                Bajar
               </button>
             </div>
 

@@ -33,7 +33,10 @@ export async function GET(req: Request) {
   }
 }
 
-// Cargar créditos (o ajuste) a un usuario.
+// Cargar o BAJAR créditos a un usuario.
+//  · tipo "carga"  → siempre positivo (acreditar).
+//  · tipo "ajuste" → positivo o negativo. Es la vía para descontarle créditos
+//    a alguien sin que haya pedido un retiro.
 export async function POST(req: Request) {
   try {
     const adminPerfil = await requerirAdmin();
@@ -48,6 +51,32 @@ export async function POST(req: Request) {
     if (monto === 0) return errorJson("El monto no puede ser 0.", 400);
     if (tipo === "carga" && monto < 0) return errorJson("Una carga debe ser positiva.", 400);
 
+    // Al descontar: no tocarle el saldo a alguien con una mano viva. Su apuesta
+    // ya está retenida y bajarle créditos dejaría la ronda inconsistente.
+    if (monto < 0) {
+      const { data: asientos } = await admin
+        .from("jugadores")
+        .select("id")
+        .eq("auth_uid", userId)
+        .eq("es_crupier", false)
+        .neq("estado", "eliminado");
+      const ids = (asientos ?? []).map((a: { id: string }) => a.id);
+      if (ids.length > 0) {
+        const { data: manosVivas } = await admin
+          .from("bj_manos_jugador")
+          .select("id, bj_rondas!inner(estado)")
+          .in("jugador_id", ids)
+          .in("estado_mano", ["apostando", "jugando"])
+          .neq("bj_rondas.estado", "terminada");
+        if (manosVivas && manosVivas.length > 0) {
+          return errorJson(
+            "Ese jugador está en medio de una mano. Esperá a que termine la ronda.",
+            409
+          );
+        }
+      }
+    }
+
     const saldo = await registrarMovimiento(admin, {
       userId,
       tipo,
@@ -55,6 +84,17 @@ export async function POST(req: Request) {
       realizadoPor: adminPerfil.id,
       notas,
     });
+
+    // En blackjack las fichas de la mesa son un espejo del saldo: si está
+    // sentado hay que sincronizarlas, o quedaría apostando plata que ya no
+    // tiene y la ronda fallaría al cerrar las apuestas.
+    await admin
+      .from("jugadores")
+      .update({ fichas: saldo })
+      .eq("auth_uid", userId)
+      .eq("es_crupier", false)
+      .neq("estado", "eliminado");
+
     return json({ ok: true, saldo });
   } catch (e) {
     return manejar(e);
