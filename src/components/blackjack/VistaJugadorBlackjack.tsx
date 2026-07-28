@@ -331,14 +331,20 @@ export function VistaJugadorBlackjack({
             {/* Resultados por mano (+/-) debajo de la mesa */}
             {misResultados.length > 0 && (
               <div className="mt-1 flex flex-wrap justify-center gap-2">
-                {misManos.map((m) => {
+                {misManos.map((m, i) => {
                   const r = resultadoDe(m.id);
                   if (!r) return null;
                   return (
                     <span
                       key={m.id}
-                      className={`text-[11px] font-bold ${r.fichas_ganadas_o_perdidas >= 0 ? "text-emerald-300" : "text-red-300"}`}
+                      className={`inline-flex items-center gap-1 text-[11px] font-bold ${r.fichas_ganadas_o_perdidas >= 0 ? "text-emerald-300" : "text-red-300"}`}
                     >
+                      {/* Con split hay dos resultados: se numeran igual que en la mesa. */}
+                      {misManos.length > 1 && (
+                        <span className="grid h-[14px] min-w-[14px] place-items-center rounded-full bg-white/15 text-[9px] font-bold text-tinta/80">
+                          {i + 1}
+                        </span>
+                      )}
                       {r.fichas_ganadas_o_perdidas >= 0 ? "+" : ""}
                       {r.fichas_ganadas_o_perdidas}
                     </span>
@@ -527,7 +533,15 @@ function ControlesBJ({
   const cs = cartas
     .filter((c) => c.mano_jugador_id === manoEnTurno.id)
     .sort((a, b) => a.orden_recibida - b.orden_recibida);
-  const manosDelAsiento = manos.filter((m) => m.orden_asiento === manoEnTurno.orden_asiento).length;
+  // Las manos del asiento en el mismo orden en que se dibujan en la mesa, para
+  // que el número que se muestra acá sea el mismo que el de la ficha de arriba
+  // de las cartas.
+  const manosAsiento = manos
+    .filter((m) => m.orden_asiento === manoEnTurno.orden_asiento)
+    .sort((a, b) => a.orden_mano - b.orden_mano);
+  const manosDelAsiento = manosAsiento.length;
+  const indiceMano = manosAsiento.findIndex((m) => m.id === manoEnTurno.id) + 1;
+  const partido = manosDelAsiento > 1;
   const disp = accionesDisponibles({
     cartas: cs,
     apuesta: manoEnTurno.apuesta_fichas,
@@ -547,7 +561,20 @@ function ControlesBJ({
           </span>
         </TimerCircular>
         <span className="font-medium text-acento-300">Tu turno</span>
+        {partido && (
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-acento/50 bg-acento/15 px-2.5 py-0.5 text-[12px] text-acento-300">
+            <span className="grid h-[15px] min-w-[15px] place-items-center rounded-full bg-acento text-[9px] font-bold text-noche">
+              {indiceMano}
+            </span>
+            jugando tu mano {indiceMano} de {manosDelAsiento}
+          </span>
+        )}
       </div>
+      {partido && (
+        <p className="m-0 text-center text-[11px] text-tinta/45">
+          La otra mano queda apagada en la mesa hasta que te toque.
+        </p>
+      )}
       <div className="flex flex-wrap items-center justify-center gap-2">
         <button className="nbtn nbtn-primary px-5" disabled={enviando || !disp.hit} onClick={() => onAccion(manoEnTurno.id, "hit")}>Pedir</button>
         <button className="nbtn nbtn-secondary px-5" disabled={enviando || !disp.stand} onClick={() => onAccion(manoEnTurno.id, "stand")}>Plantarse</button>

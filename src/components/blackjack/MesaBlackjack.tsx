@@ -207,6 +207,19 @@ export function MesaBlackjack({
   const gapMano = compacto ? 15 : 12;
   const chipPx = compacto ? 26 : 30;
 
+  // Ancho real del tablero en px. Se usa para saber cuánto ocupa una carta en %
+  // y así poder encajar las manos partidas sin que se salgan por el costado.
+  const tableroRef = useRef<HTMLDivElement | null>(null);
+  const [anchoTablero, setAnchoTablero] = useState(0);
+  useEffect(() => {
+    const el = tableroRef.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(([e]) => setAnchoTablero(e.contentRect.width));
+    ro.observe(el);
+    setAnchoTablero(el.getBoundingClientRect().width);
+    return () => ro.disconnect();
+  }, []);
+
   const ordenados = useMemo(() => {
     const yo = asientos.find((a) => a.esYo);
     const otros = asientos.filter((a) => !a.esYo);
@@ -248,9 +261,26 @@ export function MesaBlackjack({
   const fichaAterrizo = (id: string) => reduce || landedFichas.has(id);
 
   // ---- Posiciones de cartas ----
-  type CartaRender = { carta: BJCarta; destino: Punto; rot: number; oculta: boolean; z: number };
+  type CartaRender = {
+    carta: BJCarta;
+    destino: Punto;
+    rot: number;
+    oculta: boolean;
+    z: number;
+    /** Mano partida que ahora no se está jugando: se apaga para no confundir. */
+    apagada?: boolean;
+  };
   const render: CartaRender[] = [];
-  const pills: { key: string; pos: Punto; texto: string; bust: boolean }[] = [];
+  const pills: {
+    key: string;
+    pos: Punto;
+    texto: string;
+    bust: boolean;
+    /** Nº de mano (1, 2, 3…). Sólo se muestra si el asiento partió. */
+    indice?: number;
+    enTurno?: boolean;
+    apagada?: boolean;
+  }[] = [];
 
   // Dealer
   {
@@ -283,19 +313,62 @@ export function MesaBlackjack({
   }
 
   // Asientos (cartas + pills)
+  // Media carta, en % del ancho del tablero. Con el tablero todavía sin medir se
+  // usa una estimación del mismo orden para no dar un salto feo en el primer frame.
+  const mediaCartaPct = anchoTablero > 0 ? (cardW / anchoTablero) * 50 : compacto ? 5.6 : 3;
+  const BORDE = 2; // margen mínimo contra el filo del tablero
+
+  // Dónde termina apoyado el grupo de manos de cada asiento (las fichas siguen
+  // al grupo, no al asiento, para que no queden colgando de una sola mano).
+  const centroPorAsiento = new Map<string, number>();
+
   ordenados.forEach(({ asiento, pos }) => {
     const nm = asiento.manos.length;
+    // Con split, el asiento pasa a tener 2+ manos idénticas a la vista. A partir
+    // de acá se numeran y se apaga la que no está en juego, así se ve de un
+    // vistazo cuál estás jugando.
+    const partido = nm > 1;
+    const alguienEnTurno = asiento.manos.some((m) => m.enTurno);
+
+    // Los asientos de las puntas están cerca del filo: si alguien parte ahí, las
+    // dos manos abiertas se salían del tablero. Se achica la separación si hace
+    // falta y se corre el grupo hacia adentro hasta que entre entero.
+    const abanicoMax = Math.max(
+      0,
+      ...asiento.manos.map((m) => ((m.cartas.length - 1) / 2) * dxCard)
+    );
+    // Lo que ocupa una mano de punta a punta, con su abanico incluido.
+    const anchoMano = 2 * (mediaCartaPct + abanicoMax);
+    const anchoUtil = 100 - 2 * BORDE - anchoMano;
+    let gap = gapMano;
+    if (partido) {
+      // Que cada mano tenga su propio lugar: mínimo su ancho más un respiro.
+      const gapDeseado = Math.max(gapMano, anchoMano + 1.5);
+      const gapQueEntra = anchoUtil / (nm - 1);
+      gap = Math.max(Math.min(gapDeseado, gapQueEntra), mediaCartaPct * 1.7);
+    }
+    const medioGrupo = ((nm - 1) / 2) * gap + mediaCartaPct + abanicoMax;
+    const minX = BORDE + medioGrupo;
+    const maxX = 100 - BORDE - medioGrupo;
+    const centroX = minX > maxX ? 50 : Math.min(Math.max(pos.x, minX), maxX);
+    centroPorAsiento.set(asiento.id, centroX);
+
     asiento.manos.forEach((m, mi) => {
-      const baseX = pos.x + (mi - (nm - 1) / 2) * gapMano;
+      const baseX = centroX + (mi - (nm - 1) / 2) * gap;
       const orden = [...m.cartas].sort((a, b) => a.orden_recibida - b.orden_recibida);
       const n = orden.length;
+      // Sólo se apaga mientras hay un turno vivo en ese asiento: cuando pasa a
+      // jugar el crupier vuelven las dos a brillo normal para leer el resultado.
+      const apagada = partido && alguienEnTurno && !m.enTurno;
+
       orden.forEach((c, i) => {
         render.push({
           carta: c,
           destino: { x: baseX + (i - (n - 1) / 2) * dxCard, y: pos.y + i * dyCard },
           rot: rotDe(c.id),
           oculta: false,
-          z: 40 + i,
+          z: 40 + i + (m.enTurno ? 10 : 0),
+          apagada,
         });
       });
       const settled = orden.length > 0 && orden.every((c) => cartaAterrizo(c.id));
@@ -306,6 +379,9 @@ export function MesaBlackjack({
           pos: { x: baseX, y: pos.y - (compacto ? 11 : 9) },
           texto: e.es_blackjack ? "BJ" : `${e.valor}`,
           bust: e.es_bust,
+          indice: partido ? mi + 1 : undefined,
+          enTurno: m.enTurno,
+          apagada,
         });
       }
     });
@@ -323,7 +399,7 @@ export function MesaBlackjack({
   ordenados.forEach(({ asiento, pos }) => {
     const chips = asiento.chips ?? [];
     if (!chips.length) return;
-    const spot: Punto = { x: pos.x, y: pos.y + 10 };
+    const spot: Punto = { x: centroPorAsiento.get(asiento.id) ?? pos.x, y: pos.y + 10 };
     const valores = Array.from(new Set(chips.map((c) => c.valor))).sort((a, b) => a - b);
     const filas: Record<number, number> = {};
     chips.forEach((ficha) => {
@@ -337,6 +413,7 @@ export function MesaBlackjack({
   return (
     <div className="relative mx-auto w-full" style={{ maxWidth: 980 }}>
       <div
+        ref={tableroRef}
         className="relative w-full"
         style={{ aspectRatio: compacto ? "39 / 44" : "98 / 56" }}
       >
@@ -534,7 +611,7 @@ export function MesaBlackjack({
         })}
 
         {/* Capa de cartas */}
-        {render.map(({ carta, destino, rot, oculta, z }) => {
+        {render.map(({ carta, destino, rot, oculta, z, apagada }) => {
           const enVuelo = !cartaAterrizo(carta.id);
           const x = enVuelo ? SHOE.x : destino.x;
           const y = enVuelo ? SHOE.y : destino.y;
@@ -553,9 +630,13 @@ export function MesaBlackjack({
                 transform: `translate(-50%,-50%) rotate(${ang}deg)`,
                 transition: reduce
                   ? "none"
-                  : `left ${flightMs}ms cubic-bezier(.22,.72,.2,1), top ${flightMs}ms cubic-bezier(.22,.72,.2,1), transform ${flightMs}ms cubic-bezier(.22,.72,.2,1)`,
+                  : `left ${flightMs}ms cubic-bezier(.22,.72,.2,1), top ${flightMs}ms cubic-bezier(.22,.72,.2,1), transform ${flightMs}ms cubic-bezier(.22,.72,.2,1), opacity 220ms linear, filter 220ms linear`,
                 perspective: 700,
                 zIndex: z,
+                // Mano partida que no está en juego: se apaga para que la que
+                // estás jugando se lea sola.
+                opacity: apagada ? 0.4 : 1,
+                filter: apagada ? "saturate(0.5)" : undefined,
               }}
             >
               <div
@@ -596,24 +677,53 @@ export function MesaBlackjack({
           );
         })}
 
-        {/* Pills de total por mano */}
+        {/* Pills de total por mano. Con split llevan el número de mano y la que
+            se está jugando queda resaltada; la otra se apaga. */}
         {pills.map((p) => (
           <div
             key={p.key}
-            className="absolute tabular-nums"
+            className={`absolute inline-flex items-center gap-1 tabular-nums ${
+              p.enTurno && p.indice && !reduce ? "animate-pulse" : ""
+            }`}
             style={{
               left: `${p.pos.x}%`,
               top: `${p.pos.y}%`,
               transform: "translate(-50%,-50%)",
-              zIndex: 60,
+              zIndex: p.enTurno ? 62 : 60,
               fontSize: 12,
               padding: "3px 9px",
               borderRadius: 6,
-              background: "color-mix(in srgb, #161826 82%, transparent)",
-              border: "1px solid rgba(255,255,255,0.14)",
+              opacity: p.apagada ? 0.45 : 1,
+              background: p.enTurno && p.indice
+                ? "color-mix(in srgb, var(--color-accent) 26%, #161826)"
+                : "color-mix(in srgb, #161826 82%, transparent)",
+              border: p.enTurno && p.indice
+                ? "1px solid var(--color-accent)"
+                : "1px solid rgba(255,255,255,0.14)",
+              boxShadow: p.enTurno && p.indice
+                ? "0 0 0 3px color-mix(in srgb, var(--color-accent) 22%, transparent)"
+                : undefined,
               color: p.bust ? "#9aa0ad" : "#e9e9ed",
+              transition: reduce ? "none" : "opacity 220ms linear",
             }}
           >
+            {p.indice && (
+              <span
+                style={{
+                  fontSize: 9,
+                  lineHeight: "13px",
+                  minWidth: 13,
+                  height: 13,
+                  borderRadius: 999,
+                  textAlign: "center",
+                  fontWeight: 700,
+                  background: p.enTurno ? "var(--color-accent)" : "rgba(255,255,255,0.16)",
+                  color: p.enTurno ? "#161826" : "#c9c9d2",
+                }}
+              >
+                {p.indice}
+              </span>
+            )}
             {p.texto}
           </div>
         ))}
