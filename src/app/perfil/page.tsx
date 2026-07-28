@@ -10,6 +10,7 @@ const TIPO_LABEL: Record<string, string> = {
   buy_in_mesa: "Buy-in mesa",
   cash_out_mesa: "Cash-out mesa",
   ajuste: "Ajuste",
+  slots: "Slots",
 };
 const ESTADO_LABEL: Record<string, string> = {
   pendiente: "Pendiente",

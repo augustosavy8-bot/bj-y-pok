@@ -34,13 +34,34 @@ type Libro = {
   retirado: number;
   cargos_reingreso: number;
 };
+type Slots = {
+  giros: number;
+  apostado: number;
+  pagado: number;
+  neto_casa: number;
+  margen_pct: number;
+  jugadores: number;
+  jackpots: number;
+  premio_mayor: number;
+};
+type SlotsJugador = {
+  nombre: string;
+  giros: number;
+  apostado: number;
+  neto_casa: number;
+};
 type Datos = {
   dias: number;
   resumen: Resumen;
   por_dia: Dia[];
   por_jugador: PorJugador[];
+  slots: Slots;
+  slots_por_jugador: SlotsJugador[];
   libro: Libro;
 };
+
+/** Lo que la máquina debería dejar a la larga (ver src/lib/slots/maquina.ts). */
+const MARGEN_TEORICO_SLOTS = 5.55;
 
 const RANGOS = [
   { label: "7 días", dias: 7 },
@@ -216,6 +237,99 @@ export function CasaAdmin() {
                 </tbody>
               </table>
             </div>
+          </div>
+
+          <div className="hr" />
+
+          {/* Tragamonedas */}
+          <div>
+            <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
+              <h3 className="m-0 text-[14px] font-medium">Tragamonedas</h3>
+              <span className="text-[11px] text-tinta/45">
+                margen teórico {MARGEN_TEORICO_SLOTS}%
+              </span>
+            </div>
+
+            {datos.slots && datos.slots.giros > 0 ? (
+              <>
+                <div className="flex flex-wrap items-end gap-x-7 gap-y-3">
+                  <div>
+                    <span className="text-[10px] uppercase tracking-[0.1em] text-tinta/50">
+                      Deja a la casa
+                    </span>
+                    <div
+                      className="mt-0.5 text-[28px] font-medium leading-none tabular-nums"
+                      style={{ color: datos.slots.neto_casa >= 0 ? C_GANA : C_PIERDE }}
+                    >
+                      {fmtFirmado(datos.slots.neto_casa)}
+                    </div>
+                    <span className="text-[11px] text-tinta/50">
+                      margen real{" "}
+                      <b className="tabular-nums text-tinta/75">{datos.slots.margen_pct}%</b>
+                    </span>
+                  </div>
+                  <Tile label="Giros" valor={fmt(datos.slots.giros)} />
+                  <Tile label="Apostado" valor={fmt(datos.slots.apostado)} />
+                  <Tile label="Pagado" valor={fmt(datos.slots.pagado)} />
+                  <Tile label="Jugadores" valor={fmt(datos.slots.jugadores)} />
+                  <Tile
+                    label="Jackpots"
+                    valor={fmt(datos.slots.jackpots)}
+                    nota={
+                      datos.slots.premio_mayor > 0
+                        ? `mayor premio ${fmt(datos.slots.premio_mayor)}`
+                        : undefined
+                    }
+                  />
+                </div>
+
+                {datos.slots.giros < 5000 && (
+                  <p className="m-0 mt-2 text-[11px] leading-relaxed text-tinta/45">
+                    Con {fmt(datos.slots.giros)} giros el margen todavía es ruido: hacen falta
+                    varios miles para que se acerque al {MARGEN_TEORICO_SLOTS}% teórico. Un solo
+                    jackpot mueve el número decenas de puntos.
+                  </p>
+                )}
+
+                {datos.slots_por_jugador?.length > 0 && (
+                  <div className="mt-3 overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead className="text-left text-[11px] uppercase tracking-[0.08em] text-tinta/50">
+                        <tr>
+                          <th className="py-1.5 pr-3 font-normal">Jugador</th>
+                          <th className="py-1.5 pr-3 text-right font-normal">Giros</th>
+                          <th className="py-1.5 pr-3 text-right font-normal">Apostado</th>
+                          <th className="py-1.5 text-right font-normal">Deja a la casa</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {datos.slots_por_jugador.map((j) => (
+                          <tr key={j.nombre} className="border-t border-white/[0.06]">
+                            <td className="py-1.5 pr-3">{j.nombre}</td>
+                            <td className="py-1.5 pr-3 text-right tabular-nums text-tinta/70">
+                              {fmt(j.giros)}
+                            </td>
+                            <td className="py-1.5 pr-3 text-right tabular-nums text-tinta/70">
+                              {fmt(j.apostado)}
+                            </td>
+                            <td
+                              className="py-1.5 text-right font-medium tabular-nums"
+                              style={{ color: j.neto_casa >= 0 ? C_GANA : C_PIERDE }}
+                            >
+                              {fmtFirmado(j.neto_casa)}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </>
+            ) : (
+              <p className="m-0 text-[13px] text-tinta/45">
+                Nadie giró todavía en este período.
+              </p>
+            )}
           </div>
 
           <div className="hr" />

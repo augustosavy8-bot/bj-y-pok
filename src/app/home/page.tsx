@@ -298,6 +298,77 @@ export default function HomePage() {
         </section>
       )}
 
+      {/* Juegos que se juegan solo, sin esperar a nadie */}
+      <section id="rapidos" className="mx-auto max-w-6xl px-4 pt-14 sm:px-8">
+        <div className="mb-4">
+          <h2 className="text-[26px] font-medium">Para jugar solo</h2>
+          <p className="m-0 text-[13px] text-tinta/55">
+            No hace falta que haya nadie más conectado.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+          <a
+            href="/slots"
+            className="ncard relative block overflow-hidden border border-oro/25 p-5 transition hover:border-oro/55"
+            style={{
+              backgroundImage:
+                "radial-gradient(90% 120% at 100% 0%, color-mix(in srgb, var(--color-gold, #d8b46a) 16%, transparent), transparent 65%)",
+            }}
+          >
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <span className="text-[10px] uppercase tracking-[0.14em] text-oro">
+                  Siempre disponible
+                </span>
+                <div className="mt-1.5 text-[22px] font-medium leading-tight">Tragamonedas</div>
+                <div className="mt-0.5 text-[13px] text-tinta/60">
+                  Tres rodillos, una línea. Jackpot de 1000×.
+                </div>
+              </div>
+              <span className="text-4xl text-white/10">🎰</span>
+            </div>
+            <div className="mt-4 flex flex-wrap gap-1.5 text-[11px]">
+              <span className="rounded bg-white/[0.06] px-2 py-0.5 text-tinta/70">
+                Apuesta 50–500
+              </span>
+              <span className="rounded bg-white/[0.06] px-2 py-0.5 text-tinta/70">
+                Devuelve 94,45%
+              </span>
+              <span className="rounded bg-white/[0.06] px-2 py-0.5 text-tinta/70">RNG del servidor</span>
+            </div>
+            <span className="nbtn nbtn-primary mt-4 flex w-full justify-center py-2.5 text-[15px]">
+              Girar
+            </span>
+          </a>
+
+          <a
+            href="/quiniela"
+            className="ncard relative block overflow-hidden border border-white/[0.08] p-5 transition hover:border-acento/50"
+          >
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <span className="text-[10px] uppercase tracking-[0.14em] text-acento">
+                  Entre jugadores
+                </span>
+                <div className="mt-1.5 text-[22px] font-medium leading-tight">Prode</div>
+                <div className="mt-0.5 text-[13px] text-tinta/60">
+                  Liga Cañadense, al resultado exacto.
+                </div>
+              </div>
+              <span className="text-4xl text-white/10">⚽</span>
+            </div>
+            <div className="mt-4 flex flex-wrap gap-1.5 text-[11px]">
+              <span className="rounded bg-white/[0.06] px-2 py-0.5 text-tinta/70">3 pts al exacto</span>
+              <span className="rounded bg-white/[0.06] px-2 py-0.5 text-tinta/70">Pozo entre todos</span>
+            </div>
+            <span className="nbtn nbtn-secondary mt-4 flex w-full justify-center py-2.5 text-[15px]">
+              Ver la fecha
+            </span>
+          </a>
+        </div>
+      </section>
+
       {/* Mesas */}
       <section id="mesas" className="mx-auto max-w-6xl px-4 pt-14 sm:px-8">
         <div className="mb-4 flex flex-wrap items-end justify-between gap-4">

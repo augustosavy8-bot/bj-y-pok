@@ -15,6 +15,7 @@ const TIPO_LABEL: Record<string, string> = {
   buy_in_mesa: "Buy-in",
   cash_out_mesa: "Cash-out",
   ajuste: "Ajuste",
+  slots: "Slots",
 };
 
 export function CreditosAdmin() {

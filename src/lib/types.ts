@@ -47,7 +47,8 @@ export type TipoMovimientoCredito =
   | "retiro"
   | "buy_in_mesa"
   | "cash_out_mesa"
-  | "ajuste";
+  | "ajuste"
+  | "slots";
 
 export interface CreditoMovimiento {
   id: string;
