@@ -11,6 +11,22 @@ type Juego = "poker_holdem" | "blackjack";
 type Cat = "todas" | Juego;
 type MesaMia = Mesa & { soy_crupier: boolean };
 
+// Mesa de la casa: siempre abierta, se entra sin código.
+type MesaCasa = {
+  codigo_sala: string;
+  tipo_juego: Juego;
+  estado: string;
+  es_practica: boolean;
+  creditos_minimos: number;
+  apuesta_min: number | null;
+  apuesta_max: number | null;
+  cantidad_mazos: number;
+  jugadores: number;
+  ya_sentado: boolean;
+  soy_crupier: boolean;
+  puedo_entrar: boolean;
+};
+
 const NOMBRE_JUEGO: Record<Juego, string> = {
   poker_holdem: "Póker Hold'em",
   blackjack: "Blackjack",
@@ -28,6 +44,7 @@ export default function HomePage() {
   const router = useRouter();
   const [esAdmin, setEsAdmin] = useState(false);
   const [mesas, setMesas] = useState<MesaMia[]>([]);
+  const [casa, setCasa] = useState<MesaCasa[]>([]);
   const [cat, setCat] = useState<Cat>("todas");
   const [q, setQ] = useState("");
   const [codigo, setCodigo] = useState("");
@@ -51,14 +68,28 @@ export default function HomePage() {
     cargarMesas();
   }, [cargarMesas]);
 
+  // Mesas de la casa (permanentes). Se refrescan solas para ver quién hay.
+  const cargarCasa = useCallback(async () => {
+    const r = await fetch("/api/mesas/permanentes");
+    if (r.ok) setCasa((await r.json()).mesas ?? []);
+  }, []);
+  useEffect(() => {
+    cargarCasa();
+    const iv = setInterval(cargarCasa, 10_000);
+    return () => clearInterval(iv);
+  }, [cargarCasa]);
+
+  // Las permanentes tienen su propia sección arriba: no se repiten en "Tus mesas".
+  const codigosCasa = useMemo(() => new Set(casa.map((c) => c.codigo_sala)), [casa]);
   const filtradas = useMemo(
     () =>
       mesas.filter(
         (m) =>
+          !codigosCasa.has(m.codigo_sala) &&
           (cat === "todas" || m.tipo_juego === cat) &&
           (!q || m.codigo_sala.includes(q.toUpperCase()))
       ),
-    [mesas, cat, q]
+    [mesas, cat, q, codigosCasa]
   );
 
   async function cerrarMesa(cod: string) {
@@ -118,9 +149,20 @@ export default function HomePage() {
               servidor. Créditos internos, sin ruido, sin trucos.
             </p>
             <div className="mt-7 flex flex-wrap gap-2.5">
-              <a href="#mesas" className="nbtn nbtn-primary px-5 py-2.5 text-[15px]">
-                Ver mis mesas
-              </a>
+              {casa.length > 0 ? (
+                <>
+                  <a href="#casa" className="nbtn nbtn-primary px-5 py-2.5 text-[15px]">
+                    Jugar ahora
+                  </a>
+                  <a href="#mesas" className="nbtn nbtn-secondary px-5 py-2.5 text-[15px]">
+                    Mis mesas
+                  </a>
+                </>
+              ) : (
+                <a href="#mesas" className="nbtn nbtn-primary px-5 py-2.5 text-[15px]">
+                  Ver mis mesas
+                </a>
+              )}
               {esAdmin && (
                 <a href="#crear" className="nbtn nbtn-secondary px-5 py-2.5 text-[15px]">
                   Crear una mesa
@@ -160,6 +202,84 @@ export default function HomePage() {
           </div>
         </div>
       </section>
+
+      {/* Mesa de la casa: siempre abierta, sin código */}
+      {casa.length > 0 && (
+        <section id="casa" className="mx-auto max-w-6xl px-4 pt-14 sm:px-8">
+          <div className="mb-4">
+            <h2 className="text-[26px] font-medium">La mesa de la casa</h2>
+            <p className="m-0 text-[13px] text-tinta/55">
+              Abierta las 24 horas. Entrás y jugás: no hace falta ningún código.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+            {casa.map((m) => (
+              <div
+                key={m.codigo_sala}
+                className="ncard relative overflow-hidden border border-acento/30 p-5 transition hover:border-acento/60"
+                style={{
+                  backgroundImage:
+                    "radial-gradient(90% 120% at 100% 0%, color-mix(in srgb, var(--color-accent-900) 45%, transparent), transparent 65%)",
+                }}
+              >
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <div className="inline-flex items-center gap-2">
+                      <span className="relative flex h-2 w-2">
+                        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+                        <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-400" />
+                      </span>
+                      <span className="text-[10px] uppercase tracking-[0.14em] text-emerald-300">
+                        Abierta 24 hs
+                      </span>
+                    </div>
+                    <div className="mt-1.5 text-[22px] font-medium leading-tight">
+                      {NOMBRE_JUEGO[m.tipo_juego] ?? m.tipo_juego}
+                    </div>
+                    <div className="mt-0.5 text-[13px] text-tinta/60">
+                      {m.jugadores === 0
+                        ? "Mesa libre · sos el primero"
+                        : `${m.jugadores} ${m.jugadores === 1 ? "jugador sentado" : "jugadores sentados"}`}
+                    </div>
+                  </div>
+                  <span className="text-4xl text-white/10">{GLIFO[m.tipo_juego] ?? "♠"}</span>
+                </div>
+
+                <div className="mt-4 flex flex-wrap gap-1.5 text-[11px]">
+                  {m.apuesta_min !== null && (
+                    <span className="rounded bg-white/[0.06] px-2 py-0.5 text-tinta/70">
+                      Apuesta {m.apuesta_min}–{m.apuesta_max}
+                    </span>
+                  )}
+                  <span className="rounded bg-white/[0.06] px-2 py-0.5 text-tinta/70">
+                    {m.es_practica ? "Práctica" : `Entrada ${m.creditos_minimos} créditos`}
+                  </span>
+                  <span className="rounded bg-white/[0.06] px-2 py-0.5 text-tinta/70">
+                    {m.cantidad_mazos} mazos · RNG
+                  </span>
+                </div>
+
+                <button
+                  onClick={() =>
+                    router.push(`/mesa/${m.codigo_sala}${m.soy_crupier ? "/crupier" : ""}`)
+                  }
+                  disabled={!m.puedo_entrar && !m.ya_sentado && !m.soy_crupier}
+                  className="nbtn nbtn-primary mt-4 w-full py-2.5 text-[15px] disabled:opacity-40"
+                >
+                  {m.soy_crupier
+                    ? "Abrir como crupier"
+                    : m.ya_sentado
+                    ? "Volver a la mesa"
+                    : m.puedo_entrar
+                    ? "Entrar a jugar"
+                    : `Necesitás ${m.creditos_minimos} créditos`}
+                </button>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* Mesas */}
       <section id="mesas" className="mx-auto max-w-6xl px-4 pt-14 sm:px-8">
