@@ -35,15 +35,16 @@ const MESA: Mesa = {
   creditos_minimos: 0,
   es_permanente: false,
   costo_reingreso: 0,
+  minutos_inactividad: 0,
   created_at: new Date(0).toISOString(),
 };
 
 const JUGADORES: Jugador[] = [
-  { id: "yo", mesa_id: "mesa-1", auth_uid: "u1", nombre: "Vos", fichas: 845, posicion: 0, estado: "activo", es_crupier: false, apuesta_ronda: 20, total_apostado_mano: 20, ha_actuado: true, total_comprado: 1000, created_at: "" },
-  { id: "j2", mesa_id: "mesa-1", auth_uid: "u2", nombre: "Marina", fichas: 1120, posicion: 1, estado: "activo", es_crupier: false, apuesta_ronda: 20, total_apostado_mano: 20, ha_actuado: true, total_comprado: 1000, created_at: "" },
-  { id: "j3", mesa_id: "mesa-1", auth_uid: "u3", nombre: "Diego", fichas: 0, posicion: 2, estado: "all_in", es_crupier: false, apuesta_ronda: 380, total_apostado_mano: 380, ha_actuado: true, total_comprado: 1000, created_at: "" },
-  { id: "j4", mesa_id: "mesa-1", auth_uid: "u4", nombre: "Sole", fichas: 640, posicion: 3, estado: "fold", es_crupier: false, apuesta_ronda: 0, total_apostado_mano: 20, ha_actuado: true, total_comprado: 1000, created_at: "" },
-  { id: "cr", mesa_id: "mesa-1", auth_uid: "u5", nombre: "Crupier", fichas: 0, posicion: 9, estado: "activo", es_crupier: true, apuesta_ronda: 0, total_apostado_mano: 0, ha_actuado: false, total_comprado: 0, created_at: "" },
+  { id: "yo", mesa_id: "mesa-1", auth_uid: "u1", nombre: "Vos", fichas: 845, posicion: 0, estado: "activo", es_crupier: false, apuesta_ronda: 20, total_apostado_mano: 20, ha_actuado: true, total_comprado: 1000, ultima_actividad_at: new Date(0).toISOString(), salida_automatica: false, created_at: "" },
+  { id: "j2", mesa_id: "mesa-1", auth_uid: "u2", nombre: "Marina", fichas: 1120, posicion: 1, estado: "activo", es_crupier: false, apuesta_ronda: 20, total_apostado_mano: 20, ha_actuado: true, total_comprado: 1000, ultima_actividad_at: new Date(0).toISOString(), salida_automatica: false, created_at: "" },
+  { id: "j3", mesa_id: "mesa-1", auth_uid: "u3", nombre: "Diego", fichas: 0, posicion: 2, estado: "all_in", es_crupier: false, apuesta_ronda: 380, total_apostado_mano: 380, ha_actuado: true, total_comprado: 1000, ultima_actividad_at: new Date(0).toISOString(), salida_automatica: false, created_at: "" },
+  { id: "j4", mesa_id: "mesa-1", auth_uid: "u4", nombre: "Sole", fichas: 640, posicion: 3, estado: "fold", es_crupier: false, apuesta_ronda: 0, total_apostado_mano: 20, ha_actuado: true, total_comprado: 1000, ultima_actividad_at: new Date(0).toISOString(), salida_automatica: false, created_at: "" },
+  { id: "cr", mesa_id: "mesa-1", auth_uid: "u5", nombre: "Crupier", fichas: 0, posicion: 9, estado: "activo", es_crupier: true, apuesta_ronda: 0, total_apostado_mano: 0, ha_actuado: false, total_comprado: 0, ultima_actividad_at: new Date(0).toISOString(), salida_automatica: false, created_at: "" },
 ];
 
 const MANO: Mano = {

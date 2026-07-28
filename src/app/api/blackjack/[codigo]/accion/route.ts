@@ -1,7 +1,7 @@
 import { getSupabaseAdmin } from "@/lib/supabase/server";
 import { mesaPorCodigo } from "@/lib/server/mesa";
 import { requerirUsuario, autorizarOperarJugador } from "@/lib/server/auth";
-import { accionJugadorBJ } from "@/lib/server/blackjack";
+import { accionJugadorBJ, marcarActividad } from "@/lib/server/blackjack";
 import { json, errorJson, errorFrom } from "@/lib/utils";
 import type { Jugador } from "@/lib/types";
 import type { AccionBJ } from "@/lib/blackjack/types";
@@ -24,6 +24,9 @@ export async function POST(req: Request, { params }: { params: { codigo: string 
     const { data: jug } = await admin.from("jugadores").select("*").eq("id", jugadorId).maybeSingle();
     if (!jug) return errorJson("Jugador no encontrado.", 404);
     await autorizarOperarJugador(admin, mesa, jug as Jugador, user.id);
+
+    // La acción llegó del jugador: cuenta como señal de vida.
+    await marcarActividad(admin, jugadorId);
 
     const res = await accionJugadorBJ(admin, mesa, jugadorId, manoId, accion);
     return json(res);

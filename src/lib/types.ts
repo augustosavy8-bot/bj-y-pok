@@ -36,6 +36,9 @@ export interface Mesa {
   // Cargo (en créditos) para el jugador que ya se había sentado, se fue y
   // vuelve a entrar. La primera vez que se sienta es gratis. 0 = sin cargo.
   costo_reingreso: number;
+  // Minutos sin apostar tras los cuales se levanta al jugador de la mesa.
+  // 0 = desactivado.
+  minutos_inactividad: number;
   created_at: string;
 }
 
@@ -85,6 +88,12 @@ export interface Jugador {
   total_apostado_mano: number;
   ha_actuado: boolean;
   total_comprado: number;
+  // Última señal de vida (apostar o jugar el turno). La usa el barrido de
+  // inactivos de las mesas permanentes.
+  ultima_actividad_at: string;
+  // El asiento lo liberó el sistema por inactividad, no el jugador. Al volver
+  // no se le cobra el cargo de reingreso.
+  salida_automatica: boolean;
   created_at: string;
 }
 

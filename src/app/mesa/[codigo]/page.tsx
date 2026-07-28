@@ -57,12 +57,17 @@ export default function VistaJugador() {
     [jugadores, jugadorId]
   );
 
-  // Ya tuve asiento acá y me fui: al volver se cobra el cargo de reingreso.
+  // Ya tuve asiento acá y me fui por mi cuenta: al volver se cobra el cargo.
+  // Si me levantó el sistema por inactividad, no se cobra nada.
   const vuelvoAEntrar = useMemo(
     () =>
       !!authUid &&
       jugadores.some(
-        (j) => j.auth_uid === authUid && !j.es_crupier && j.estado === "eliminado"
+        (j) =>
+          j.auth_uid === authUid &&
+          !j.es_crupier &&
+          j.estado === "eliminado" &&
+          !j.salida_automatica
       ),
     [jugadores, authUid]
   );

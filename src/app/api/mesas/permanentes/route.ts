@@ -32,7 +32,7 @@ export async function GET() {
     const [{ data: asientos }, { data: configs }] = await Promise.all([
       admin
         .from("jugadores")
-        .select("mesa_id, auth_uid, es_crupier, estado")
+        .select("mesa_id, auth_uid, es_crupier, estado, salida_automatica")
         .in("mesa_id", ids),
       admin
         .from("bj_configuracion_sesion")
@@ -45,6 +45,7 @@ export async function GET() {
       auth_uid: string | null;
       es_crupier: boolean;
       estado: string;
+      salida_automatica: boolean;
     };
     type Cfg = { mesa_id: string; apuesta_min: number; apuesta_max: number; cantidad_mazos: number };
 
@@ -53,8 +54,10 @@ export async function GET() {
       const cfg = ((configs ?? []) as Cfg[]).find((c) => c.mesa_id === m.id);
       const mio = suyos.find((a) => a.auth_uid === user.id);
       const sentado = !!mio && !mio.es_crupier && mio.estado !== "eliminado";
-      // Se fue antes: al volver paga el cargo de reingreso.
-      const reingresa = !!mio && !mio.es_crupier && mio.estado === "eliminado";
+      // Se fue antes: al volver paga el cargo de reingreso. Salvo que lo haya
+      // levantado el sistema por inactividad, que no se cobra.
+      const reingresa =
+        !!mio && !mio.es_crupier && mio.estado === "eliminado" && !mio.salida_automatica;
       const cargo = reingresa ? m.costo_reingreso ?? 0 : 0;
       const requiere = (m.es_practica ? 0 : m.creditos_minimos) + cargo;
       return {

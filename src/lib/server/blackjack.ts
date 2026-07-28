@@ -322,6 +322,14 @@ export async function iniciarRondaBJ(admin: DB, mesa: Mesa) {
 // ============================================================
 // Fase 'apuestas'
 // ============================================================
+/** Sella la última señal de vida del jugador (para el barrido de inactivos). */
+export async function marcarActividad(admin: DB, jugadorId: string) {
+  await admin
+    .from("jugadores")
+    .update({ ultima_actividad_at: new Date().toISOString() })
+    .eq("id", jugadorId);
+}
+
 export async function registrarApuesta(
   admin: DB,
   mesa: Mesa,
@@ -340,6 +348,9 @@ export async function registrarApuesta(
     throw new Error(`La apuesta debe estar entre ${config.apuesta_min} y ${config.apuesta_max}.`);
   }
   if (monto > jugador.fichas) throw new Error("No te alcanzan las fichas.");
+
+  // Señal de vida: evita que el barrido de inactivos lo levante de la mesa.
+  await marcarActividad(admin, jugadorId);
 
   // Upsert de la mano base del jugador.
   const existente = estado.manos.find((m) => m.jugador_id === jugadorId && !m.es_split_de);
@@ -698,6 +709,10 @@ export async function accionJugadorBJ(
   if (ronda.estado !== "turnos_jugadores") throw new Error("No es la fase de turnos.");
   if (ronda.turno_mano_id !== manoId) throw new Error("No es el turno de esa mano.");
 
+  // Nota: la señal de vida NO se marca acá. El auto-plantarse del motor 24/7
+  // también entra por esta función, y si contara como actividad un jugador
+  // dormido nunca se levantaría de la mesa. Se marca en la ruta HTTP, que solo
+  // ejecuta el jugador.
   const mano = estado.manos.find((m) => m.id === manoId);
   if (!mano || mano.jugador_id !== jugadorId) throw new Error("Mano inválida.");
   if (mano.estado_mano !== "jugando") throw new Error("Esa mano ya no está en juego.");

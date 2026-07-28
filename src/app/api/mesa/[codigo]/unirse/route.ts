@@ -51,7 +51,10 @@ export async function POST(
         // (eliminado, 0 fichas), que dejaba al jugador sin poder apostar y a la
         // mesa sin jugadores vivos. Ahora se revive el asiento y se cobra el
         // cargo de reingreso, si la mesa lo tiene.
-        const cargo = mesa.costo_reingreso ?? 0;
+        //
+        // Excepción: si al asiento lo liberó el sistema por inactividad, no se
+        // cobra nada — el jugador no eligió irse.
+        const cargo = asiento.salida_automatica ? 0 : mesa.costo_reingreso ?? 0;
         if (cargo > 0) {
           const saldo = await saldoActual(admin, authUid);
           const requerido = cargo + (mesa.es_practica ? 0 : mesa.creditos_minimos);
@@ -81,6 +84,8 @@ export async function POST(
             apuesta_ronda: 0,
             total_apostado_mano: 0,
             ha_actuado: false,
+            salida_automatica: false,
+            ultima_actividad_at: new Date().toISOString(),
           })
           .eq("id", asiento.id)
           .select()
