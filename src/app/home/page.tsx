@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { getSupabaseBrowser, usuarioActualId } from "@/lib/supabase/client";
 import { NocturneShell } from "@/components/nocturne/NocturneShell";
 import { ChipsCanvas } from "@/components/nocturne/ChipsCanvas";
+import { AvisoJugadores } from "@/components/AvisoJugadores";
 import type { Mesa } from "@/lib/types";
 
 type Juego = "poker_holdem" | "blackjack";
@@ -212,6 +213,10 @@ export default function HomePage() {
             <p className="m-0 text-[13px] text-tinta/55">
               Abierta las 24 horas. Entrás y jugás: no hace falta ningún código.
             </p>
+          </div>
+
+          <div className="mb-3">
+            <AvisoJugadores />
           </div>
 
           <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">

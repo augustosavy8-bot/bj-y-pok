@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
+import { RegistrarSW } from "@/components/RegistrarSW";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -12,6 +13,13 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: "Nocturna — mesas de casino",
   description: "Blackjack y póker con reglas publicadas y RNG del lado del servidor.",
+  manifest: "/manifest.webmanifest",
+  applicationName: "Nocturna",
+  appleWebApp: { capable: true, title: "Nocturna", statusBarStyle: "black-translucent" },
+  icons: {
+    icon: [{ url: "/icon-192.png", sizes: "192x192", type: "image/png" }],
+    apple: [{ url: "/icon-192.png", sizes: "192x192", type: "image/png" }],
+  },
 };
 
 export const viewport: Viewport = {
@@ -28,7 +36,10 @@ export default function RootLayout({
 }) {
   return (
     <html lang="es" className={inter.variable}>
-      <body className="min-h-screen antialiased">{children}</body>
+      <body className="min-h-screen antialiased">
+        <RegistrarSW />
+        {children}
+      </body>
     </html>
   );
 }
