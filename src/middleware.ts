@@ -73,7 +73,11 @@ export async function middleware(request: NextRequest) {
 export const config = {
   // Excluye estáticos y /api (las API validan la sesión por su cuenta; el
   // juego no debe recibir un redirect 307 a /login en un fetch).
+  // Ojo: manifest.webmanifest y sw.js DEBEN quedar afuera. Si pasan por acá,
+  // sin sesión se los redirige a /login y el navegador recibe HTML en lugar
+  // del archivo → la app deja de ser instalable y el service worker no
+  // registra.
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|api/|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
+    "/((?!_next/static|_next/image|favicon.ico|manifest.webmanifest|sw.js|api/|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
   ],
 };
