@@ -11,13 +11,14 @@ export const dynamic = "force-dynamic";
  * Lo llama pg_cron desde Supabase cada pocos segundos. No lo maneja ningún
  * navegador: la mesa sigue girando aunque no haya nadie con la app abierta.
  *
- * Autenticación: header `x-tick-secret` con el SERVICE_ROLE_KEY, que ya
- * comparten Vercel y Supabase (no hace falta configurar nada nuevo).
+ * Autenticación: header `x-tick-secret`. Se compara contra BJ_TICK_SECRET si
+ * está definida; si no, contra el SERVICE_ROLE_KEY (que Vercel y Supabase ya
+ * comparten, para no exigir configuración extra).
  */
 export async function POST(req: Request) {
   try {
-    const secreto = process.env.SUPABASE_SERVICE_ROLE_KEY;
-    if (!secreto) return errorJson("Falta SUPABASE_SERVICE_ROLE_KEY", 500);
+    const secreto = process.env.BJ_TICK_SECRET || process.env.SUPABASE_SERVICE_ROLE_KEY;
+    if (!secreto) return errorJson("Falta BJ_TICK_SECRET", 500);
     if (req.headers.get("x-tick-secret") !== secreto) {
       return errorJson("No autorizado", 401);
     }
