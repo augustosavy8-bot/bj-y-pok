@@ -14,7 +14,7 @@ type DB = SupabaseClient;
 
 // Ritmo del ciclo automático (ms). Espeja los tiempos que ve el jugador.
 export const MS_APUESTAS = 10_000; // ventana para apostar (alineada a ronda.created_at)
-export const MS_ENTRE_RONDAS = 6_000; // pausa para ver el resultado
+export const MS_ENTRE_RONDAS = 3_000; // pausa para ver el resultado
 export const MS_SEGURO = 8_000; // ventana para decidir el seguro
 const MS_PRIMERA_RONDA = 2_000; // arranque cuando la mesa estaba quieta
 const MS_WATCHDOG = 20_000; // reintento si una fase intermedia se colgó

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { NocturneShell } from "@/components/nocturne/NocturneShell";
+import { CasaAdmin } from "@/components/admin/CasaAdmin";
 import { CreditosAdmin } from "@/components/admin/CreditosAdmin";
 import { RetirosAdmin } from "@/components/admin/RetirosAdmin";
 
@@ -122,6 +123,9 @@ export function PanelAdmin({ miId }: { miId: string }) {
         {error && (
           <div className="rounded-md border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-200">{error}</div>
         )}
+
+        {/* Cómo va el negocio */}
+        <CasaAdmin />
 
         {/* Créditos y retiros */}
         <CreditosAdmin />
