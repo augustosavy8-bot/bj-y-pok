@@ -1,7 +1,7 @@
 import { getSupabaseAdmin } from "@/lib/supabase/server";
 import { mesaPorCodigo } from "@/lib/server/mesa";
 import { requerirUsuario } from "@/lib/server/auth";
-import { buyInMesa, registrarMovimiento } from "@/lib/server/creditos";
+import { buyInMesa, registrarMovimiento, saldoActual } from "@/lib/server/creditos";
 import { json, errorJson, errorFrom } from "@/lib/utils";
 import type { Jugador } from "@/lib/types";
 
@@ -19,7 +19,14 @@ export async function POST(
 
     const mesa = await mesaPorCodigo(admin, params.codigo);
 
-    // Reconexión idempotente: si ya tenés asiento, se devuelve (sin recobrar).
+    // Se puede entrar mientras la mesa está "esperando" o "jugando": el nuevo
+    // jugador queda sentado y entra en la próxima ronda de apuestas. Solo se
+    // bloquea si la mesa ya terminó.
+    if (mesa.estado === "terminada") {
+      return errorJson("La mesa ya terminó; no se puede entrar.", 409);
+    }
+
+    // ¿Ya tenía asiento en esta mesa?
     {
       const { data: existente } = await admin
         .from("jugadores")
@@ -27,22 +34,63 @@ export async function POST(
         .eq("mesa_id", mesa.id)
         .eq("auth_uid", authUid)
         .maybeSingle();
+
       if (existente) {
-        if ((existente as Jugador).es_crupier) {
+        const asiento = existente as Jugador;
+        if (asiento.es_crupier) {
           return errorJson(
             "Sos el crupier de esta mesa. Para jugar, entrá desde otra cuenta.",
             409
           );
         }
-        return json({ jugador: existente });
-      }
-    }
 
-    // Se puede entrar mientras la mesa está "esperando" o "jugando": el nuevo
-    // jugador queda sentado y entra en la próxima ronda de apuestas. Solo se
-    // bloquea si la mesa ya terminó.
-    if (mesa.estado === "terminada") {
-      return errorJson("La mesa ya terminó; no se puede entrar.", 409);
+        // Sigue sentado: reconexión idempotente, no se cobra nada.
+        if (asiento.estado !== "eliminado") return json({ jugador: asiento });
+
+        // REINGRESO: se había ido. Antes esto devolvía el asiento "zombi"
+        // (eliminado, 0 fichas), que dejaba al jugador sin poder apostar y a la
+        // mesa sin jugadores vivos. Ahora se revive el asiento y se cobra el
+        // cargo de reingreso, si la mesa lo tiene.
+        const cargo = mesa.costo_reingreso ?? 0;
+        if (cargo > 0) {
+          const saldo = await saldoActual(admin, authUid);
+          const requerido = cargo + (mesa.es_practica ? 0 : mesa.creditos_minimos);
+          if (saldo < requerido) {
+            return errorJson(
+              `Volver a entrar cuesta ${cargo} créditos y necesitás ${requerido} en total; tenés ${saldo}.`,
+              402
+            );
+          }
+          await registrarMovimiento(admin, {
+            userId: authUid,
+            tipo: "buy_in_mesa",
+            monto: -cargo,
+            mesaId: mesa.id,
+            realizadoPor: authUid,
+            notas: `Reingreso a la mesa ${mesa.codigo_sala}`,
+          });
+        }
+
+        const { fichas: fichasReingreso } = await buyInMesa(admin, mesa, authUid);
+
+        const { data: revivido, error: errRevivir } = await admin
+          .from("jugadores")
+          .update({
+            estado: "activo",
+            fichas: fichasReingreso,
+            apuesta_ronda: 0,
+            total_apostado_mano: 0,
+            ha_actuado: false,
+          })
+          .eq("id", asiento.id)
+          .select()
+          .single();
+
+        if (errRevivir || !revivido) {
+          return errorJson("No se pudo volver a entrar: " + errRevivir?.message, 500);
+        }
+        return json({ jugador: revivido as Jugador, reingreso: true, cargo });
+      }
     }
 
     const { data: perfil } = await admin

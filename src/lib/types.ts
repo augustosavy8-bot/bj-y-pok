@@ -33,6 +33,9 @@ export interface Mesa {
   // Mesa permanente: gira sola 24/7 manejada por el servidor (cron), sin
   // depender de que el crupier tenga la pantalla abierta.
   es_permanente: boolean;
+  // Cargo (en créditos) para el jugador que ya se había sentado, se fue y
+  // vuelve a entrar. La primera vez que se sienta es gratis. 0 = sin cargo.
+  costo_reingreso: number;
   created_at: string;
 }
 

@@ -33,22 +33,30 @@ export async function GET() {
       admin
         .from("jugadores")
         .select("mesa_id, auth_uid, es_crupier, estado")
-        .in("mesa_id", ids)
-        .neq("estado", "eliminado"),
+        .in("mesa_id", ids),
       admin
         .from("bj_configuracion_sesion")
         .select("mesa_id, apuesta_min, apuesta_max, cantidad_mazos")
         .in("mesa_id", ids),
     ]);
 
-    type Asiento = { mesa_id: string; auth_uid: string | null; es_crupier: boolean };
+    type Asiento = {
+      mesa_id: string;
+      auth_uid: string | null;
+      es_crupier: boolean;
+      estado: string;
+    };
     type Cfg = { mesa_id: string; apuesta_min: number; apuesta_max: number; cantidad_mazos: number };
 
     const salida = mesas.map((m) => {
       const suyos = ((asientos ?? []) as Asiento[]).filter((a) => a.mesa_id === m.id);
       const cfg = ((configs ?? []) as Cfg[]).find((c) => c.mesa_id === m.id);
       const mio = suyos.find((a) => a.auth_uid === user.id);
-      const requiere = m.es_practica ? 0 : m.creditos_minimos;
+      const sentado = !!mio && !mio.es_crupier && mio.estado !== "eliminado";
+      // Se fue antes: al volver paga el cargo de reingreso.
+      const reingresa = !!mio && !mio.es_crupier && mio.estado === "eliminado";
+      const cargo = reingresa ? m.costo_reingreso ?? 0 : 0;
+      const requiere = (m.es_practica ? 0 : m.creditos_minimos) + cargo;
       return {
         codigo_sala: m.codigo_sala,
         tipo_juego: m.tipo_juego,
@@ -58,9 +66,10 @@ export async function GET() {
         apuesta_min: cfg?.apuesta_min ?? null,
         apuesta_max: cfg?.apuesta_max ?? null,
         cantidad_mazos: cfg?.cantidad_mazos ?? 6,
-        jugadores: suyos.filter((a) => !a.es_crupier).length,
-        ya_sentado: !!mio && !mio.es_crupier,
+        jugadores: suyos.filter((a) => !a.es_crupier && a.estado !== "eliminado").length,
+        ya_sentado: sentado,
         soy_crupier: !!mio?.es_crupier,
+        costo_reingreso: cargo,
         puedo_entrar: saldo >= requiere,
       };
     });

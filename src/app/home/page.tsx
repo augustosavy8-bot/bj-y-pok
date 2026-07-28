@@ -24,6 +24,7 @@ type MesaCasa = {
   jugadores: number;
   ya_sentado: boolean;
   soy_crupier: boolean;
+  costo_reingreso: number;
   puedo_entrar: boolean;
 };
 
@@ -271,10 +272,18 @@ export default function HomePage() {
                     ? "Abrir como crupier"
                     : m.ya_sentado
                     ? "Volver a la mesa"
-                    : m.puedo_entrar
-                    ? "Entrar a jugar"
-                    : `Necesitás ${m.creditos_minimos} créditos`}
+                    : !m.puedo_entrar
+                    ? `Necesitás ${m.creditos_minimos + m.costo_reingreso} créditos`
+                    : m.costo_reingreso > 0
+                    ? `Volver a entrar · ${m.costo_reingreso} créditos`
+                    : "Entrar a jugar"}
                 </button>
+                {m.costo_reingreso > 0 && !m.ya_sentado && !m.soy_crupier && (
+                  <p className="mt-2 mb-0 text-center text-[11px] leading-snug text-tinta/45">
+                    Ya te habías sentado en esta mesa: volver a entrar cuesta{" "}
+                    {m.costo_reingreso} créditos.
+                  </p>
+                )}
               </div>
             ))}
           </div>

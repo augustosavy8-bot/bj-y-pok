@@ -53,8 +53,18 @@ export default function VistaJugador() {
   const [montoFicha, setMontoFicha] = useState(0);
 
   const yo = useMemo(
-    () => jugadores.find((j) => j.id === jugadorId && !j.es_crupier),
+    () => jugadores.find((j) => j.id === jugadorId && !j.es_crupier && j.estado !== "eliminado"),
     [jugadores, jugadorId]
+  );
+
+  // Ya tuve asiento acá y me fui: al volver se cobra el cargo de reingreso.
+  const vuelvoAEntrar = useMemo(
+    () =>
+      !!authUid &&
+      jugadores.some(
+        (j) => j.auth_uid === authUid && !j.es_crupier && j.estado === "eliminado"
+      ),
+    [jugadores, authUid]
   );
 
   // Overlay de resultado transitorio (se auto-oculta para no tapar el fieltro).
@@ -181,8 +191,18 @@ export default function VistaJugador() {
               Buy-in: <b className="text-oro">{mesa.creditos_minimos}</b> créditos
             </p>
           )}
+          {vuelvoAEntrar && mesa.costo_reingreso > 0 && (
+            <p className="rounded-lg border border-amber-400/30 bg-amber-400/10 px-3 py-2 text-center text-sm text-amber-100">
+              Ya te habías sentado acá y te fuiste. Volver a entrar cuesta{" "}
+              <b>{mesa.costo_reingreso}</b> créditos, que se descuentan de tu saldo.
+            </p>
+          )}
           <button className="btn btn-oro" onClick={unirse} disabled={uniendo}>
-            {uniendo ? "Entrando…" : "Sentarme a la mesa"}
+            {uniendo
+              ? "Entrando…"
+              : vuelvoAEntrar && mesa.costo_reingreso > 0
+              ? `Volver a entrar (${mesa.costo_reingreso})`
+              : "Sentarme a la mesa"}
           </button>
           {mesa.estado !== "esperando" && (
             <p className="text-center text-xs text-white/50">

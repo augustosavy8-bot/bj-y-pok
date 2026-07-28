@@ -34,6 +34,7 @@ const MESA: Mesa = {
   es_practica: true,
   creditos_minimos: 0,
   es_permanente: false,
+  costo_reingreso: 0,
   created_at: new Date(0).toISOString(),
 };
 

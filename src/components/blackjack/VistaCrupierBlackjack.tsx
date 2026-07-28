@@ -28,7 +28,10 @@ export function VistaCrupierBlackjack({
   const [nombreNuevo, setNombreNuevo] = useState("");
 
   const players = useMemo(
-    () => jugadores.filter((j) => !j.es_crupier).sort((a, b) => a.posicion - b.posicion),
+    () =>
+      jugadores
+        .filter((j) => !j.es_crupier && j.estado !== "eliminado")
+        .sort((a, b) => a.posicion - b.posicion),
     [jugadores]
   );
   const dealerCartas = useMemo(() => cartas.filter((c) => c.es_carta_dealer), [cartas]);

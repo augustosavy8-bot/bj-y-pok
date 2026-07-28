@@ -209,7 +209,11 @@ export function VistaJugadorBlackjack({
 
   if (!mesa || !yo) return null;
   const otros = jugadores.filter(
-    (j) => !j.es_crupier && j.id !== yoId && j.id !== ronda?.banca_jugador_id
+    (j) =>
+      !j.es_crupier &&
+      j.estado !== "eliminado" &&
+      j.id !== yoId &&
+      j.id !== ronda?.banca_jugador_id
   );
 
   const resultadoDe = (manoId: string) => resultados.find((r) => r.mano_jugador_id === manoId);
