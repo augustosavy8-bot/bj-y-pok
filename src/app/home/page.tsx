@@ -205,6 +205,13 @@ export default function HomePage() {
         </div>
       </section>
 
+      {/* Vigía de la mesa: herramienta de operador, sólo para el admin. */}
+      {esAdmin && (
+        <section className="mx-auto max-w-6xl px-4 pt-14 sm:px-8">
+          <AvisoJugadores />
+        </section>
+      )}
+
       {/* Mesa de la casa: siempre abierta, sin código */}
       {casa.length > 0 && (
         <section id="casa" className="mx-auto max-w-6xl px-4 pt-14 sm:px-8">
@@ -213,10 +220,6 @@ export default function HomePage() {
             <p className="m-0 text-[13px] text-tinta/55">
               Abierta las 24 horas. Entrás y jugás: no hace falta ningún código.
             </p>
-          </div>
-
-          <div className="mb-3">
-            <AvisoJugadores />
           </div>
 
           <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
