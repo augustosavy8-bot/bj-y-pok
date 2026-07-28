@@ -30,6 +30,9 @@ export interface Mesa {
   dealer_position: number;
   es_practica: boolean;
   creditos_minimos: number;
+  // Mesa permanente: gira sola 24/7 manejada por el servidor (cron), sin
+  // depender de que el crupier tenga la pantalla abierta.
+  es_permanente: boolean;
   created_at: string;
 }
 

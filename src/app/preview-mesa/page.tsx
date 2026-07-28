@@ -33,6 +33,7 @@ const MESA: Mesa = {
   dealer_position: 1,
   es_practica: true,
   creditos_minimos: 0,
+  es_permanente: false,
   created_at: new Date(0).toISOString(),
 };
 

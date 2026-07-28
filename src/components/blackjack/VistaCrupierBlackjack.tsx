@@ -34,6 +34,8 @@ export function VistaCrupierBlackjack({
   const dealerCartas = useMemo(() => cartas.filter((c) => c.es_carta_dealer), [cartas]);
   const enEspera = mesa?.estado === "esperando";
   const rondaActiva = ronda && ronda.estado !== "terminada";
+  // Mesa 24/7: el ciclo lo maneja el servidor (cron), no este navegador.
+  const esPermanente = !!mesa?.es_permanente;
 
   // ── Modo automático: la mesa gira sola sin que el crupier apriete nada ──
   const claveAuto = `bj-auto-${codigo}`;
@@ -76,7 +78,9 @@ export function VistaCrupierBlackjack({
 
   // Decide y agenda el próximo paso automático según el estado de la ronda.
   useEffect(() => {
-    if (!auto || !mesa || mesa.estado === "terminada") {
+    // En mesas permanentes el ciclo lo corre el servidor: el navegador no
+    // dispara nada (evita pisarse con el cron).
+    if (!auto || esPermanente || !mesa || mesa.estado === "terminada") {
       setCuenta(null);
       return;
     }
@@ -115,7 +119,7 @@ export function VistaCrupierBlackjack({
       clearTimeout(to);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [auto, mesa?.estado, ronda?.id, ronda?.estado, ronda?.fase_seguro, hayApuesta, cantJugadores]);
+  }, [auto, esPermanente, mesa?.estado, ronda?.id, ronda?.estado, ronda?.fase_seguro, hayApuesta, cantJugadores]);
 
   async function post(endpoint: string, body: Record<string, unknown> = {}) {
     setOcupado(true);
@@ -283,32 +287,49 @@ export function VistaCrupierBlackjack({
             </div>
           )}
 
-          {/* Modo automático: la mesa gira sola */}
-          <section className="ncard flex flex-wrap items-center gap-3 border border-white/[0.06] p-4">
-            <button
-              type="button"
-              role="switch"
-              aria-checked={auto}
-              onClick={toggleAuto}
-              className={`relative h-6 w-11 shrink-0 rounded-full transition ${auto ? "bg-acento" : "bg-white/15"}`}
-            >
-              <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition-all ${auto ? "left-[22px]" : "left-0.5"}`} />
-            </button>
-            <div className="flex flex-col leading-tight">
-              <span className="text-sm font-medium">Modo automático</span>
-              <span className="text-[11px] text-tinta/50">
-                La mesa arranca rondas, cierra apuestas y sigue sola. Los jugadores solo apuestan y juegan su turno.
+          {/* Mesa permanente: la maneja el servidor, no este navegador */}
+          {esPermanente ? (
+            <section className="ncard flex flex-wrap items-center gap-3 border border-emerald-500/25 bg-emerald-500/[0.04] p-4">
+              <span className="relative flex h-2.5 w-2.5 shrink-0">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+                <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-400" />
               </span>
-            </div>
-            {auto && cuenta !== null && (
-              <span className="ml-auto rounded-md border border-acento/40 bg-acento/10 px-2.5 py-1 text-sm tabular-nums text-acento-300">
-                Próximo paso en {cuenta}s
-              </span>
-            )}
-            {auto && cuenta === null && ronda?.estado === "apuestas" && !hayApuesta && (
-              <span className="ml-auto text-[11px] text-tinta/50">Esperando la primera apuesta…</span>
-            )}
-          </section>
+              <div className="flex flex-col leading-tight">
+                <span className="text-sm font-medium text-emerald-200">Mesa 24/7 · siempre activa</span>
+                <span className="text-[11px] text-tinta/50">
+                  El servidor la mantiene girando sola, aunque cierres esta pantalla. Podés
+                  intervenir con los botones de abajo cuando quieras.
+                </span>
+              </div>
+            </section>
+          ) : (
+            <section className="ncard flex flex-wrap items-center gap-3 border border-white/[0.06] p-4">
+              <button
+                type="button"
+                role="switch"
+                aria-checked={auto}
+                onClick={toggleAuto}
+                className={`relative h-6 w-11 shrink-0 rounded-full transition ${auto ? "bg-acento" : "bg-white/15"}`}
+              >
+                <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition-all ${auto ? "left-[22px]" : "left-0.5"}`} />
+              </button>
+              <div className="flex flex-col leading-tight">
+                <span className="text-sm font-medium">Modo automático</span>
+                <span className="text-[11px] text-tinta/50">
+                  La mesa gira sola mientras tengas esta pantalla abierta. Los jugadores solo
+                  apuestan y juegan su turno.
+                </span>
+              </div>
+              {auto && cuenta !== null && (
+                <span className="ml-auto rounded-md border border-acento/40 bg-acento/10 px-2.5 py-1 text-sm tabular-nums text-acento-300">
+                  Próximo paso en {cuenta}s
+                </span>
+              )}
+              {auto && cuenta === null && ronda?.estado === "apuestas" && !hayApuesta && (
+                <span className="ml-auto text-[11px] text-tinta/50">Esperando la primera apuesta…</span>
+              )}
+            </section>
+          )}
 
           {/* Controles de fase */}
           <section className="ncard flex flex-wrap items-center gap-2 border border-white/[0.06] p-4">

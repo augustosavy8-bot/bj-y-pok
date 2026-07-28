@@ -849,7 +849,9 @@ async function entrarTurnoDealer(admin: DB, mesaId: string) {
 }
 
 // El dealer roba del shoe hasta que debe plantar o se pasa, luego paga.
-async function jugarDealerAuto(admin: DB, mesaId: string) {
+// Exportada para que el piloto automático (bj-auto) pueda destrabar una mano
+// del dealer que haya quedado a medias.
+export async function jugarDealerAuto(admin: DB, mesaId: string) {
   // Tope de seguridad para evitar cualquier bucle infinito.
   for (let i = 0; i < 25; i++) {
     const estado = await cargarEstadoBJ(admin, mesaId);
