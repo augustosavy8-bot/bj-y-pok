@@ -89,7 +89,7 @@ export function QuinielaAdmin() {
   return (
     <section className="ncard flex flex-col gap-4 border border-white/[0.06] p-4">
       <div>
-        <h2 className="font-medium">Quiniela — Liga Cañadense</h2>
+        <h2 className="font-medium">Prode — Liga Cañadense</h2>
         <p className="m-0 text-[12px] text-tinta/50">
           No hay API que cubra la liga, así que los partidos y resultados se cargan acá.
         </p>

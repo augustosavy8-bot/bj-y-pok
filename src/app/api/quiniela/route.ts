@@ -94,11 +94,12 @@ export async function POST(req: Request) {
     const user = await requerirUsuario();
     const admin = getSupabaseAdmin();
     const body = await req.json();
+    // Se juega a resultado exacto: el marcador es obligatorio y el signo
+    // (1/X/2) lo deriva la base sola.
     const pronosticos = (body?.pronosticos ?? []) as {
       partido_id: string;
-      signo: "1" | "X" | "2";
-      goles_local?: number | null;
-      goles_visitante?: number | null;
+      goles_local: number | null;
+      goles_visitante: number | null;
     }[];
 
     const fecha = await fechaVigente(admin);
@@ -115,10 +116,23 @@ export async function POST(req: Request) {
       .select("id")
       .eq("fecha_id", fecha.id);
     const validos = new Set((partidos ?? []).map((p: { id: string }) => p.id));
-    const limpios = pronosticos.filter(
-      (p) => validos.has(p.partido_id) && ["1", "X", "2"].includes(p.signo)
-    );
-    if (limpios.length === 0) return errorJson("No mandaste ningún pronóstico válido.", 400);
+    const entero = (v: unknown) =>
+      v === null || v === undefined || v === "" ? null : Math.max(0, Math.floor(Number(v)));
+    const limpios = pronosticos
+      .map((p) => ({
+        partido_id: p.partido_id,
+        goles_local: entero(p.goles_local),
+        goles_visitante: entero(p.goles_visitante),
+      }))
+      .filter(
+        (p) =>
+          validos.has(p.partido_id) &&
+          Number.isFinite(p.goles_local as number) &&
+          Number.isFinite(p.goles_visitante as number)
+      );
+    if (limpios.length === 0) {
+      return errorJson("Cargá el marcador de al menos un partido.", 400);
+    }
 
     // Cobro de la entrada: sólo la primera vez. Después puede corregir sus
     // pronósticos gratis mientras la fecha siga abierta.
@@ -157,9 +171,8 @@ export async function POST(req: Request) {
     const filas = limpios.map((p) => ({
       partido_id: p.partido_id,
       user_id: user.id,
-      signo: p.signo,
-      goles_local: p.goles_local ?? null,
-      goles_visitante: p.goles_visitante ?? null,
+      goles_local: p.goles_local,
+      goles_visitante: p.goles_visitante,
     }));
     const { error: errPron } = await admin
       .from("quiniela_pronosticos")

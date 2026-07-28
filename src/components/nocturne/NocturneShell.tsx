@@ -30,7 +30,7 @@ export function NocturneShell({ children }: { children: React.ReactNode }) {
 
   const nav = [
     { href: "/home", label: "Mesas" },
-    { href: "/quiniela", label: "Quiniela" },
+    { href: "/quiniela", label: "Prode" },
     { href: "/perfil", label: "Perfil" },
     ...(esAdmin ? [{ href: "/admin", label: "Admin" }] : []),
   ];

@@ -23,7 +23,6 @@ type Fecha = {
 };
 type Pron = {
   partido_id: string;
-  signo: Signo;
   goles_local: number | null;
   goles_visitante: number | null;
 };
@@ -46,11 +45,21 @@ type Datos = {
 
 const fmt = (n: number) => n.toLocaleString("es");
 
-function signoReal(p: Partido): Signo | null {
-  if (p.goles_local === null || p.goles_visitante === null) return null;
-  if (p.goles_local > p.goles_visitante) return "1";
-  if (p.goles_local < p.goles_visitante) return "2";
+function signoDe(gl: number | null, gv: number | null): Signo | null {
+  if (gl === null || gv === null) return null;
+  if (gl > gv) return "1";
+  if (gl < gv) return "2";
   return "X";
+}
+
+/** 3 si clavó el marcador, 1 si acertó quién ganaba, 0 si no. */
+function puntosDe(mio: Pron | undefined, p: Partido): number | null {
+  if (!mio || p.goles_local === null || p.goles_visitante === null) return null;
+  if (mio.goles_local === null || mio.goles_visitante === null) return null;
+  if (mio.goles_local === p.goles_local && mio.goles_visitante === p.goles_visitante) return 3;
+  return signoDe(mio.goles_local, mio.goles_visitante) === signoDe(p.goles_local, p.goles_visitante)
+    ? 1
+    : 0;
 }
 
 export default function QuinielaPage() {
@@ -84,22 +93,23 @@ export default function QuinielaPage() {
   const abierta = d?.fecha?.estado === "abierta";
   const yaJuego = !!d?.mi_participacion;
   const completos = useMemo(
-    () => (d?.partidos ?? []).filter((p) => elecciones[p.id]?.signo).length,
+    () =>
+      (d?.partidos ?? []).filter(
+        (p) =>
+          elecciones[p.id]?.goles_local !== null &&
+          elecciones[p.id]?.goles_local !== undefined &&
+          elecciones[p.id]?.goles_visitante !== null &&
+          elecciones[p.id]?.goles_visitante !== undefined
+      ).length,
     [d, elecciones]
   );
 
-  function elegir(partidoId: string, signo: Signo) {
-    setElecciones((e) => ({
-      ...e,
-      [partidoId]: { ...(e[partidoId] ?? { partido_id: partidoId, goles_local: null, goles_visitante: null }), partido_id: partidoId, signo },
-    }));
-  }
   function marcador(partidoId: string, campo: "goles_local" | "goles_visitante", valor: string) {
     const n = valor === "" ? null : Math.max(0, Math.floor(Number(valor) || 0));
     setElecciones((e) => ({
       ...e,
       [partidoId]: {
-        ...(e[partidoId] ?? { partido_id: partidoId, signo: "X" as Signo, goles_local: null, goles_visitante: null }),
+        ...(e[partidoId] ?? { partido_id: partidoId, goles_local: null, goles_visitante: null }),
         partido_id: partidoId,
         [campo]: n,
       } as Pron,
@@ -132,9 +142,9 @@ export default function QuinielaPage() {
     <NocturneShell>
       <section className="mx-auto max-w-3xl px-4 py-10 sm:px-8">
         <div className="mb-5">
-          <h1 className="text-[28px] font-medium">Quiniela</h1>
+          <h1 className="text-[28px] font-medium">Prode</h1>
           <p className="m-0 text-[13px] text-tinta/55">
-            Liga Cañadense. Acertá los resultados de la fecha y llevate el pozo.
+            Liga Cañadense. Jugá al resultado exacto de cada partido y llevate el pozo.
           </p>
         </div>
 
@@ -185,7 +195,9 @@ export default function QuinielaPage() {
             <div className="flex flex-col gap-2">
               {d.partidos.map((p) => {
                 const mio = elecciones[p.id];
-                const real = signoReal(p);
+                const real = signoDe(p.goles_local, p.goles_visitante);
+                const miSigno = signoDe(mio?.goles_local ?? null, mio?.goles_visitante ?? null);
+                const puntos = puntosDe(mio, p);
                 return (
                   <div key={p.id} className="ncard border border-white/[0.06] p-3">
                     <div className="flex flex-wrap items-center justify-between gap-2">
@@ -201,51 +213,73 @@ export default function QuinielaPage() {
                       )}
                     </div>
 
-                    <div className="mt-2 flex flex-wrap items-center gap-2">
-                      {(["1", "X", "2"] as Signo[]).map((s) => {
-                        const elegido = mio?.signo === s;
-                        const acerto = real && real === s;
-                        return (
-                          <button
-                            key={s}
-                            disabled={!abierta}
-                            onClick={() => elegir(p.id, s)}
-                            className={`h-9 w-11 rounded-md border text-[14px] font-medium transition disabled:opacity-70 ${
-                              elegido
-                                ? "border-acento bg-acento/15 text-acento-300"
-                                : "border-white/12 text-tinta/70 hover:bg-white/5"
-                            } ${real && elegido ? (acerto ? "!border-emerald-400 !text-emerald-300" : "!border-red-400/60 !text-red-300") : ""}`}
+                    <div className="mt-2 flex flex-wrap items-center gap-3">
+                      {abierta ? (
+                        <>
+                          <span className="inline-flex items-center gap-2">
+                            <input
+                              type="number"
+                              min={0}
+                              inputMode="numeric"
+                              value={mio?.goles_local ?? ""}
+                              onChange={(e) => marcador(p.id, "goles_local", e.target.value)}
+                              className="ninput !h-11 w-14 text-center text-[18px] font-medium"
+                              aria-label={`Goles de ${p.local}`}
+                            />
+                            <span className="text-tinta/40">–</span>
+                            <input
+                              type="number"
+                              min={0}
+                              inputMode="numeric"
+                              value={mio?.goles_visitante ?? ""}
+                              onChange={(e) => marcador(p.id, "goles_visitante", e.target.value)}
+                              className="ninput !h-11 w-14 text-center text-[18px] font-medium"
+                              aria-label={`Goles de ${p.visitante}`}
+                            />
+                          </span>
+                          <span className="text-[11px] text-tinta/45">
+                            {miSigno
+                              ? miSigno === "1"
+                                ? `gana ${p.local}`
+                                : miSigno === "2"
+                                ? `gana ${p.visitante}`
+                                : "empate"
+                              : "cargá el marcador"}
+                          </span>
+                        </>
+                      ) : (
+                        <span className="inline-flex flex-wrap items-center gap-2 text-[13px]">
+                          <span className="text-tinta/45">tu pronóstico:</span>
+                          <span
+                            className={`rounded px-2 py-0.5 font-medium tabular-nums ${
+                              puntos === 3
+                                ? "bg-emerald-400/15 text-emerald-300"
+                                : puntos === 1
+                                ? "bg-amber-400/15 text-amber-200"
+                                : real
+                                ? "bg-red-400/10 text-red-300"
+                                : "bg-white/[0.06] text-tinta/70"
+                            }`}
                           >
-                            {s}
-                          </button>
-                        );
-                      })}
-                      {abierta && (
-                        <span className="ml-1 inline-flex items-center gap-1.5 text-[11px] text-tinta/45">
-                          marcador exacto (+3):
-                          <input
-                            type="number"
-                            min={0}
-                            value={mio?.goles_local ?? ""}
-                            onChange={(e) => marcador(p.id, "goles_local", e.target.value)}
-                            className="ninput !h-8 w-12 !px-2 text-center"
-                          />
-                          <span>–</span>
-                          <input
-                            type="number"
-                            min={0}
-                            value={mio?.goles_visitante ?? ""}
-                            onChange={(e) => marcador(p.id, "goles_visitante", e.target.value)}
-                            className="ninput !h-8 w-12 !px-2 text-center"
-                          />
-                        </span>
-                      )}
-                      {!abierta && mio && (
-                        <span className="text-[11px] text-tinta/45">
-                          tu pronóstico: {mio.signo}
-                          {mio.goles_local !== null && mio.goles_visitante !== null
-                            ? ` (${mio.goles_local}–${mio.goles_visitante})`
-                            : ""}
+                            {mio ? `${mio.goles_local} – ${mio.goles_visitante}` : "sin cargar"}
+                          </span>
+                          {real && mio && (
+                            <span
+                              className={
+                                puntos === 3
+                                  ? "text-emerald-300"
+                                  : puntos === 1
+                                  ? "text-amber-200"
+                                  : "text-tinta/45"
+                              }
+                            >
+                              {puntos === 3
+                                ? "+3 exacto"
+                                : puntos === 1
+                                ? "+1 acertó el ganador"
+                                : "0 puntos"}
+                            </span>
+                          )}
                         </span>
                       )}
                     </div>
@@ -264,7 +298,7 @@ export default function QuinielaPage() {
                   {guardando
                     ? "Guardando…"
                     : yaJuego
-                    ? `Actualizar pronósticos (${completos}/${d.partidos.length})`
+                    ? `Actualizar marcadores (${completos}/${d.partidos.length})`
                     : `Entrar por ${fmt(d.fecha.entrada)} créditos (${completos}/${d.partidos.length})`}
                 </button>
                 {!yaJuego && d.fecha.entrada > 0 && (
@@ -306,8 +340,8 @@ export default function QuinielaPage() {
                   </tbody>
                 </table>
                 <p className="m-0 mt-2 text-[11px] text-tinta/40">
-                  3 puntos por marcador exacto, 1 por acertar sólo el resultado. En caso de empate,
-                  el pozo se divide.
+                  Se juega a resultado exacto: 3 puntos si clavás el marcador, 1 si acertás quién
+                  ganaba. Si hay empate en puntos, el pozo se divide.
                 </p>
               </div>
             )}
