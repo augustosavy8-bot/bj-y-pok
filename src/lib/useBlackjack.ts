@@ -22,6 +22,8 @@ export interface EstadoBlackjack {
   cartas: BJCarta[]; // filtradas por RLS (hole card oculta según quién sos)
   resultados: BJResultado[];
   cargando: boolean;
+  /** Hay conexión en vivo con la mesa. Si es false, se refresca por sondeo. */
+  conectado: boolean;
 }
 
 // Ventana para agrupar ráfagas de eventos en UNA sola recarga. Repartir una
@@ -43,9 +45,13 @@ export function useBlackjack(codigo: string): EstadoBlackjack & { refrescar: () 
     cartas: [],
     resultados: [],
     cargando: true,
+    conectado: false,
   });
 
   const [mesaId, setMesaId] = useState<string | null>(null);
+  // Se incrementa para forzar una resuscripción cuando el canal murió.
+  const [generacion, setGeneracion] = useState(0);
+  const conectadoRef = useRef(false);
 
   // Control: evita recargas superpuestas y permite descartar eventos ajenos a
   // esta mesa/ronda sin tener que volver a suscribirse.
@@ -152,6 +158,7 @@ export function useBlackjack(codigo: string): EstadoBlackjack & { refrescar: () 
         cartas,
         resultados,
         cargando: false,
+        conectado: conectadoRef.current,
       });
     } finally {
       enVuelo.current = false;
@@ -223,11 +230,45 @@ export function useBlackjack(codigo: string): EstadoBlackjack & { refrescar: () 
       }
     );
 
-    canal.subscribe();
+    canal.subscribe((status) => {
+      const ok = status === "SUBSCRIBED";
+      conectadoRef.current = ok;
+      if (vivo.current) setEstado((e) => (e.conectado === ok ? e : { ...e, conectado: ok }));
+      // Al (re)conectar puede haberse perdido algo mientras estuvo caído.
+      if (ok) void cargar();
+    });
+
     return () => {
+      conectadoRef.current = false;
       supabase.removeChannel(canal);
     };
-  }, [mesaId, supabase, programar]);
+  }, [mesaId, supabase, programar, cargar, generacion]);
+
+  // Red de seguridad: si el canal está caído, se sondea para que la pantalla
+  // nunca quede congelada sin que el jugador se entere.
+  useEffect(() => {
+    if (estado.conectado || !mesaId) return;
+    const iv = setInterval(() => void cargar(), 3000);
+    return () => clearInterval(iv);
+  }, [estado.conectado, mesaId, cargar]);
+
+  // En el celular, bloquear la pantalla suspende el websocket: al volver hay
+  // que refrescar y, si el canal murió, volver a suscribirse.
+  useEffect(() => {
+    const alVolver = () => {
+      if (document.visibilityState !== "visible") return;
+      void cargar();
+      if (!conectadoRef.current) setGeneracion((g) => g + 1);
+    };
+    document.addEventListener("visibilitychange", alVolver);
+    window.addEventListener("online", alVolver);
+    window.addEventListener("focus", alVolver);
+    return () => {
+      document.removeEventListener("visibilitychange", alVolver);
+      window.removeEventListener("online", alVolver);
+      window.removeEventListener("focus", alVolver);
+    };
+  }, [cargar]);
 
   return { ...estado, refrescar: cargar };
 }

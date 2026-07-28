@@ -156,7 +156,7 @@ function useAterrizaje(ids: string[], step: number, onLand?: () => void) {
 }
 
 // Ventana de apuestas (ms) — usada para la cuenta regresiva compartida.
-export const MS_VENTANA_APUESTAS = 10_000;
+export { MS_VENTANA_APUESTAS } from "@/lib/blackjack/tiempos";
 
 export function MesaBlackjack({
   dealerCartas,

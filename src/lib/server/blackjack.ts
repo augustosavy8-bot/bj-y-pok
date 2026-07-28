@@ -15,6 +15,7 @@ import { dealerDebePedir } from "@/lib/blackjack/dealer";
 import { calcularPagoMano } from "@/lib/blackjack/pagos";
 import { accionesDisponibles } from "@/lib/blackjack/acciones";
 import { ajustarFichasBJ } from "@/lib/server/creditos";
+import { MS_VENTANA_APUESTAS } from "@/lib/blackjack/tiempos";
 
 type DB = SupabaseClient;
 type CartaRNG = { valor: Valor; palo: Palo };
@@ -351,6 +352,21 @@ export async function registrarApuesta(
 
   // Señal de vida: evita que el barrido de inactivos lo levante de la mesa.
   await marcarActividad(admin, jugadorId);
+
+  // Si la ronda estuvo abierta un rato sin que nadie apostara, su ventana de
+  // apuestas ya venció: el reloj que ven los jugadores quedaría en 0 y esta
+  // apuesta se repartiría al instante, sin darle chance a nadie más. Con la
+  // PRIMERA apuesta se reabre la ventana desde ahora.
+  const habiaApuestas = estado.manos.some((m) => m.apuesta_fichas > 0);
+  if (!habiaApuestas) {
+    const abierta = Date.now() - new Date(ronda.created_at).getTime();
+    if (abierta > MS_VENTANA_APUESTAS) {
+      await admin
+        .from("bj_rondas")
+        .update({ created_at: new Date().toISOString() })
+        .eq("id", ronda.id);
+    }
+  }
 
   // Upsert de la mano base del jugador.
   const existente = estado.manos.find((m) => m.jugador_id === jugadorId && !m.es_split_de);

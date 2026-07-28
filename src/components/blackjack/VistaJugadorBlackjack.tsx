@@ -9,6 +9,7 @@ import {
   descomponerFichas,
   type AsientoMesa,
 } from "@/components/blackjack/MesaBlackjack";
+import { BannerEstadoMesa, leerEstadoMesa } from "@/components/blackjack/EstadoMesa";
 import { accionesDisponibles } from "@/lib/blackjack/acciones";
 import { TimerCircular } from "@/components/mesa/TimerCircular";
 import { OverlayResultado, type TipoResultado } from "@/components/mesa/OverlayResultado";
@@ -27,7 +28,8 @@ export function VistaJugadorBlackjack({
   authUid: string;
   yoId: string;
 }) {
-  const { mesa, jugadores, config, ronda, manos, cartas, resultados } = useBlackjack(codigo);
+  const { mesa, jugadores, config, ronda, manos, cartas, resultados, cargando, conectado } =
+    useBlackjack(codigo);
   const [enviando, setEnviando] = useState(false);
   const [error, setError] = useState<string | null>(null);
   // La apuesta se arma como una LISTA de fichas (para el stack que vuela y queda).
@@ -260,6 +262,24 @@ export function VistaJugadorBlackjack({
   const hayCartasEnMesa = dealerCartas.length > 0 || cartas.length > 0;
   const pagoLabel = `Blackjack paga ${config?.blackjack_pago === "6_a_5" ? "6 : 5" : "3 : 2"}`;
 
+  // Qué está esperando la mesa, en una frase. Antes había estados enteros
+  // (mesa libre, reparto, turno del crupier, conexión caída) sin ninguna señal.
+  const manoEnTurnoBanner = manos.find((m) => m.id === ronda?.turno_mano_id);
+  const lecturaEstado = leerEstadoMesa({
+    conectado,
+    cargando,
+    hayJugadores: jugadores.some((j) => !j.es_crupier && j.estado !== "eliminado"),
+    ronda,
+    hayApuestas: manos.some((m) => m.apuesta_fichas > 0),
+    yaAposte: misManos.some((m) => m.apuesta_fichas > 0),
+    segsApuestas,
+    esMiTurno:
+      ronda?.estado === "turnos_jugadores" && manoEnTurnoBanner?.jugador_id === yoId,
+    nombreEnTurno:
+      jugadores.find((j) => j.id === manoEnTurnoBanner?.jugador_id)?.nombre ?? null,
+    segsTurno: restante,
+  });
+
   return (
     <div className="flex min-h-screen flex-col bg-noche text-tinta">
       {/* Header de mesa */}
@@ -338,6 +358,9 @@ export function VistaJugadorBlackjack({
 
           {/* Controles bajo la mesa */}
           <div className="mx-auto mt-4 flex max-w-[560px] flex-col gap-3">
+            {/* Siempre visible: qué está esperando la mesa ahora mismo. */}
+            <BannerEstadoMesa lectura={lecturaEstado} />
+
             {ronda?.estado === "apuestas" && (
               <>
                 <div className="flex items-center justify-center gap-2 text-sm">

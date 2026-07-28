@@ -132,6 +132,22 @@ export function useMesa(codigo: string): EstadoMesa & { refrescar: () => void } 
     };
   }, [cargar]);
 
+  // Recuperación: en el celular, bloquear la pantalla suspende el websocket.
+  useEffect(() => {
+    const alVolver = () => {
+      if (document.visibilityState !== "visible") return;
+      void cargar();
+    };
+    document.addEventListener("visibilitychange", alVolver);
+    window.addEventListener("online", alVolver);
+    window.addEventListener("focus", alVolver);
+    return () => {
+      document.removeEventListener("visibilitychange", alVolver);
+      window.removeEventListener("online", alVolver);
+      window.removeEventListener("focus", alVolver);
+    };
+  }, [cargar]);
+
   useEffect(() => {
     if (!mesaId) return;
 
@@ -160,11 +176,13 @@ export function useMesa(codigo: string): EstadoMesa & { refrescar: () => void } 
       canal.on("postgres_changes", { event: "*", schema: "public", table: tabla }, porMano);
     }
 
-    canal.subscribe();
+    canal.subscribe((status) => {
+      if (status === "SUBSCRIBED") void cargar();
+    });
     return () => {
       supabase.removeChannel(canal);
     };
-  }, [mesaId, supabase, programar]);
+  }, [mesaId, supabase, programar, cargar]);
 
   return { ...estado, refrescar: cargar };
 }
