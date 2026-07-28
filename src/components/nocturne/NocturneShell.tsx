@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { getSupabaseBrowser, usuarioActualId, cerrarSesion } from "@/lib/supabase/client";
+import { estaOculto, puedeVerJuego } from "@/lib/juegos-visibles";
 
 // Header sticky + footer del sistema Nocturne. Envuelve las páginas de
 // plataforma (home, perfil, admin). El marco de sesión (nombre/saldo/rol) se
@@ -28,13 +29,15 @@ export function NocturneShell({ children }: { children: React.ReactNode }) {
     })();
   }, []);
 
+  // `juego` marca las entradas que se pueden esconder desde
+  // src/lib/juegos-visibles.ts. El admin las sigue viendo, con un punto al lado.
   const nav = [
     { href: "/home", label: "Mesas" },
-    { href: "/slots", label: "Slots" },
-    { href: "/quiniela", label: "Prode" },
+    { href: "/slots", label: "Slots", juego: "slots" },
+    { href: "/quiniela", label: "Prode", juego: "quiniela" },
     { href: "/perfil", label: "Perfil" },
     ...(esAdmin ? [{ href: "/admin", label: "Admin" }] : []),
-  ];
+  ].filter((n) => !n.juego || puedeVerJuego(n.juego, esAdmin));
 
   return (
     <div className="flex min-h-screen flex-col bg-noche text-tinta">
@@ -53,9 +56,18 @@ export function NocturneShell({ children }: { children: React.ReactNode }) {
                 key={n.href}
                 href={n.href}
                 aria-current={pathname === n.href ? "page" : undefined}
-                className={pathname === n.href ? "text-acento" : "text-tinta/75 hover:text-acento"}
+                className={`inline-flex items-center gap-1 ${
+                  pathname === n.href ? "text-acento" : "text-tinta/75 hover:text-acento"
+                }`}
               >
                 {n.label}
+                {n.juego && estaOculto(n.juego) && (
+                  <span
+                    className="h-1.5 w-1.5 rounded-full bg-amber-400/80"
+                    title="Oculto para los jugadores: sólo lo ves vos"
+                    aria-label="oculto para los jugadores"
+                  />
+                )}
               </a>
             ))}
           </div>

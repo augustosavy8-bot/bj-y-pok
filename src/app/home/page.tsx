@@ -6,6 +6,7 @@ import { getSupabaseBrowser, usuarioActualId } from "@/lib/supabase/client";
 import { NocturneShell } from "@/components/nocturne/NocturneShell";
 import { ChipsCanvas } from "@/components/nocturne/ChipsCanvas";
 import { AvisoJugadores } from "@/components/AvisoJugadores";
+import { estaOculto, puedeVerJuego } from "@/lib/juegos-visibles";
 import type { Mesa } from "@/lib/types";
 
 type Juego = "poker_holdem" | "blackjack";
@@ -298,16 +299,23 @@ export default function HomePage() {
         </section>
       )}
 
-      {/* Juegos que se juegan solo, sin esperar a nadie */}
+      {/* Otros juegos. Cuáles se muestran sale de src/lib/juegos-visibles.ts */}
+      {(puedeVerJuego("slots", esAdmin) || puedeVerJuego("quiniela", esAdmin)) && (
       <section id="rapidos" className="mx-auto max-w-6xl px-4 pt-14 sm:px-8">
-        <div className="mb-4">
-          <h2 className="text-[26px] font-medium">Para jugar solo</h2>
-          <p className="m-0 text-[13px] text-tinta/55">
+        <div className="mb-4 flex flex-wrap items-baseline gap-x-3">
+          <h2 className="text-[26px] font-medium">Otros juegos</h2>
+          {(estaOculto("slots") || estaOculto("quiniela")) && esAdmin && (
+            <span className="rounded bg-amber-400/15 px-2 py-0.5 text-[11px] text-amber-300">
+              ocultos para los jugadores · sólo los ves vos
+            </span>
+          )}
+          <p className="m-0 w-full text-[13px] text-tinta/55">
             No hace falta que haya nadie más conectado.
           </p>
         </div>
 
         <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+          {puedeVerJuego("slots", esAdmin) && (
           <a
             href="/slots"
             className="ncard relative block overflow-hidden border border-oro/25 p-5 transition hover:border-oro/55"
@@ -341,7 +349,9 @@ export default function HomePage() {
               Girar
             </span>
           </a>
+          )}
 
+          {puedeVerJuego("quiniela", esAdmin) && (
           <a
             href="/quiniela"
             className="ncard relative block overflow-hidden border border-white/[0.08] p-5 transition hover:border-acento/50"
@@ -366,8 +376,10 @@ export default function HomePage() {
               Ver la fecha
             </span>
           </a>
+          )}
         </div>
       </section>
+      )}
 
       {/* Mesas */}
       <section id="mesas" className="mx-auto max-w-6xl px-4 pt-14 sm:px-8">

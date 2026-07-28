@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { estaOculto } from "@/lib/juegos-visibles";
 
 // Par divergente azul↔rojo, validado contra la superficie del panel (#232532):
 // separación CVD ΔE 19.2 (protan) y contraste ≥ 3:1 en ambos polos. Verde↔rojo
@@ -244,7 +245,14 @@ export function CasaAdmin() {
           {/* Tragamonedas */}
           <div>
             <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
-              <h3 className="m-0 text-[14px] font-medium">Tragamonedas</h3>
+              <div className="flex flex-wrap items-baseline gap-x-2">
+                <h3 className="m-0 text-[14px] font-medium">Tragamonedas</h3>
+                {estaOculto("slots") && (
+                  <span className="rounded bg-amber-400/15 px-2 py-0.5 text-[11px] text-amber-300">
+                    oculta para los jugadores
+                  </span>
+                )}
+              </div>
               <span className="text-[11px] text-tinta/45">
                 margen teórico {MARGEN_TEORICO_SLOTS}%
               </span>

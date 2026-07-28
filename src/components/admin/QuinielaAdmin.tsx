@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { estaOculto } from "@/lib/juegos-visibles";
 
 type Fecha = {
   id: string;
@@ -89,7 +90,14 @@ export function QuinielaAdmin() {
   return (
     <section className="ncard flex flex-col gap-4 border border-white/[0.06] p-4">
       <div>
-        <h2 className="font-medium">Prode — Liga Cañadense</h2>
+        <div className="flex flex-wrap items-baseline gap-x-2">
+          <h2 className="font-medium">Prode — Liga Cañadense</h2>
+          {estaOculto("quiniela") && (
+            <span className="rounded bg-amber-400/15 px-2 py-0.5 text-[11px] text-amber-300">
+              oculto para los jugadores
+            </span>
+          )}
+        </div>
         <p className="m-0 text-[12px] text-tinta/50">
           No hay API que cubra la liga, así que los partidos y resultados se cargan acá.
         </p>
