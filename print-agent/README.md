@@ -88,14 +88,8 @@ XP-80 por **WinUSB** con [Zadig](https://zadig.akeo.ie/): abrí Zadig →
 deja la impresora fuera de la lista normal de Windows (solo la usa el agente).
 
 Si preferís **no** tocar el driver, usá el camino RAW por el nombre de la
-impresora de Windows (el driver debe dejar pasar bytes crudos, que es lo normal
-en las XP-80):
-
-```
-npm install @thiagoelg/node-printer
-```
-
-y en `.env`:
+impresora de Windows (el driver deja pasar bytes crudos, que es lo normal en las
+XP-80). En `.env`:
 
 ```
 METHOD=printer
@@ -103,7 +97,11 @@ PRINTER_NAME=XP-80        # el nombre EXACTO de "Dispositivos e impresoras"
 ```
 
 Este camino manda el ESC/POS como trabajo **RAW** al spooler: no pasa por el
-render del diálogo de Chrome, así que tampoco rota.
+render del diálogo de Chrome, así que **no rota**. **No necesita compilar nada**:
+si no está el módulo `@thiagoelg/node-printer`, el agente cae solo a mandar los
+bytes por el spooler de Windows vía PowerShell (`rawprint.ps1`, winspool
+`WritePrinter`). Opcionalmente, `npm install @thiagoelg/node-printer` lo hace un
+poco más rápido, pero no hace falta.
 
 ## Acentos salen mal (Ñ, á, é…)
 

@@ -52,24 +52,59 @@ function enviarUSB(buffer, opts) {
 }
 
 function enviarPrinter(buffer, opts) {
+  if (!opts.printerName) {
+    return Promise.reject(new Error("Definí PRINTER_NAME con el nombre EXACTO de la impresora en Windows (ver README)."));
+  }
+  // Si está el módulo nativo, lo usamos (más rápido). Si no, caemos al spooler
+  // de Windows por PowerShell — RAW, sin dependencias que compilar.
+  let printer = null;
+  try { printer = require("@thiagoelg/node-printer"); }
+  catch (e) { try { printer = require("printer"); } catch (e2) { printer = null; } }
+
+  if (printer) {
+    return new Promise((resolve, reject) => {
+      printer.printDirect({
+        data: buffer,
+        printer: opts.printerName,
+        type: "RAW",
+        success: () => resolve(),
+        error: (e) => reject(new Error("Error imprimiendo RAW a '" + opts.printerName + "': " + (e && e.message ? e.message : e))),
+      });
+    });
+  }
+  return enviarSpoolerWin(buffer, opts);
+}
+
+// Envío RAW por el spooler de Windows (winspool WritePrinter) vía PowerShell.
+// No necesita módulos nativos de npm.
+function enviarSpoolerWin(buffer, opts) {
   return new Promise((resolve, reject) => {
-    let printer;
+    const os = require("os");
+    const fs = require("fs");
+    const path = require("path");
+    const { spawn } = require("child_process");
+    const tmp = path.join(os.tmpdir(), "comanda-" + process.pid + "-" + Date.now() + ".bin");
     try {
-      printer = require("@thiagoelg/node-printer");
+      fs.writeFileSync(tmp, buffer);
     } catch (e) {
-      try { printer = require("printer"); } catch (e2) {
-        return reject(new Error("Falta el paquete de impresión RAW. Instalá: npm install @thiagoelg/node-printer (ver README, sección METHOD=printer)."));
-      }
+      return reject(new Error("No se pudo escribir el archivo temporal: " + e.message));
     }
-    if (!opts.printerName) {
-      return reject(new Error("Definí PRINTER_NAME con el nombre EXACTO de la impresora en Windows (ver README)."));
-    }
-    printer.printDirect({
-      data: buffer,
-      printer: opts.printerName,
-      type: "RAW",
-      success: () => resolve(),
-      error: (e) => reject(new Error("Error imprimiendo RAW a '" + opts.printerName + "': " + (e && e.message ? e.message : e))),
+    const ps1 = path.join(__dirname, "rawprint.ps1");
+    const ps = spawn(
+      "powershell.exe",
+      ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", ps1, "-PrinterName", opts.printerName, "-FilePath", tmp],
+      { windowsHide: true }
+    );
+    let err = "";
+    ps.stderr.on("data", (d) => (err += d.toString()));
+    ps.on("error", (e) => {
+      try { fs.unlinkSync(tmp); } catch (_) {}
+      reject(new Error("No se pudo lanzar PowerShell: " + e.message));
+    });
+    ps.on("close", (code) => {
+      try { fs.unlinkSync(tmp); } catch (_) {}
+      if (code === 0) return resolve();
+      reject(new Error("Impresión RAW falló (PowerShell code " + code + "): " + (err.trim() || "sin detalle")));
     });
   });
 }
