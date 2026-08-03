@@ -38,15 +38,17 @@ class Ticket {
   cut() { return this.raw(b(GS, 0x56, 66, 0)); }
 
   // Dos columnas: izquierda al margen, derecha pegada al borde. Si no entra en
-  // una línea, la derecha baja debajo, alineada a la derecha.
-  leftRight(l, r) {
+  // una línea, la derecha baja debajo, alineada a la derecha. `w` permite pasar
+  // el ancho de columnas de Font B (más chica) cuando corresponde.
+  leftRight(l, r, w) {
+    w = w || this.width;
     l = String(l == null ? "" : l);
     r = String(r == null ? "" : r);
-    if (l.length + r.length + 1 > this.width) {
+    if (l.length + r.length + 1 > w) {
       this.ln(l);
-      return this.ln(" ".repeat(Math.max(0, this.width - r.length)) + r);
+      return this.ln(" ".repeat(Math.max(0, w - r.length)) + r);
     }
-    const space = Math.max(1, this.width - l.length - r.length);
+    const space = Math.max(1, w - l.length - r.length);
     return this.ln(l + " ".repeat(space) + r);
   }
 
@@ -56,25 +58,29 @@ class Ticket {
 function construirTicket(payload, opts) {
   payload = payload || {};
   const t = new Ticket(opts);
+  const WB = Math.round(t.width * 4 / 3); // Font B entra ~64 col en 80mm
   const copias = Math.max(1, Math.min(10, parseInt(payload.copias, 10) || 1));
   const corteMm = payload.corte != null ? Number(payload.corte) : (opts.feedMm || 6);
   const feedLineas = Math.max(1, Math.ceil((corteMm || 0) / 3)); // ~3mm por línea
 
   for (let c = 0; c < copias; c++) {
-    // Encabezado (mesero/fecha) centrado.
-    t.align("center").bold(true).size(0, 0);
+    // Encabezado (mesero/fecha) centrado, peso normal — como en la comanda.
+    t.align("center").bold(false).size(0, 0);
     if (payload.encabezado) t.ln(payload.encabezado);
-    // Código grande.
-    if (payload.codigo) t.size(1, 1).ln(payload.codigo).size(0, 0);
-    t.bold(false).align("left").line();
+    // Código: el ancla visual del ticket, grande y en negrita.
+    if (payload.codigo) t.bold(true).size(1, 1).ln(payload.codigo).size(0, 0).bold(false);
+    t.align("left").line();
 
-    // Ítems.
+    // Ítems: nombre grande/negrita, y debajo P.Unitario / Total en chico
+    // (Font B), para replicar la jerarquía de tamaños de la pantalla.
     const items = Array.isArray(payload.items) ? payload.items : [];
     items.forEach((it) => {
       const cant = it && it.cant != null ? String(it.cant) : "";
       const nombre = (it && it.nombre != null ? String(it.nombre) : "").toUpperCase();
       t.bold(true).ln((cant ? cant + "  " : "") + nombre).bold(false);
-      t.leftRight("P.Unitario " + (it && it.precio != null ? it.precio : ""), "Total: " + (it && it.total != null ? it.total : ""));
+      t.fontB(true)
+        .leftRight("P.Unitario " + (it && it.precio != null ? it.precio : ""), "Total: " + (it && it.total != null ? it.total : ""), WB)
+        .fontB(false);
       t.ln("");
     });
 
@@ -87,7 +93,7 @@ function construirTicket(payload, opts) {
 
     // Pie chico (folio / leyenda) en Font B.
     if (payload.folio || payload.pie) {
-      t.fontB(true).leftRight(payload.folio || "", payload.pie || "").fontB(false);
+      t.fontB(true).leftRight(payload.folio || "", payload.pie || "", WB).fontB(false);
     }
 
     // Avance de corte + corte parcial.
