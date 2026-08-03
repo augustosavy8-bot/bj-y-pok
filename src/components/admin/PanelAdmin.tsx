@@ -130,6 +130,22 @@ export function PanelAdmin({ miId }: { miId: string }) {
 
         <QuinielaAdmin />
 
+        {/* Herramientas internas (solo admin) */}
+        <section className="ncard flex flex-wrap items-center justify-between gap-3 border border-white/[0.06] p-4">
+          <div>
+            <h2 className="font-medium">Herramientas</h2>
+            <p className="text-xs text-tinta/50">Utilidades internas para administradores.</p>
+          </div>
+          <a
+            href="/comanda"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="nbtn nbtn-secondary"
+          >
+            Ticket Comanda (offline) ↗
+          </a>
+        </section>
+
         {/* Créditos y retiros */}
         <CreditosAdmin />
         <RetirosAdmin />
