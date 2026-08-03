@@ -10,7 +10,7 @@
 const http = require("http");
 const fs = require("fs");
 const path = require("path");
-const { construirTicket } = require("./ticket");
+const { construirTicket, construirRaster } = require("./ticket");
 const { enviar, listarUSB } = require("./print");
 
 // Carga simple de .env (sin dependencias): NOMBRE=valor por línea, # comenta.
@@ -84,7 +84,8 @@ const server = http.createServer((req, res) => {
     return res.end(JSON.stringify({ ok: true, method: opts.method, usb: opts.method === "usb" ? listarUSB() : undefined }));
   }
 
-  if (req.method !== "POST" || req.url !== "/print") {
+  const esRaster = req.url === "/print-raster";
+  if (req.method !== "POST" || (req.url !== "/print" && !esRaster)) {
     res.writeHead(404);
     return res.end("not found");
   }
@@ -97,7 +98,7 @@ const server = http.createServer((req, res) => {
   let body = "";
   req.on("data", (c) => {
     body += c;
-    if (body.length > 1e6) req.destroy();
+    if (body.length > 12e6) req.destroy(); // el ráster es más pesado
   });
   req.on("end", async () => {
     let payload;
@@ -108,7 +109,7 @@ const server = http.createServer((req, res) => {
       return res.end(JSON.stringify({ ok: false, error: "JSON inválido" }));
     }
     try {
-      const buf = construirTicket(payload, opts);
+      const buf = esRaster ? construirRaster(payload, opts) : construirTicket(payload, opts);
       await enviar(buf, opts);
       res.writeHead(200, { "content-type": "application/json" });
       res.end(JSON.stringify({ ok: true }));

@@ -103,4 +103,39 @@ function construirTicket(payload, opts) {
   return t.build();
 }
 
-module.exports = { construirTicket };
+// Imprime una IMAGEN (el ticket renderizado tal cual en la comanda) como ráster
+// ESC/POS. payload: { width (px), height (px), data (base64 de bits empaquetados
+// 1bpp, MSB primero, ceil(width/8) bytes por fila), copias, corte }.
+function construirRaster(payload, opts) {
+  payload = payload || {};
+  const width = payload.width | 0;
+  const height = payload.height | 0;
+  const bpr = Math.ceil(width / 8); // bytes por fila
+  const data = Buffer.from(payload.data || "", "base64");
+  const copias = Math.max(1, Math.min(10, parseInt(payload.copias, 10) || 1));
+  const corteMm = payload.corte != null ? Number(payload.corte) : (opts.feedMm || 6);
+  const feedLineas = Math.max(1, Math.ceil((corteMm || 0) / 3));
+
+  if (!width || !height || data.length < bpr * height) {
+    throw new Error("Ráster inválido (width/height/data no coinciden)");
+  }
+
+  const parts = [];
+  parts.push(b(ESC, 0x40)); // init
+  parts.push(b(ESC, 0x61, 0)); // align left
+  for (let c = 0; c < copias; c++) {
+    // GS v 0 en bandas de hasta 255 filas (algunos firmwares limitan el alto).
+    let y = 0;
+    while (y < height) {
+      const rows = Math.min(255, height - y);
+      parts.push(b(GS, 0x76, 0x30, 0x00, bpr & 0xff, (bpr >> 8) & 0xff, rows & 0xff, (rows >> 8) & 0xff));
+      parts.push(data.slice(y * bpr, (y + rows) * bpr));
+      y += rows;
+    }
+    parts.push(b(ESC, 0x64, Math.max(0, Math.min(255, feedLineas)))); // avance
+    parts.push(b(GS, 0x56, 66, 0)); // corte parcial
+  }
+  return Buffer.concat(parts);
+}
+
+module.exports = { construirTicket, construirRaster };
