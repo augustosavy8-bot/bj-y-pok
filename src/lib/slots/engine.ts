@@ -32,6 +32,8 @@ interface ReelDOM {
   strip: HTMLElement;
   /** Celdas finales visibles (top→bottom) tras la última parada. */
   finalCells: HTMLElement[];
+  /** Animación en curso, para cancelarla antes del siguiente giro. */
+  anim?: Animation;
 }
 
 const FILLER = 18; // fichas de relleno por giro (cuánto "gira" antes de parar)
@@ -120,6 +122,10 @@ export class SlotEngine {
     const { rows, cell, baseMs, symbolOrder } = this.o;
     const rd = this.reelEls[reel];
 
+    // Cancelar la animación del giro anterior (si quedó con fill:forwards) para
+    // no acumular animaciones sobre la misma tira.
+    rd.anim?.cancel();
+
     // Tira larga: FILLER fichas al azar + las `rows` finales = el resultado.
     // La ventana visible al final muestra exactamente esas últimas `rows`.
     rd.strip.textContent = "";
@@ -153,14 +159,14 @@ export class SlotEngine {
       ],
       { duration, easing: "cubic-bezier(0.16, 1, 0.3, 1)", fill: "forwards" }
     );
+    rd.anim = anim;
 
-    return anim.finished.then(() => {
-      // Recortar: dejar sólo las `rows` finales, tira arriba de nuevo.
-      rd.strip.style.top = "0px";
-      for (const el of Array.from(rd.strip.children)) {
-        if (!finalCells.includes(el as HTMLElement)) el.remove();
-      }
-    });
+    // La tira DESCANSA en endTop (fill:forwards): ahí la ventana muestra
+    // justo las `rows` finales (el resultado). No se recorta ni se resetea a
+    // top:0 — eso empujaría las celdas finales fuera del viewport. El próximo
+    // giro reconstruye la tira desde cero. `.catch` traga el rechazo si un
+    // giro posterior cancela esta animación.
+    return anim.finished.then(() => undefined).catch(() => undefined);
   }
 
   /** Ilumina las celdas ganadoras (coords [reel,row]). */
