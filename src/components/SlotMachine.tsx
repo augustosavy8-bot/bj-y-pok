@@ -134,6 +134,7 @@ export function SlotMachine({
         symbols: theme.symbols,
         symbolOrder,
         cell,
+        cellPad: theme.tile ? 0 : 6,
       });
       engine.render(gridDecorativa(cell));
       engineRef.current = engine;

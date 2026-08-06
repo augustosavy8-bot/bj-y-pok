@@ -23,6 +23,8 @@ export interface EngineOptions {
   symbolOrder: string[];
   /** Alto/ancho de cada celda en px. */
   cell?: number;
+  /** Padding interno de cada celda en px (0 para símbolos "tile" a sangre). */
+  cellPad?: number;
   /** Duración base del giro del primer rodillo (ms). */
   baseMs?: number;
 }
@@ -51,6 +53,7 @@ export class SlotEngine {
     this.mount = mount;
     this.o = {
       cell: 76,
+      cellPad: 6,
       baseMs: 800,
       ...opts,
     };
@@ -89,14 +92,14 @@ export class SlotEngine {
   }
 
   private makeCell(symbol: string, reel: number, row: number): HTMLElement {
-    const { cell, symbols } = this.o;
+    const { cell, cellPad, symbols } = this.o;
     const el = document.createElement("div");
     el.className = "reel-cell";
     el.dataset.reel = String(reel);
     el.dataset.row = String(row);
     el.style.cssText =
       `height:${cell}px;width:${cell}px;display:flex;align-items:center;justify-content:center;` +
-      `box-sizing:border-box;padding:6px`;
+      `box-sizing:border-box;padding:${cellPad}px`;
     const inner = document.createElement("div");
     inner.className = "reel-sym";
     inner.style.cssText = "width:100%;height:100%;display:flex;align-items:center;justify-content:center";

@@ -21,6 +21,12 @@ export interface SlotTheme {
    */
   logo?: string;
   /**
+   * true = los símbolos son "tiles" de celda completa (traen su propio fondo).
+   * La celda se renderiza SIN padding y la imagen a `cover`, así el rodillo
+   * queda continuo. false/omitido = símbolos flotantes centrados con padding.
+   */
+  tile?: boolean;
+  /**
    * SVG (string) por símbolo. La clave es el `symbol` de slot_symbols
    * ('club','diam','heart','spade','moon','seven','wild', ...). Cada SVG debe
    * escalar al contenedor (viewBox + width/height 100%).
