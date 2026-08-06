@@ -9,7 +9,7 @@
  * El admin los sigue viendo siempre, con un cartelito que dice "oculto", así
  * podés entrar a probarlos sin que los demás los vean.
  */
-export const JUEGOS_OCULTOS: readonly string[] = ["slots", "quiniela"];
+export const JUEGOS_OCULTOS: readonly string[] = ["quiniela"];
 
 export function estaOculto(juego: string): boolean {
   return JUEGOS_OCULTOS.includes(juego);
