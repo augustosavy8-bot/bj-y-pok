@@ -35,9 +35,48 @@ function ensure(): AudioContext | null {
   return ctx;
 }
 
+// Desbloqueo global: el contexto puede quedar suspendido si el giro nace de un
+// timer (auto-spin) o si el navegador lo suspendió (móvil/iOS). Cualquier gesto
+// del usuario lo reactiva, así los sonidos que llegan *después* del giro
+// (premio, giros gratis) tienen un contexto vivo donde agendarse.
+let listenersPuestos = false;
+function instalarDesbloqueo(): void {
+  if (listenersPuestos || typeof window === "undefined") return;
+  listenersPuestos = true;
+  const reactivar = () => {
+    if (ctx && ctx.state === "suspended") ctx.resume().catch(() => {});
+  };
+  for (const ev of ["pointerdown", "touchend", "keydown"]) {
+    window.addEventListener(ev, reactivar, { passive: true });
+  }
+}
+
+/**
+ * Ejecuta `fn` con el contexto GARANTIZADO en estado "running" y le pasa un
+ * `t0` (tiempo de arranque) coherente con ese estado. Clave del arreglo: si el
+ * contexto está suspendido, `currentTime` no avanza; agendar notas ahí las deja
+ * "en el pasado" cuando reanuda y se descartan (silencio). Por eso, si está
+ * suspendido, reanudamos y recién en el `.then` — con el `currentTime` ya
+ * fresco — agendamos.
+ */
+function withAudio(fn: (c: AudioContext, t0: number) => void): void {
+  const c = ensure();
+  if (!c || muted) return;
+  if (c.state === "suspended") {
+    c.resume()
+      .then(() => {
+        if (!muted && c.state === "running") fn(c, c.currentTime + 0.02);
+      })
+      .catch(() => {});
+  } else {
+    fn(c, c.currentTime);
+  }
+}
+
 /** Llamar en el primer gesto (click Girar) para habilitar el audio. */
 export function unlockAudio(): void {
   ensure();
+  instalarDesbloqueo();
 }
 export function setMuted(m: boolean): void {
   muted = m;
@@ -76,51 +115,52 @@ export class SlotSound {
 
   /** Whoosh de arranque del giro (ruido filtrado descendente). */
   spin(): void {
-    const c = ensure();
-    if (!c || !master || muted) return;
-    const dur = 0.34;
-    const buf = c.createBuffer(1, Math.floor(c.sampleRate * dur), c.sampleRate);
-    const d = buf.getChannelData(0);
-    for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / d.length);
-    const src = c.createBufferSource();
-    src.buffer = buf;
-    const bp = c.createBiquadFilter();
-    bp.type = "bandpass";
-    bp.Q.value = 1.1;
-    bp.frequency.setValueAtTime(1300, c.currentTime);
-    bp.frequency.exponentialRampToValueAtTime(380, c.currentTime + dur);
-    const g = c.createGain();
-    g.gain.value = 0.16;
-    src.connect(bp);
-    bp.connect(g);
-    g.connect(master);
-    src.start();
+    withAudio((c, t0) => {
+      if (!master) return;
+      const dur = 0.34;
+      const buf = c.createBuffer(1, Math.floor(c.sampleRate * dur), c.sampleRate);
+      const d = buf.getChannelData(0);
+      for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / d.length);
+      const src = c.createBufferSource();
+      src.buffer = buf;
+      const bp = c.createBiquadFilter();
+      bp.type = "bandpass";
+      bp.Q.value = 1.1;
+      bp.frequency.setValueAtTime(1300, t0);
+      bp.frequency.exponentialRampToValueAtTime(380, t0 + dur);
+      const g = c.createGain();
+      g.gain.value = 0.16;
+      src.connect(bp);
+      bp.connect(g);
+      g.connect(master);
+      src.start(t0);
+    });
   }
 
   /** Golpe seco de la parada de cada rodillo. */
   reelStop(i: number): void {
-    const c = ensure();
-    if (!c || muted) return;
-    const f = semis(this.p.base, this.p.scale[i % this.p.scale.length]) / 2;
-    note(f, c.currentTime, 0.09, "triangle", 0.22);
-    note(f / 2, c.currentTime, 0.12, "sine", 0.14);
+    withAudio((_c, t0) => {
+      const f = semis(this.p.base, this.p.scale[i % this.p.scale.length]) / 2;
+      note(f, t0, 0.09, "triangle", 0.22);
+      note(f / 2, t0, 0.12, "sine", 0.14);
+    });
   }
 
   /** Jingle ascendente de premio. level 1..3 = más largo/brillante. */
   win(level: number): void {
-    const c = ensure();
-    if (!c || muted) return;
-    const seq = this.p.scale.concat([12, 14]).slice(0, 3 + level);
-    const step = 0.085;
-    seq.forEach((s, i) => note(semis(this.p.base, s), c.currentTime + i * step, 0.17, this.p.wave, 0.26));
-    note(semis(this.p.base, 12), c.currentTime + seq.length * step, 0.45, this.p.wave, 0.2);
+    withAudio((_c, t0) => {
+      const seq = this.p.scale.concat([12, 14]).slice(0, 3 + level);
+      const step = 0.085;
+      seq.forEach((s, i) => note(semis(this.p.base, s), t0 + i * step, 0.17, this.p.wave, 0.26));
+      note(semis(this.p.base, 12), t0 + seq.length * step, 0.45, this.p.wave, 0.2);
+    });
   }
 
   /** Fanfarria de giros gratis. */
   freeSpins(): void {
-    const c = ensure();
-    if (!c || muted) return;
-    const motif = [0, 7, 12, 7, 12, 16, 19, 24];
-    motif.forEach((s, i) => note(semis(this.p.base, s), c.currentTime + i * 0.1, 0.24, this.p.wave, 0.28));
+    withAudio((_c, t0) => {
+      const motif = [0, 7, 12, 7, 12, 16, 19, 24];
+      motif.forEach((s, i) => note(semis(this.p.base, s), t0 + i * 0.1, 0.24, this.p.wave, 0.28));
+    });
   }
 }

@@ -7,6 +7,18 @@ const PUBLICAS = ["/login", "/invitacion", "/preview-mesa", "/preview-bj-mesa"];
 type CookieAEscribir = { name: string; value: string; options?: CookieOptions };
 
 export async function middleware(request: NextRequest) {
+  // Next prefetchea los <Link> al pasar el mouse / entrar al viewport. Esos
+  // requests NO se le muestran al usuario y no deben redirigir, pero igual
+  // pegaban a Supabase (getUser + perfiles) en cada uno → latencia y carga
+  // inútil que hacía sentir toda la navegación lenta. Los dejamos pasar sin
+  // tocar auth; la navegación REAL sí valida abajo, y las páginas/APIs siguen
+  // protegidas por su cuenta.
+  const esPrefetch =
+    request.headers.get("next-router-prefetch") === "1" ||
+    request.headers.get("purpose") === "prefetch" ||
+    (request.headers.get("sec-purpose") ?? "").includes("prefetch");
+  if (esPrefetch) return NextResponse.next({ request });
+
   let response = NextResponse.next({ request });
 
   const supabase = createServerClient(
