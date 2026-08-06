@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { NocturneShell } from "@/components/nocturne/NocturneShell";
 import { SlotEngine, type Grid } from "@/lib/slots/engine";
 import type { SlotTheme } from "@/lib/slots/themes/types";
 
@@ -240,10 +239,22 @@ export function SlotMachine({
 
   const sinFichas = free <= 0 && saldo < bet;
 
+  const sceneStyle = {
+    ...(theme.colors as Record<string, string>),
+    ...(theme.scene ? { "--scene": theme.scene } : {}),
+  } as React.CSSProperties;
+
   return (
-    <NocturneShell>
+    <div className="slot-scene" style={sceneStyle}>
       <style>{estilos}</style>
-      <div className="mx-auto max-w-[520px] px-3 py-6" style={theme.colors as React.CSSProperties}>
+
+      {/* Barra propia del slot (inmersiva) */}
+      <div className="slot-topbar">
+        <a href="/slots" className="slot-nav">← Slots</a>
+        <a href="/home" className="slot-nav">Inicio</a>
+      </div>
+
+      <div className="slot-body mx-auto max-w-[520px] px-3 pb-12">
         <div className="slot-machine">
           {/* Marquesina */}
           <div className="slot-marquee">
@@ -381,11 +392,21 @@ export function SlotMachine({
           </div>
         )}
       </div>
-    </NocturneShell>
+    </div>
   );
 }
 
 const estilos = `
+.slot-scene{min-height:100vh;color:var(--cream);position:relative;overflow-x:hidden;
+  background:var(--scene, radial-gradient(1000px 700px at 50% -8%, color-mix(in srgb,var(--brass) 18%,transparent), transparent 60%), linear-gradient(180deg,var(--cabinet-1),var(--cabinet-2)));}
+.slot-scene::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
+  background:radial-gradient(130% 100% at 50% 42%, transparent 52%, rgba(0,0,0,.55));}
+.slot-topbar{position:relative;z-index:2;display:flex;gap:12px;align-items:center;max-width:640px;margin:0 auto;padding:12px 16px 4px}
+.slot-nav{font-size:13px;font-weight:600;color:var(--brass);text-decoration:none;opacity:.85;padding:6px 11px;border-radius:9px;
+  box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--brass-deep) 55%,transparent);transition:opacity .15s,background .15s}
+.slot-nav:hover{opacity:1;background:color-mix(in srgb,var(--brass) 12%,transparent)}
+.slot-body{position:relative;z-index:1;padding-top:8px}
+
 .slot-machine{
   position:relative;border-radius:22px;padding:16px;
   background:linear-gradient(180deg,var(--cabinet-1),var(--cabinet-2));

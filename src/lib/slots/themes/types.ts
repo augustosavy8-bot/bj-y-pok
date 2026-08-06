@@ -10,6 +10,12 @@ export interface SlotTheme {
   /** Variables CSS del gabinete (se inyectan como estilos inline). */
   colors: Record<string, string>;
   /**
+   * Fondo de pantalla COMPLETA del slot (valor CSS `background`, puede tener
+   * varias capas). Al entrar al slot toda la pantalla toma esta estética. Si se
+   * omite, se usa un fallback genérico con los colores del tema.
+   */
+  scene?: string;
+  /**
    * SVG (string) por símbolo. La clave es el `symbol` de slot_symbols
    * ('club','diam','heart','spade','moon','seven','wild', ...). Cada SVG debe
    * escalar al contenedor (viewBox + width/height 100%).

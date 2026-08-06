@@ -116,6 +116,11 @@ export const faraones: SlotTheme = {
     "--cabinet-2": "#0f0b06",
     "--lcd": "#ffcf5a",
   },
+  // Templo egipcio de noche: cielo de lapislázuli arriba, resplandor de arena abajo.
+  scene:
+    "radial-gradient(1100px 720px at 50% -8%, rgba(60,110,175,.30), transparent 60%)," +
+    "radial-gradient(1000px 700px at 50% 120%, rgba(221,164,47,.22), transparent 55%)," +
+    "linear-gradient(180deg, #0a1220, #06090f)",
   symbols: { escarabajo, ankh, piramide, ojo, mascara },
 };
 

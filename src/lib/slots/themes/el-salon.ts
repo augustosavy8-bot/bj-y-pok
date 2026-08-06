@@ -102,6 +102,11 @@ export const elSalon: SlotTheme = {
     "--cabinet-2": "#0f0b06",
     "--lcd": "#ffcf5a",
   },
+  // Salón nocturno: resplandor dorado arriba, terciopelo rubí abajo.
+  scene:
+    "radial-gradient(1100px 720px at 50% -10%, rgba(231,196,119,.20), transparent 60%)," +
+    "radial-gradient(900px 620px at 50% 118%, rgba(150,26,34,.28), transparent 55%)," +
+    "linear-gradient(180deg, #17110a, #0b0806)",
   symbols: { club, diam, heart, spade, moon, seven, wild },
 };
 
