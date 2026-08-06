@@ -9,7 +9,7 @@ import type { SlotTheme } from "./types";
 // ============================================================
 
 const img = (name: string) =>
-  `<img src="/slots/clandestino/${name}.png" alt="" loading="lazy" style="width:100%;height:100%;object-fit:cover;display:block">`;
+  `<img src="/slots/clandestino/${name}.webp" alt="" loading="lazy" style="width:100%;height:100%;object-fit:cover;display:block">`;
 
 export const clandestino: SlotTheme = {
   slug: "clandestino",
@@ -32,8 +32,8 @@ export const clandestino: SlotTheme = {
   // Salón clandestino en penumbra: velo oscuro para que la UI resalte.
   scene:
     "linear-gradient(180deg, rgba(6,6,10,.45), rgba(6,6,10,.40) 40%, rgba(6,6,10,.80))," +
-    "url('/slots/clandestino/fondo.jpg') center 30%/cover no-repeat",
-  logo: "/slots/clandestino/logo.png",
+    "url('/slots/clandestino/fondo.webp') center 30%/cover no-repeat",
+  logo: "/slots/clandestino/logo.webp",
   sound: { base: 261.63, scale: [0, 3, 5, 6, 7, 10], wave: "triangle" },
   symbols: {
     fichas: img("fichas"),
