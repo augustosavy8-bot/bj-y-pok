@@ -87,6 +87,7 @@ export function SlotMachine({
   freeInicial: number;
 }) {
   const mountRef = useRef<HTMLDivElement | null>(null);
+  const windowRef = useRef<HTMLDivElement | null>(null);
   const engineRef = useRef<SlotEngine | null>(null);
   const clientSeedRef = useRef<string>("");
 
@@ -106,22 +107,43 @@ export function SlotMachine({
     .sort((a, b) => (a.sort ?? 0) - (b.sort ?? 0) || a.symbol.localeCompare(b.symbol))
     .map((s) => s.symbol);
 
-  // Montar el motor con una grilla inicial decorativa.
+  // Montar el motor. El tamaño de celda se calcula según el ancho disponible
+  // para que los `reels` rodillos SIEMPRE entren (responsive: móvil incluido).
   useEffect(() => {
     clientSeedRef.current = obtenerClientSeed();
-    if (!mountRef.current) return;
-    const engine = new SlotEngine(mountRef.current, {
-      reels: config.reels,
-      rows: config.rows,
-      symbols: theme.symbols,
-      symbolOrder,
-      cell: 72,
-    });
-    const inicial: Grid = Array.from({ length: config.reels }, (_, r) =>
-      Array.from({ length: config.rows }, (_, c) => symbolOrder[(r * 2 + c) % symbolOrder.length])
-    );
-    engine.render(inicial);
-    engineRef.current = engine;
+    const mount = mountRef.current;
+    const win = windowRef.current;
+    if (!mount || !win) return;
+
+    const gridDecorativa = (cell: number): Grid =>
+      Array.from({ length: config.reels }, (_, r) =>
+        Array.from({ length: config.rows }, (_, c) => symbolOrder[(r * 2 + c) % symbolOrder.length])
+      );
+
+    let curCell = 0;
+    const build = () => {
+      if (engineRef.current?.isSpinning) return; // no reconstruir en pleno giro
+      const PAD = 20; // padding L+R de .reel-window
+      const GAP = 8;
+      const avail = win.clientWidth - PAD;
+      const cell = Math.max(40, Math.min(76, Math.floor((avail - (config.reels - 1) * GAP) / config.reels)));
+      if (cell === curCell) return;
+      curCell = cell;
+      const engine = new SlotEngine(mount, {
+        reels: config.reels,
+        rows: config.rows,
+        symbols: theme.symbols,
+        symbolOrder,
+        cell,
+      });
+      engine.render(gridDecorativa(cell));
+      engineRef.current = engine;
+    };
+
+    build();
+    const ro = new ResizeObserver(build);
+    ro.observe(win);
+    return () => ro.disconnect();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -221,7 +243,7 @@ export function SlotMachine({
   return (
     <NocturneShell>
       <style>{estilos}</style>
-      <div className="mx-auto max-w-4xl px-3 py-6 sm:px-6" style={theme.colors as React.CSSProperties}>
+      <div className="mx-auto max-w-[520px] px-3 py-6" style={theme.colors as React.CSSProperties}>
         <div className="slot-machine">
           {/* Marquesina */}
           <div className="slot-marquee">
@@ -231,7 +253,7 @@ export function SlotMachine({
           </div>
 
           {/* Ventana de rodillos con vidrio + viñeta + línea de pago */}
-          <div className="reel-window">
+          <div className="reel-window" ref={windowRef}>
             <div ref={mountRef} className="reels" />
             <div className="reel-vignette" aria-hidden />
             <div className="reel-glass" aria-hidden />
@@ -384,7 +406,7 @@ const estilos = `
 .reel-window{position:relative;border-radius:14px;overflow:hidden;padding:10px;
   background:linear-gradient(180deg,#05060a,#0b0d13);
   box-shadow:inset 0 0 0 3px var(--brass-deep), inset 0 0 22px rgba(0,0,0,.9);}
-.reels{position:relative;z-index:1}
+.reels{position:relative;z-index:1;justify-content:center}
 .reel-viewport{background:linear-gradient(180deg,var(--reel-1),var(--reel-2));
   box-shadow:inset 0 0 0 1px rgba(255,255,255,.05), inset 0 10px 16px rgba(0,0,0,.6), inset 0 -10px 16px rgba(0,0,0,.6);}
 .reel-cell{border-top:1px solid rgba(255,255,255,.04)}
@@ -405,14 +427,14 @@ const estilos = `
 .tono-ok{color:var(--brass);text-shadow:0 0 10px rgba(231,196,119,.5)}
 .tono-err{color:#ff9a9a}.tono-info{color:var(--cream);opacity:.8}
 
-.lcd-row{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:6px}
-.lcd{display:flex;flex-direction:column;align-items:center;gap:2px;padding:8px 6px;border-radius:10px;
+.lcd-row{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:6px}
+.lcd{display:flex;flex-direction:column;align-items:center;gap:2px;padding:8px 4px;border-radius:10px;min-width:0;
   background:#070a06;box-shadow:inset 0 0 0 1px #2a2410, inset 0 3px 8px rgba(0,0,0,.9)}
-.lcd-label{font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:#8a7a3a}
-.lcd-val{font-family:ui-monospace,"Courier New",monospace;font-weight:700;font-size:20px;color:var(--lcd);
+.lcd-label{font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:#8a7a3a}
+.lcd-val{font-family:ui-monospace,"Courier New",monospace;font-weight:700;font-size:clamp(15px,4.6vw,21px);color:var(--lcd);
   text-shadow:0 0 8px rgba(255,207,90,.6)}
 
-.controls{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:14px}
+.controls{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:12px;margin-top:14px}
 .bet-ctrl{display:flex;align-items:center;gap:6px}
 .bet-btn{width:38px;height:38px;border-radius:50%;font-size:20px;font-weight:700;color:var(--ink);
   background:radial-gradient(circle at 50% 35%,#ffe9a8,var(--brass) 60%,var(--brass-deep));
