@@ -16,6 +16,11 @@ export interface SlotTheme {
    */
   scene?: string;
   /**
+   * URL de un logo (imagen) para la marquesina. Si se define, se muestra en
+   * lugar del título de texto.
+   */
+  logo?: string;
+  /**
    * SVG (string) por símbolo. La clave es el `symbol` de slot_symbols
    * ('club','diam','heart','spade','moon','seven','wild', ...). Cada SVG debe
    * escalar al contenedor (viewBox + width/height 100%).

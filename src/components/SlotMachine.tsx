@@ -258,7 +258,11 @@ export function SlotMachine({
         <div className="slot-machine">
           {/* Marquesina */}
           <div className="slot-marquee">
-            <div className="slot-title">{config.name}</div>
+            {theme.logo ? (
+              <img src={theme.logo} alt={config.name} className="slot-logo" />
+            ) : (
+              <div className="slot-title">{config.name}</div>
+            )}
             <div className="slot-sub">{config.tagline}</div>
             {free > 0 && <div className="slot-free">🎟 {free} GRATIS</div>}
           </div>
@@ -416,6 +420,7 @@ const estilos = `
 .slot-machine::before{content:"";position:absolute;inset:6px;border-radius:16px;pointer-events:none;
   box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--brass) 40%,transparent);}
 .slot-marquee{text-align:center;padding:6px 0 12px}
+.slot-logo{display:block;margin:0 auto 2px;max-width:100%;height:auto;max-height:130px;filter:drop-shadow(0 4px 10px rgba(0,0,0,.5))}
 .slot-title{font-family:Georgia,serif;font-weight:700;font-size:26px;letter-spacing:.06em;
   background:linear-gradient(180deg,#fff2c9,var(--brass) 45%,var(--brass-deep));
   -webkit-background-clip:text;background-clip:text;color:transparent;
