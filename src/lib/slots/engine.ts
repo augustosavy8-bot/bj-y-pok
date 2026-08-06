@@ -112,12 +112,14 @@ export class SlotEngine {
    * Anima todos los rodillos hasta `target` (grid[reel][row]). Resuelve cuando
    * el ÚLTIMO rodillo terminó. NO decide nada: sólo cae donde le dicen.
    */
-  async spin(target: Grid): Promise<void> {
+  async spin(target: Grid, onReelStop?: (reel: number) => void): Promise<void> {
     if (this.spinning) return;
     this.spinning = true;
     this.clearHighlight();
     try {
-      const proms = this.reelEls.map((_, r) => this.spinReel(r, target[r] ?? []));
+      const proms = this.reelEls.map((_, r) =>
+        this.spinReel(r, target[r] ?? []).then(() => onReelStop?.(r))
+      );
       await Promise.all(proms);
     } finally {
       this.spinning = false;

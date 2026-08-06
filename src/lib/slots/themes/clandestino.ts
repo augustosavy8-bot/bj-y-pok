@@ -34,6 +34,7 @@ export const clandestino: SlotTheme = {
     "linear-gradient(180deg, rgba(6,6,10,.45), rgba(6,6,10,.40) 40%, rgba(6,6,10,.80))," +
     "url('/slots/clandestino/fondo.jpg') center 30%/cover no-repeat",
   logo: "/slots/clandestino/logo.png",
+  sound: { base: 261.63, scale: [0, 3, 5, 6, 7, 10], wave: "triangle" },
   symbols: {
     fichas: img("fichas"),
     dados: img("dados"),

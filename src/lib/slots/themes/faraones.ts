@@ -121,6 +121,7 @@ export const faraones: SlotTheme = {
     "radial-gradient(1100px 720px at 50% -8%, rgba(60,110,175,.30), transparent 60%)," +
     "radial-gradient(1000px 700px at 50% 120%, rgba(221,164,47,.22), transparent 55%)," +
     "linear-gradient(180deg, #0a1220, #06090f)",
+  sound: { base: 293.66, scale: [0, 2, 3, 7, 8], wave: "sine" },
   symbols: { escarabajo, ankh, piramide, ojo, mascara },
 };
 

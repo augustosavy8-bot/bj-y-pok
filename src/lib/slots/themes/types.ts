@@ -1,3 +1,5 @@
+import type { SoundProfile } from "../sound";
+
 // Contrato de un TEMA de slot. Un tema es puramente estético: SVG de símbolos
 // y colores. La lógica (RNG, pagos) vive en la RPC; el motor (engine.ts) es
 // agnóstico al tema. Para sumar un slot nuevo alcanza con crear un tema como
@@ -26,6 +28,11 @@ export interface SlotTheme {
    * queda continuo. false/omitido = símbolos flotantes centrados con padding.
    */
   tile?: boolean;
+  /**
+   * Perfil de sonido del slot (nota base, escala, timbre). Hace que cada
+   * máquina suene distinta. Si se omite, usa un default.
+   */
+  sound?: SoundProfile;
   /**
    * SVG (string) por símbolo. La clave es el `symbol` de slot_symbols
    * ('club','diam','heart','spade','moon','seven','wild', ...). Cada SVG debe

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { SlotEngine, type Grid } from "@/lib/slots/engine";
 import type { SlotTheme } from "@/lib/slots/themes/types";
+import { SlotSound, unlockAudio, setMuted, isMuted } from "@/lib/slots/sound";
 
 // ── Config que llega del server (tablas slots / slot_symbols) ──
 export interface SlotConfig {
@@ -89,6 +90,11 @@ export function SlotMachine({
   const windowRef = useRef<HTMLDivElement | null>(null);
   const engineRef = useRef<SlotEngine | null>(null);
   const clientSeedRef = useRef<string>("");
+  const soundRef = useRef<SlotSound | null>(null);
+  const fxRef = useRef<HTMLDivElement | null>(null);
+  const countRef = useRef<number>(0);
+  const winTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const fsTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   const [saldo, setSaldo] = useState(saldoInicial);
   const [free, setFree] = useState(freeInicial);
@@ -96,6 +102,10 @@ export function SlotMachine({
   const [girando, setGirando] = useState(false);
   const [auto, setAuto] = useState(false);
   const [win, setWin] = useState(0);
+  const [winShown, setWinShown] = useState(0);
+  const [winFx, setWinFx] = useState<{ amount: number; big: boolean } | null>(null);
+  const [fsFx, setFsFx] = useState<number | null>(null);
+  const [mute, setMute] = useState(false);
   const [msg, setMsg] = useState<{ txt: string; tono: "ok" | "err" | "info" } | null>(null);
   const [ultimo, setUltimo] = useState<SpinResult | null>(null);
   const [hist, setHist] = useState<HistItem[]>([]);
@@ -110,6 +120,8 @@ export function SlotMachine({
   // para que los `reels` rodillos SIEMPRE entren (responsive: móvil incluido).
   useEffect(() => {
     clientSeedRef.current = obtenerClientSeed();
+    soundRef.current = new SlotSound(theme.sound);
+    setMute(isMuted());
     const mount = mountRef.current;
     const win = windowRef.current;
     if (!mount || !win) return;
@@ -147,6 +159,36 @@ export function SlotMachine({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Conteo animado de la ganancia (ease-out).
+  const contarHasta = useCallback((to: number) => {
+    cancelAnimationFrame(countRef.current);
+    if (to <= 0) { setWinShown(0); return; }
+    const start = performance.now();
+    const dur = 700;
+    const tick = (t: number) => {
+      const k = Math.min(1, (t - start) / dur);
+      setWinShown(Math.round(to * (1 - Math.pow(1 - k, 2))));
+      if (k < 1) countRef.current = requestAnimationFrame(tick);
+    };
+    countRef.current = requestAnimationFrame(tick);
+  }, []);
+
+  // Lluvia de monedas sobre la ventana de rodillos (DOM imperativo, sin re-render).
+  const lluviaMonedas = useCallback((n: number) => {
+    const layer = fxRef.current;
+    if (!layer) return;
+    for (let i = 0; i < n; i++) {
+      const c = document.createElement("span");
+      c.className = "coin";
+      c.style.left = 10 + Math.random() * 80 + "%";
+      c.style.setProperty("--dx", (Math.random() * 180 - 90).toFixed(0) + "px");
+      c.style.setProperty("--dur", (0.75 + Math.random() * 0.7).toFixed(2) + "s");
+      c.style.animationDelay = (Math.random() * 0.2).toFixed(2) + "s";
+      layer.appendChild(c);
+      c.addEventListener("animationend", () => c.remove());
+    }
+  }, []);
+
   const girar = useCallback(async () => {
     const engine = engineRef.current;
     if (!engine || girando) return;
@@ -158,7 +200,11 @@ export function SlotMachine({
     setGirando(true);
     setMsg(null);
     setWin(0);
+    setWinShown(0);
+    setWinFx(null);
     setUltimo(null);
+    unlockAudio();
+    soundRef.current?.spin();
     try {
       const r = await fetch("/api/slots/spin", {
         method: "POST",
@@ -173,18 +219,26 @@ export function SlotMachine({
       }
       const res = data as SpinResult;
 
-      await engine.spin(res.grid);
+      await engine.spin(res.grid, (r) => soundRef.current?.reelStop(r));
       engine.highlight(res.wins.flatMap((w) => w.cells));
 
       setSaldo(res.new_balance);
       setFree(res.free_remaining);
       setWin(res.total_win);
+      contarHasta(res.total_win);
       setUltimo(res);
       setHist((h) =>
         [{ spinId: res.spin_id, bet, total: res.total_win, mult: res.mult, wasFree: res.was_free }, ...h].slice(0, 12)
       );
 
       if (res.total_win > 0) {
+        const ratio = res.total_win / bet;
+        const level = ratio >= 15 ? 3 : ratio >= 5 ? 2 : 1;
+        soundRef.current?.win(level);
+        lluviaMonedas(level >= 3 ? 28 : level >= 2 ? 18 : 12);
+        setWinFx({ amount: res.total_win, big: level >= 2 });
+        clearTimeout(winTimer.current);
+        winTimer.current = setTimeout(() => setWinFx(null), level >= 2 ? 2400 : 1700);
         const extra = res.mult > 1 ? ` ×${res.mult}` : "";
         const fs = res.free_awarded > 0 ? ` · +${res.free_awarded} gratis` : "";
         setMsg({ txt: `¡Ganaste ${fmt(res.total_win)}${extra}!${fs}`, tono: "ok" });
@@ -192,6 +246,13 @@ export function SlotMachine({
         setMsg({ txt: `+${res.free_awarded} giros gratis`, tono: "ok" });
       } else {
         setMsg({ txt: res.was_free ? "Giro gratis sin premio." : "Sin premio.", tono: "info" });
+      }
+
+      if (res.free_awarded > 0) {
+        soundRef.current?.freeSpins();
+        setFsFx(res.free_awarded);
+        clearTimeout(fsTimer.current);
+        fsTimer.current = setTimeout(() => setFsFx(null), 2400);
       }
     } catch (e) {
       setMsg({ txt: e instanceof Error ? e.message : "Error de red.", tono: "err" });
@@ -238,6 +299,13 @@ export function SlotMachine({
     setBet(config.bet_options[j]);
   };
 
+  const toggleMute = () => {
+    const m = !mute;
+    setMute(m);
+    setMuted(m);
+    if (!m) unlockAudio();
+  };
+
   const sinFichas = free <= 0 && saldo < bet;
 
   const sceneStyle = {
@@ -253,7 +321,21 @@ export function SlotMachine({
       <div className="slot-topbar">
         <a href="/slots" className="slot-nav">← Slots</a>
         <a href="/home" className="slot-nav">Inicio</a>
+        <button className="slot-nav slot-mute" onClick={toggleMute} aria-label={mute ? "Activar sonido" : "Silenciar"}>
+          {mute ? "🔇" : "🔊"}
+        </button>
       </div>
+
+      {/* Anuncio de giros gratis */}
+      {fsFx !== null && (
+        <div className="fs-overlay" aria-hidden>
+          <div className="fs-card">
+            <div className="fs-spark">✦</div>
+            <div className="fs-num">{fsFx}</div>
+            <div className="fs-txt">GIROS GRATIS</div>
+          </div>
+        </div>
+      )}
 
       <div className="slot-body mx-auto max-w-[520px] px-3 pb-12">
         <div className="slot-machine">
@@ -274,6 +356,13 @@ export function SlotMachine({
             <div className="reel-vignette" aria-hidden />
             <div className="reel-glass" aria-hidden />
             <div className="payline" aria-hidden />
+            <div className="fx-layer" ref={fxRef} aria-hidden />
+            {winFx && (
+              <div className={`win-banner ${winFx.big ? "big" : ""}`} aria-hidden>
+                <div className="win-banner-txt">¡GANASTE!</div>
+                <div className="win-banner-amt">{fmt(winFx.amount)}</div>
+              </div>
+            )}
           </div>
 
           {/* Mensaje */}
@@ -291,9 +380,9 @@ export function SlotMachine({
               <span className="lcd-label">Apuesta</span>
               <span className="lcd-val">{fmt(bet)}</span>
             </div>
-            <div className="lcd">
+            <div className={`lcd ${win > 0 ? "lcd-win" : ""}`}>
               <span className="lcd-label">Ganancia</span>
-              <span className="lcd-val">{fmt(win)}</span>
+              <span className="lcd-val">{fmt(winShown)}</span>
             </div>
           </div>
 
@@ -449,6 +538,44 @@ const estilos = `
     linear-gradient(105deg,rgba(255,255,255,0) 62%,rgba(255,255,255,.10) 68%,rgba(255,255,255,0) 72%);}
 .payline{position:absolute;left:10px;right:10px;top:50%;height:2px;z-index:2;pointer-events:none;transform:translateY(-1px);
   background:linear-gradient(90deg,transparent,color-mix(in srgb,var(--brass) 75%,transparent),transparent);opacity:.5}
+
+.slot-mute{margin-left:auto;cursor:pointer;line-height:1}
+
+/* Lluvia de monedas */
+.fx-layer{position:absolute;inset:0;z-index:4;pointer-events:none;overflow:hidden}
+.coin{position:absolute;top:62%;width:16px;height:16px;border-radius:50%;
+  background:radial-gradient(circle at 35% 30%,#fff3b0,var(--brass) 55%,var(--brass-deep));
+  box-shadow:0 0 7px var(--brass),inset 0 0 0 1px var(--brass-deep);opacity:0;
+  animation:coinFly var(--dur,1s) cubic-bezier(.2,.7,.3,1) forwards}
+@keyframes coinFly{0%{transform:translate(0,20px) scale(.5);opacity:0}
+  15%{opacity:1}100%{transform:translate(var(--dx,0),-200px) scale(1) rotate(240deg);opacity:0}}
+
+/* Cartel de premio */
+.win-banner{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:5;pointer-events:none;
+  text-align:center;animation:winPop .45s cubic-bezier(.2,1.4,.4,1)}
+.win-banner-txt{font-family:Georgia,serif;font-weight:700;font-size:clamp(15px,4.5vw,24px);letter-spacing:.04em;
+  color:var(--brass);text-shadow:0 2px 0 rgba(0,0,0,.6),0 0 14px var(--brass)}
+.win-banner-amt{font-family:ui-monospace,monospace;font-weight:800;font-size:clamp(26px,9vw,50px);
+  color:var(--cream);text-shadow:0 2px 0 rgba(0,0,0,.7),0 0 20px var(--brass)}
+.win-banner.big .win-banner-amt{animation:winPulse .5s ease-in-out infinite alternate}
+@keyframes winPop{0%{transform:translate(-50%,-50%) scale(.3);opacity:0}
+  60%{transform:translate(-50%,-50%) scale(1.12);opacity:1}100%{transform:translate(-50%,-50%) scale(1)}}
+@keyframes winPulse{to{transform:scale(1.08);filter:drop-shadow(0 0 12px var(--brass))}}
+.lcd-win .lcd-val{animation:lcdWin .5s ease-in-out infinite alternate}
+@keyframes lcdWin{to{color:#fff;text-shadow:0 0 15px var(--brass)}}
+
+/* Anuncio de giros gratis */
+.fs-overlay{position:fixed;inset:0;z-index:60;display:flex;align-items:center;justify-content:center;pointer-events:none;
+  background:radial-gradient(circle,color-mix(in srgb,var(--ink) 55%,transparent),color-mix(in srgb,var(--ink) 90%,transparent));
+  animation:fadeIn .25s ease}
+.fs-card{text-align:center;animation:fsPop .5s cubic-bezier(.2,1.5,.4,1)}
+.fs-spark{font-size:42px;color:var(--brass);filter:drop-shadow(0 0 14px var(--brass));animation:spin360 3s linear infinite}
+.fs-num{font-family:Georgia,serif;font-weight:800;font-size:clamp(64px,20vw,130px);line-height:1;color:var(--brass);
+  text-shadow:0 3px 0 rgba(0,0,0,.6),0 0 30px var(--brass)}
+.fs-txt{font-weight:800;letter-spacing:.22em;font-size:clamp(16px,4.4vw,28px);color:var(--cream);text-shadow:0 0 12px var(--brass)}
+@keyframes fsPop{0%{transform:scale(.4);opacity:0}60%{transform:scale(1.12);opacity:1}100%{transform:scale(1)}}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes spin360{to{transform:rotate(360deg)}}
 
 .slot-msg{min-height:1.6rem;text-align:center;font-size:14px;margin-top:10px;font-weight:600}
 .tono-ok{color:var(--brass);text-shadow:0 0 10px rgba(231,196,119,.5)}
