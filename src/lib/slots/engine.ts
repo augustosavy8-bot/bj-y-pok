@@ -36,7 +36,10 @@ interface ReelDOM {
   anim?: Animation;
 }
 
-const FILLER = 18; // fichas de relleno por giro (cuánto "gira" antes de parar)
+// Relleno base por rodillo. La cantidad real escala con el factor del rodillo,
+// para que TODOS giren a la misma velocidad y los de la derecha sólo giren MÁS
+// (más vueltas), no más lento.
+const BASE_FILLER = 14;
 
 export class SlotEngine {
   private mount: HTMLElement;
@@ -48,7 +51,7 @@ export class SlotEngine {
     this.mount = mount;
     this.o = {
       cell: 76,
-      baseMs: 720,
+      baseMs: 800,
       ...opts,
     };
   }
@@ -126,47 +129,48 @@ export class SlotEngine {
     // no acumular animaciones sobre la misma tira.
     rd.anim?.cancel();
 
-    // Tira larga: FILLER fichas al azar + las `rows` finales = el resultado.
-    // La ventana visible al final muestra exactamente esas últimas `rows`.
+    // Parada escalonada: los rodillos de la derecha giran MÁS (más vueltas),
+    // no más lento. La distancia escala con el factor → velocidad constante.
+    const factor = 1 + Math.pow(reel / 2, 2);
+    const duration = baseMs * factor;
+    const filler = Math.round(BASE_FILLER * factor);
+
+    // Tira: arriba el RESULTADO (las `rows` finales), debajo el relleno que se
+    // ve pasar. Se anima `top` desde -(filler) hasta 0, así en reposo (top:0) la
+    // ventana muestra justo el resultado. Como el reposo coincide con top:0, el
+    // fill:forwards no pelea con el recorte posterior (bug anterior).
     rd.strip.textContent = "";
     const finalCells: HTMLElement[] = [];
-    const totalCells = FILLER + rows;
-    for (let i = 0; i < totalCells; i++) {
-      const isFinal = i >= FILLER;
-      const sym = isFinal
-        ? column[i - FILLER]
-        : symbolOrder[(Math.random() * symbolOrder.length) | 0];
-      const el = this.makeCell(sym, reel, isFinal ? i - FILLER : -1);
+    for (let c = 0; c < rows; c++) {
+      const el = this.makeCell(column[c] ?? symbolOrder[0], reel, c);
       rd.strip.appendChild(el);
-      if (isFinal) finalCells.push(el);
+      finalCells.push(el);
+    }
+    for (let i = 0; i < filler; i++) {
+      const sym = symbolOrder[(Math.random() * symbolOrder.length) | 0];
+      rd.strip.appendChild(this.makeCell(sym, reel, -1));
     }
     rd.finalCells = finalCells;
 
-    // Desplazamiento: empezar mostrando el tope y bajar hasta que la ventana
-    // quede sobre las últimas `rows` fichas.
-    const endTop = -((totalCells - rows) * cell);
-    rd.strip.style.top = "0px";
-
-    // Parada escalonada: rodillos más a la derecha tardan más.
-    const factor = 1 + Math.pow(reel / 2, 2);
-    const duration = baseMs * factor;
-
+    const startTop = -(filler * cell);
     const anim = rd.strip.animate(
       [
+        { top: `${startTop}px`, filter: "blur(0px)" },
+        { top: `${startTop / 2}px`, filter: "blur(3px)", offset: 0.5 },
         { top: "0px", filter: "blur(0px)" },
-        { top: `${endTop * 0.5}px`, filter: "blur(3px)", offset: 0.5 },
-        { top: `${endTop}px`, filter: "blur(0px)" },
       ],
-      { duration, easing: "cubic-bezier(0.16, 1, 0.3, 1)", fill: "forwards" }
+      { duration, easing: "cubic-bezier(0.12, 0.7, 0.2, 1)", fill: "forwards" }
     );
     rd.anim = anim;
 
-    // La tira DESCANSA en endTop (fill:forwards): ahí la ventana muestra
-    // justo las `rows` finales (el resultado). No se recorta ni se resetea a
-    // top:0 — eso empujaría las celdas finales fuera del viewport. El próximo
-    // giro reconstruye la tira desde cero. `.catch` traga el rechazo si un
-    // giro posterior cancela esta animación.
-    return anim.finished.then(() => undefined).catch(() => undefined);
+    return anim.finished
+      .then(() => {
+        // Recortar el relleno; quedan sólo las `rows` finales en top:0.
+        for (const el of Array.from(rd.strip.children)) {
+          if (!finalCells.includes(el as HTMLElement)) el.remove();
+        }
+      })
+      .catch(() => undefined);
   }
 
   /** Ilumina las celdas ganadoras (coords [reel,row]). */
