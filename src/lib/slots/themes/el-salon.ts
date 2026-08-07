@@ -107,6 +107,7 @@ export const elSalon: SlotTheme = {
     "radial-gradient(1100px 720px at 50% -10%, rgba(231,196,119,.20), transparent 60%)," +
     "radial-gradient(900px 620px at 50% 118%, rgba(150,26,34,.28), transparent 55%)," +
     "linear-gradient(180deg, #17110a, #0b0806)",
+  card: "/slots/cards/el-salon.webp",
   sound: { base: 329.63, scale: [0, 2, 4, 7, 9], wave: "triangle" },
   symbols: { club, diam, heart, spade, moon, seven, wild },
 };

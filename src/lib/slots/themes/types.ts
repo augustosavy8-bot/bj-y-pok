@@ -23,6 +23,12 @@ export interface SlotTheme {
    */
   logo?: string;
   /**
+   * URL de una imagen de presentación (banner 16:9) para la card del hub de
+   * slots (/slots). Si se define, la card la muestra de fondo en vez del layout
+   * plano. Si se omite, se usa el fallback con el símbolo wild.
+   */
+  card?: string;
+  /**
    * true = los símbolos son "tiles" de celda completa (traen su propio fondo).
    * La celda se renderiza SIN padding y la imagen a `cover`, así el rodillo
    * queda continuo. false/omitido = símbolos flotantes centrados con padding.
