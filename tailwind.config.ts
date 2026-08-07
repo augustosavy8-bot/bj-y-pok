@@ -49,6 +49,7 @@ const config: Config = {
       },
       fontFamily: {
         sans: ["var(--font-inter)", "ui-sans-serif", "system-ui", "-apple-system", "Segoe UI", "Roboto", "sans-serif"],
+        serif: ["var(--font-serif)", "Georgia", "Cambria", "Times New Roman", "serif"],
       },
       boxShadow: {
         // Nocturne: borde hairline + oscuridad ambiental

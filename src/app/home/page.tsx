@@ -7,7 +7,33 @@ import { NocturneShell } from "@/components/nocturne/NocturneShell";
 import { ChipsCanvas } from "@/components/nocturne/ChipsCanvas";
 import { AvisoJugadores } from "@/components/AvisoJugadores";
 import { estaOculto, puedeVerJuego } from "@/lib/juegos-visibles";
+import { TEMAS } from "@/lib/slots/themes";
 import type { Mesa } from "@/lib/types";
+
+// Slots para el teaser del home (del registro de temas: slug/nombre/banner).
+const SLOTS_HOME = Object.values(TEMAS);
+
+// Iconos de línea para stats (heredan color por currentColor).
+const IcoRodillos = (
+  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="3" y="6" width="18" height="12" rx="2" /><path d="M9 6v12M15 6v12" />
+  </svg>
+);
+const IcoLineas = (
+  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="3" y="4" width="18" height="16" rx="2" /><path d="M3 9.3h18M3 14.6h18" />
+  </svg>
+);
+const IcoJugadores = (
+  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="9" cy="8" r="3" /><path d="M3 20c0-3 3-5 6-5s6 2 6 5" /><path d="M16 6a3 3 0 0 1 0 6" />
+  </svg>
+);
+const IcoMazos = (
+  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="4" y="4" width="16" height="16" rx="2" /><path d="M4 9h16M9 9v11" />
+  </svg>
+);
 
 type Juego = "poker_holdem" | "blackjack";
 type Cat = "todas" | Juego;
@@ -120,13 +146,11 @@ export default function HomePage() {
         <ChipsCanvas density={0.45} />
         <div className="relative z-[2] mx-auto grid max-w-6xl grid-cols-1 items-start gap-10 px-4 py-16 sm:px-8 lg:grid-cols-[1fr_360px] lg:py-20">
           <div className="max-w-xl">
-            <div className="mb-4 text-[11px] uppercase tracking-[0.14em] text-tinta/60">
-              Blackjack · Póker · Mesa clásica
-            </div>
-            <h1 className="text-[clamp(38px,5vw,58px)] font-medium leading-[1.04] tracking-tight text-balance">
-              La mesa está
-              <br />
-              <span className="text-acento-300">siempre servida.</span>
+            <span className="inline-flex items-center gap-2 text-[13px] uppercase tracking-[0.16em] text-[#e7c477]">
+              <span aria-hidden>✦</span> Blackjack · Póker · Slots
+            </span>
+            <h1 className="mt-2 font-serif text-[clamp(42px,5.4vw,66px)] font-semibold leading-[1.02] tracking-tight text-balance">
+              La mesa está <span className="text-acento-300">siempre servida.</span>
             </h1>
             <p className="mt-4 max-w-md text-[17px] leading-relaxed text-tinta/75">
               Blackjack y póker con reglas publicadas por mesa y reparto RNG del lado del
@@ -197,34 +221,34 @@ export default function HomePage() {
       {/* Mesa de la casa: siempre abierta, sin código */}
       {casa.length > 0 && (
         <section id="casa" className="mx-auto max-w-6xl px-4 pt-14 sm:px-8">
-          <div className="mb-4">
-            <h2 className="text-[26px] font-medium">La mesa de la casa</h2>
+          <div className="mb-5">
+            <span className="text-[12px] uppercase tracking-[0.16em] text-[#e7c477]">
+              <span aria-hidden>✦</span> En vivo
+            </span>
+            <h2 className="font-serif text-[34px] font-semibold leading-tight">La mesa de la casa</h2>
             <p className="m-0 text-[13px] text-tinta/55">
               Abierta las 24 horas. Entrás y jugás: no hace falta ningún código.
             </p>
           </div>
 
-          <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+          <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
             {casa.map((m) => (
               <div
                 key={m.codigo_sala}
-                className="ncard overflow-hidden border border-acento/30 p-0 transition hover:border-acento/60 hover:shadow-2xl"
+                className="group overflow-hidden rounded-2xl border border-[#d8b46a]/18 bg-gradient-to-b from-[#1b1d2c] to-[#15161f] transition hover:-translate-y-0.5 hover:border-[#d8b46a]/45 hover:shadow-2xl"
               >
-                {/* Banner del juego con el nombre superpuesto */}
+                {/* Banner del juego */}
                 <div className="relative aspect-[16/9] w-full overflow-hidden">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={BANNER[m.tipo_juego] ?? BANNER.poker_holdem}
                     alt={NOMBRE_JUEGO[m.tipo_juego] ?? m.tipo_juego}
                     loading="lazy"
-                    className="absolute inset-0 h-full w-full object-cover"
+                    className="absolute inset-0 h-full w-full object-cover transition duration-500 group-hover:scale-105"
                   />
                   <div
                     className="absolute inset-0"
-                    style={{
-                      background:
-                        "linear-gradient(180deg, rgba(5,9,11,.15) 0%, rgba(5,9,11,0) 34%, rgba(5,9,11,.9) 100%)",
-                    }}
+                    style={{ background: "linear-gradient(180deg, rgba(5,9,11,.1) 55%, rgba(5,9,11,.72))" }}
                   />
                   <div className="absolute left-3 top-3 inline-flex items-center gap-2 rounded bg-black/45 px-2 py-1 backdrop-blur">
                     <span className="relative flex h-2 w-2">
@@ -235,34 +259,36 @@ export default function HomePage() {
                       Abierta 24 hs
                     </span>
                   </div>
-                  <div className="absolute inset-x-0 bottom-0 p-4">
-                    <div
-                      className="text-[22px] font-semibold leading-tight text-white"
-                      style={{ textShadow: "0 2px 10px rgba(0,0,0,.75)" }}
-                    >
-                      {NOMBRE_JUEGO[m.tipo_juego] ?? m.tipo_juego}
-                    </div>
-                    <div className="text-[13px] text-white/75">
-                      {m.jugadores === 0
-                        ? "Mesa libre · sos el primero"
-                        : `${m.jugadores} ${m.jugadores === 1 ? "jugador sentado" : "jugadores sentados"}`}
-                    </div>
-                  </div>
                 </div>
 
-                {/* Cuerpo: datos + botón de entrada */}
-                <div className="p-5 pt-4">
-                  <div className="flex flex-wrap gap-1.5 text-[11px]">
+                {/* Cuerpo: nombre serif + divisor + stats + botón */}
+                <div className="p-5 pt-4 text-center">
+                  <div className="font-serif text-[25px] font-semibold leading-tight text-[#e7c477]">
+                    {NOMBRE_JUEGO[m.tipo_juego] ?? m.tipo_juego}
+                  </div>
+                  <div className="mt-0.5 text-[13px] text-tinta/55">
+                    {m.jugadores === 0
+                      ? "Mesa libre · sos el primero"
+                      : `${m.jugadores} ${m.jugadores === 1 ? "jugador sentado" : "jugadores sentados"}`}
+                  </div>
+                  <div className="divider-diamante my-3" aria-hidden>◆</div>
+                  <div className="flex flex-wrap items-center justify-center gap-x-3.5 gap-y-1.5 text-[12.5px] text-tinta/72">
                     {m.apuesta_min !== null && (
-                      <span className="rounded bg-white/[0.06] px-2 py-0.5 text-tinta/70">
-                        Apuesta {m.apuesta_min}–{m.apuesta_max}
-                      </span>
+                      <>
+                        <span className="inline-flex items-center gap-1.5 text-[#e7c477]/85">
+                          {IcoJugadores}
+                          <span className="text-tinta/75">Apuesta {m.apuesta_min}–{m.apuesta_max}</span>
+                        </span>
+                        <span className="h-4 w-px bg-white/15" />
+                      </>
                     )}
-                    <span className="rounded bg-white/[0.06] px-2 py-0.5 text-tinta/70">
-                      {m.es_practica ? "Práctica" : `Entrada ${m.creditos_minimos} créditos`}
+                    <span className="inline-flex items-center gap-1.5 text-[#e7c477]/85">
+                      <span className="text-tinta/75">{m.es_practica ? "Práctica" : `Entrada ${m.creditos_minimos}`}</span>
                     </span>
-                    <span className="rounded bg-white/[0.06] px-2 py-0.5 text-tinta/70">
-                      {m.cantidad_mazos} mazos · RNG
+                    <span className="h-4 w-px bg-white/15" />
+                    <span className="inline-flex items-center gap-1.5 text-[#e7c477]/85">
+                      {IcoMazos}
+                      <span className="text-tinta/75">{m.cantidad_mazos} mazos · RNG</span>
                     </span>
                   </div>
 
@@ -296,75 +322,85 @@ export default function HomePage() {
         </section>
       )}
 
-      {/* Otros juegos. Cuáles se muestran sale de src/lib/juegos-visibles.ts */}
+      {/* Slots. La visibilidad sale de src/lib/juegos-visibles.ts */}
       {puedeVerJuego("slots", esAdmin) && (
       <section id="rapidos" className="mx-auto max-w-6xl px-4 pt-14 sm:px-8">
-        <div className="mb-4 flex flex-wrap items-baseline gap-x-3">
-          <h2 className="text-[26px] font-medium">Otros juegos</h2>
-          {estaOculto("slots") && esAdmin && (
-            <span className="rounded bg-amber-400/15 px-2 py-0.5 text-[11px] text-amber-300">
-              ocultos para los jugadores · sólo los ves vos
+        <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <span className="inline-flex items-center gap-2 text-[12px] uppercase tracking-[0.16em] text-[#e7c477]">
+              <span aria-hidden>✦</span> Máquinas
+              {estaOculto("slots") && esAdmin && (
+                <span className="rounded bg-amber-400/15 px-2 py-0.5 text-[10px] normal-case tracking-normal text-amber-300">
+                  ocultas · sólo las ves vos
+                </span>
+              )}
             </span>
-          )}
-          <p className="m-0 w-full text-[13px] text-tinta/55">
-            No hace falta que haya nadie más conectado.
-          </p>
+            <h2 className="font-serif text-[34px] font-semibold leading-tight">Slots</h2>
+            <p className="m-0 text-[13px] text-tinta/55">Cuatro máquinas temáticas · 5 rodillos · RNG del servidor.</p>
+          </div>
+          <a href="/slots" className="text-[14px] text-acento hover:underline">Ver todas →</a>
         </div>
 
-        <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
-          {puedeVerJuego("slots", esAdmin) && (
-          <a
-            href="/slots"
-            className="group block overflow-hidden rounded-2xl border border-oro/25 transition hover:border-oro/55 hover:shadow-2xl"
-          >
-            {/* Banner (montaje de las 4 máquinas) con título superpuesto */}
-            <div className="relative aspect-[16/9] w-full overflow-hidden">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src="/slots/cards/hub.webp"
-                alt="Slots"
-                loading="lazy"
-                className="absolute inset-0 h-full w-full object-cover transition duration-500 group-hover:scale-105"
-              />
-              <div
-                className="absolute inset-0"
-                style={{
-                  background:
-                    "linear-gradient(180deg, rgba(8,6,3,.35) 0%, rgba(8,6,3,0) 30%, rgba(8,6,3,.9) 100%)",
-                }}
-              />
-              <span className="absolute left-4 top-4 rounded bg-black/45 px-2 py-0.5 text-[10px] uppercase tracking-[0.14em] text-oro backdrop-blur">
-                Siempre disponible
-              </span>
-              <div className="absolute inset-x-0 bottom-0 p-4">
-                <div
-                  className="text-[24px] font-semibold leading-tight"
-                  style={{ color: "var(--color-gold, #e7c477)", textShadow: "0 2px 10px rgba(0,0,0,.75)" }}
-                >
-                  Slots
+        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+          {SLOTS_HOME.map((t) => {
+            const stats = (t.tagline ?? "").split("·").map((x) => x.trim()).filter(Boolean);
+            return (
+              <a
+                key={t.slug}
+                href={`/slots/${t.slug}`}
+                className="group overflow-hidden rounded-2xl border border-[#d8b46a]/18 bg-gradient-to-b from-[#1b1d2c] to-[#15161f] transition hover:-translate-y-0.5 hover:border-[#d8b46a]/45 hover:shadow-2xl"
+              >
+                <div className="relative aspect-[16/9] overflow-hidden">
+                  {t.card && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={t.card}
+                      alt={t.displayName}
+                      loading="lazy"
+                      className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
+                    />
+                  )}
+                  <div
+                    className="absolute inset-0"
+                    style={{ background: "linear-gradient(180deg, rgba(10,12,20,0) 55%, rgba(10,12,20,.85))" }}
+                  />
                 </div>
-                <div className="text-[13px] text-white/75">
-                  Cuatro máquinas temáticas · 5 rodillos · RNG del servidor
+                <div className="p-3.5 text-center">
+                  <div className="font-serif text-[20px] font-semibold leading-tight text-[#e7c477]">{t.displayName}</div>
+                  <div className="divider-diamante my-2" aria-hidden>◆</div>
+                  <div className="flex items-center justify-center gap-2.5 text-[11.5px] text-tinta/70">
+                    <span className="inline-flex items-center gap-1 text-[#e7c477]/85">
+                      {IcoRodillos}
+                      <span className="text-tinta/75">{stats[0] ?? "5 rodillos"}</span>
+                    </span>
+                    {stats[1] && (
+                      <>
+                        <span className="h-3.5 w-px bg-white/15" />
+                        <span className="inline-flex items-center gap-1 text-[#e7c477]/85">
+                          {IcoLineas}
+                          <span className="text-tinta/75">{stats[1]}</span>
+                        </span>
+                      </>
+                    )}
+                  </div>
+                  <span className="mt-3 flex w-full items-center justify-center rounded-lg border border-acento py-2 text-[14px] text-acento transition group-hover:bg-acento/10">
+                    Jugar →
+                  </span>
                 </div>
-              </div>
-            </div>
-            <div className="flex items-center justify-between px-4 py-3">
-              <div className="flex flex-wrap gap-1.5 text-[11px]">
-                <span className="rounded bg-white/[0.06] px-2 py-0.5 text-tinta/70">4 máquinas</span>
-                <span className="rounded bg-white/[0.06] px-2 py-0.5 text-tinta/70">RNG del servidor</span>
-              </div>
-              <span className="nbtn nbtn-primary px-5 py-2 text-[15px]">Girar →</span>
-            </div>
-          </a>
-          )}
+              </a>
+            );
+          })}
         </div>
       </section>
       )}
 
       {/* Mesas */}
       <section id="mesas" className="mx-auto max-w-6xl px-4 pt-14 sm:px-8">
-        <div className="mb-4">
-          <h2 className="text-[26px] font-medium">Tus mesas</h2>
+        <div className="mb-5">
+          <span className="text-[12px] uppercase tracking-[0.16em] text-[#e7c477]">
+            <span aria-hidden>✦</span> Tu juego
+          </span>
+          <h2 className="font-serif text-[34px] font-semibold leading-tight">Tus mesas</h2>
           <p className="m-0 text-[13px] text-tinta/55">Las mesas donde estás sentado o que dirigís.</p>
         </div>
 
