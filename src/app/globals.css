@@ -82,6 +82,28 @@ body {
   @apply rounded-md bg-superficie;
 }
 
+/* — Estética "salón": divisor con diamante dorado y líneas que se desvanecen. — */
+.divider-diamante {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  color: rgba(216, 180, 106, 0.6);
+  font-size: 11px;
+}
+.divider-diamante::before,
+.divider-diamante::after {
+  content: "";
+  height: 1px;
+  width: 58px;
+}
+.divider-diamante::before {
+  background: linear-gradient(to left, rgba(216, 180, 106, 0.55), transparent);
+}
+.divider-diamante::after {
+  background: linear-gradient(to right, rgba(216, 180, 106, 0.55), transparent);
+}
+
 /* ============================================================ */
 /*  Legado club-privado — usado por las vistas de juego todavía  */
 /* ============================================================ */
