@@ -35,16 +35,57 @@ function ensure(): AudioContext | null {
   return ctx;
 }
 
+// --- iOS: promover la sesión de audio a "playback" ------------------------
+// En iOS, el audio de la Web Audio API se trata como "ambiente" y lo silencia
+// el INTERRUPTOR DE SILENCIO físico del iPhone, aunque el contexto esté activo.
+// Truco estándar: reproducir un <audio> con contenido silencioso en el primer
+// gesto. Al sonar un elemento multimedia, iOS promueve la sesión a "playback",
+// y a partir de ahí la Web Audio suena aunque el switch esté en silencio (y
+// respeta los botones de volumen). El WAV es silencio puro: no se oye nada.
+function wavSilencioso(): string {
+  const sr = 8000, n = 1600; // 0.2s mono 8-bit
+  const buf = new ArrayBuffer(44 + n);
+  const dv = new DataView(buf);
+  const escribir = (o: number, s: string) => {
+    for (let i = 0; i < s.length; i++) dv.setUint8(o + i, s.charCodeAt(i));
+  };
+  escribir(0, "RIFF"); dv.setUint32(4, 36 + n, true); escribir(8, "WAVE");
+  escribir(12, "fmt "); dv.setUint32(16, 16, true); dv.setUint16(20, 1, true);
+  dv.setUint16(22, 1, true); dv.setUint32(24, sr, true); dv.setUint32(28, sr, true);
+  dv.setUint16(32, 1, true); dv.setUint16(34, 8, true);
+  escribir(36, "data"); dv.setUint32(40, n, true);
+  for (let i = 0; i < n; i++) dv.setUint8(44 + i, 128); // 128 = silencio en 8-bit
+  let bin = "";
+  const u8 = new Uint8Array(buf);
+  for (let i = 0; i < u8.length; i++) bin += String.fromCharCode(u8[i]);
+  return "data:audio/wav;base64," + btoa(bin);
+}
+
+let mediaEl: HTMLAudioElement | null = null;
+function promoverSesion(): void {
+  if (typeof document === "undefined") return;
+  if (!mediaEl) {
+    mediaEl = document.createElement("audio");
+    mediaEl.src = wavSilencioso();
+    mediaEl.loop = true;
+    mediaEl.setAttribute("playsinline", "");
+    mediaEl.setAttribute("aria-hidden", "true");
+  }
+  // Debe llamarse dentro de un gesto; el contenido es silencio, no se oye.
+  mediaEl.play().catch(() => {});
+}
+
 // Desbloqueo global: el contexto puede quedar suspendido si el giro nace de un
 // timer (auto-spin) o si el navegador lo suspendió (móvil/iOS). Cualquier gesto
-// del usuario lo reactiva, así los sonidos que llegan *después* del giro
-// (premio, giros gratis) tienen un contexto vivo donde agendarse.
+// del usuario lo reactiva (y promueve la sesión iOS), así los sonidos que
+// llegan *después* del giro (premio, giros gratis) tienen contexto vivo.
 let listenersPuestos = false;
 function instalarDesbloqueo(): void {
   if (listenersPuestos || typeof window === "undefined") return;
   listenersPuestos = true;
   const reactivar = () => {
     if (ctx && ctx.state === "suspended") ctx.resume().catch(() => {});
+    if (!muted) promoverSesion();
   };
   for (const ev of ["pointerdown", "touchend", "keydown"]) {
     window.addEventListener(ev, reactivar, { passive: true });
@@ -75,8 +116,20 @@ function withAudio(fn: (c: AudioContext, t0: number) => void): void {
 
 /** Llamar en el primer gesto (click Girar) para habilitar el audio. */
 export function unlockAudio(): void {
-  ensure();
+  const c = ensure();
   instalarDesbloqueo();
+  if (!muted) promoverSesion();
+  // Desbloqueo iOS del propio AudioContext: arrancar un buffer mudo DENTRO del
+  // gesto. Sin esto, iOS puede dejar el contexto sin sonar hasta el próximo
+  // toque.
+  if (c && master) {
+    try {
+      const src = c.createBufferSource();
+      src.buffer = c.createBuffer(1, 1, c.sampleRate);
+      src.connect(master);
+      src.start(0);
+    } catch {}
+  }
 }
 export function setMuted(m: boolean): void {
   muted = m;
