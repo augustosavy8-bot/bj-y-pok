@@ -38,6 +38,7 @@ export const faraones: SlotTheme = {
     "linear-gradient(180deg, rgba(6,10,20,.52), rgba(6,10,20,.30) 42%, rgba(6,10,20,.76))," +
     "url('/slots/faraones/fondo.webp') center 28%/cover no-repeat",
   logo: "/slots/faraones/logo.webp",
+  card: "/slots/cards/faraones.webp",
   sound: { base: 293.66, scale: [0, 2, 3, 7, 8], wave: "sine" },
   // Mapa clave→arte (por valor, de menor a mayor). El key es el de la DB; el
   // archivo es el arte que se muestra.

@@ -32,6 +32,7 @@ export const olympus: SlotTheme = {
     "linear-gradient(180deg, rgba(8,12,30,.35), rgba(8,12,30,.30) 40%, rgba(8,12,30,.72))," +
     "url('/slots/olympus/fondo.webp') center 20%/cover no-repeat",
   logo: "/slots/olympus/logo.webp",
+  card: "/slots/cards/olympus.webp",
   sound: { base: 392.0, scale: [0, 2, 4, 5, 7, 9, 11], wave: "sawtooth" },
   symbols: {
     laurel: img("laurel"),
