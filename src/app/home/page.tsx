@@ -318,36 +318,46 @@ export default function HomePage() {
           {puedeVerJuego("slots", esAdmin) && (
           <a
             href="/slots"
-            className="ncard relative block overflow-hidden border border-oro/25 p-5 transition hover:border-oro/55"
-            style={{
-              backgroundImage:
-                "radial-gradient(90% 120% at 100% 0%, color-mix(in srgb, var(--color-gold, #d8b46a) 16%, transparent), transparent 65%)",
-            }}
+            className="group block overflow-hidden rounded-2xl border border-oro/25 transition hover:border-oro/55 hover:shadow-2xl"
           >
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <span className="text-[10px] uppercase tracking-[0.14em] text-oro">
-                  Siempre disponible
-                </span>
-                <div className="mt-1.5 text-[22px] font-medium leading-tight">Tragamonedas</div>
-                <div className="mt-0.5 text-[13px] text-tinta/60">
-                  Tres rodillos, una línea. Jackpot de 1000×.
+            {/* Banner (montaje de las 4 máquinas) con título superpuesto */}
+            <div className="relative aspect-[16/9] w-full overflow-hidden">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/slots/cards/hub.webp"
+                alt="Slots"
+                loading="lazy"
+                className="absolute inset-0 h-full w-full object-cover transition duration-500 group-hover:scale-105"
+              />
+              <div
+                className="absolute inset-0"
+                style={{
+                  background:
+                    "linear-gradient(180deg, rgba(8,6,3,.35) 0%, rgba(8,6,3,0) 30%, rgba(8,6,3,.9) 100%)",
+                }}
+              />
+              <span className="absolute left-4 top-4 rounded bg-black/45 px-2 py-0.5 text-[10px] uppercase tracking-[0.14em] text-oro backdrop-blur">
+                Siempre disponible
+              </span>
+              <div className="absolute inset-x-0 bottom-0 p-4">
+                <div
+                  className="text-[24px] font-semibold leading-tight"
+                  style={{ color: "var(--color-gold, #e7c477)", textShadow: "0 2px 10px rgba(0,0,0,.75)" }}
+                >
+                  Slots
+                </div>
+                <div className="text-[13px] text-white/75">
+                  Cuatro máquinas temáticas · 5 rodillos · RNG del servidor
                 </div>
               </div>
-              <span className="text-4xl text-white/10">🎰</span>
             </div>
-            <div className="mt-4 flex flex-wrap gap-1.5 text-[11px]">
-              <span className="rounded bg-white/[0.06] px-2 py-0.5 text-tinta/70">
-                Apuesta 50–500
-              </span>
-              <span className="rounded bg-white/[0.06] px-2 py-0.5 text-tinta/70">
-                Devuelve 94,45%
-              </span>
-              <span className="rounded bg-white/[0.06] px-2 py-0.5 text-tinta/70">RNG del servidor</span>
+            <div className="flex items-center justify-between px-4 py-3">
+              <div className="flex flex-wrap gap-1.5 text-[11px]">
+                <span className="rounded bg-white/[0.06] px-2 py-0.5 text-tinta/70">4 máquinas</span>
+                <span className="rounded bg-white/[0.06] px-2 py-0.5 text-tinta/70">RNG del servidor</span>
+              </div>
+              <span className="nbtn nbtn-primary px-5 py-2 text-[15px]">Girar →</span>
             </div>
-            <span className="nbtn nbtn-primary mt-4 flex w-full justify-center py-2.5 text-[15px]">
-              Girar
-            </span>
           </a>
           )}
         </div>
