@@ -300,11 +300,11 @@ export default function HomePage() {
       )}
 
       {/* Otros juegos. Cuáles se muestran sale de src/lib/juegos-visibles.ts */}
-      {(puedeVerJuego("slots", esAdmin) || puedeVerJuego("quiniela", esAdmin)) && (
+      {puedeVerJuego("slots", esAdmin) && (
       <section id="rapidos" className="mx-auto max-w-6xl px-4 pt-14 sm:px-8">
         <div className="mb-4 flex flex-wrap items-baseline gap-x-3">
           <h2 className="text-[26px] font-medium">Otros juegos</h2>
-          {(estaOculto("slots") || estaOculto("quiniela")) && esAdmin && (
+          {estaOculto("slots") && esAdmin && (
             <span className="rounded bg-amber-400/15 px-2 py-0.5 text-[11px] text-amber-300">
               ocultos para los jugadores · sólo los ves vos
             </span>
@@ -347,33 +347,6 @@ export default function HomePage() {
             </div>
             <span className="nbtn nbtn-primary mt-4 flex w-full justify-center py-2.5 text-[15px]">
               Girar
-            </span>
-          </a>
-          )}
-
-          {puedeVerJuego("quiniela", esAdmin) && (
-          <a
-            href="/quiniela"
-            className="ncard relative block overflow-hidden border border-white/[0.08] p-5 transition hover:border-acento/50"
-          >
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <span className="text-[10px] uppercase tracking-[0.14em] text-acento">
-                  Entre jugadores
-                </span>
-                <div className="mt-1.5 text-[22px] font-medium leading-tight">Prode</div>
-                <div className="mt-0.5 text-[13px] text-tinta/60">
-                  Liga Cañadense, al resultado exacto.
-                </div>
-              </div>
-              <span className="text-4xl text-white/10">⚽</span>
-            </div>
-            <div className="mt-4 flex flex-wrap gap-1.5 text-[11px]">
-              <span className="rounded bg-white/[0.06] px-2 py-0.5 text-tinta/70">3 pts al exacto</span>
-              <span className="rounded bg-white/[0.06] px-2 py-0.5 text-tinta/70">Pozo entre todos</span>
-            </div>
-            <span className="nbtn nbtn-secondary mt-4 flex w-full justify-center py-2.5 text-[15px]">
-              Ver la fecha
             </span>
           </a>
           )}

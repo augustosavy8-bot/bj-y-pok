@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { NocturneShell } from "@/components/nocturne/NocturneShell";
 import { CasaAdmin } from "@/components/admin/CasaAdmin";
-import { QuinielaAdmin } from "@/components/admin/QuinielaAdmin";
 import { CreditosAdmin } from "@/components/admin/CreditosAdmin";
 import { RetirosAdmin } from "@/components/admin/RetirosAdmin";
 
@@ -127,8 +126,6 @@ export function PanelAdmin({ miId }: { miId: string }) {
 
         {/* Cómo va el negocio */}
         <CasaAdmin />
-
-        <QuinielaAdmin />
 
         {/* Herramientas internas (solo admin) */}
         <section className="ncard flex flex-wrap items-center justify-between gap-3 border border-white/[0.06] p-4">
