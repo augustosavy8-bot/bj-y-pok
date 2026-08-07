@@ -53,7 +53,6 @@ export default function HomePage() {
   const [mesas, setMesas] = useState<MesaMia[]>([]);
   const [casa, setCasa] = useState<MesaCasa[]>([]);
   const [cat, setCat] = useState<Cat>("todas");
-  const [q, setQ] = useState("");
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -92,10 +91,9 @@ export default function HomePage() {
       mesas.filter(
         (m) =>
           !codigosCasa.has(m.codigo_sala) &&
-          (cat === "todas" || m.tipo_juego === cat) &&
-          (!q || m.codigo_sala.includes(q.toUpperCase()))
+          (cat === "todas" || m.tipo_juego === cat)
       ),
-    [mesas, cat, q, codigosCasa]
+    [mesas, cat, codigosCasa]
   );
 
   async function cerrarMesa(cod: string) {
@@ -365,17 +363,9 @@ export default function HomePage() {
 
       {/* Mesas */}
       <section id="mesas" className="mx-auto max-w-6xl px-4 pt-14 sm:px-8">
-        <div className="mb-4 flex flex-wrap items-end justify-between gap-4">
-          <div>
-            <h2 className="text-[26px] font-medium">Tus mesas</h2>
-            <p className="m-0 text-[13px] text-tinta/55">Las mesas donde estás sentado o que dirigís.</p>
-          </div>
-          <input
-            value={q}
-            onChange={(e) => setQ(e.target.value.toUpperCase())}
-            placeholder="Buscar por código"
-            className="ninput w-44 uppercase tracking-widest placeholder:tracking-normal"
-          />
+        <div className="mb-4">
+          <h2 className="text-[26px] font-medium">Tus mesas</h2>
+          <p className="m-0 text-[13px] text-tinta/55">Las mesas donde estás sentado o que dirigís.</p>
         </div>
 
         {/* Chip bar de variante */}
