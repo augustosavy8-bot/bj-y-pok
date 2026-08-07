@@ -14,6 +14,7 @@ const nextConfig = {
     ];
     return [
       { source: "/slots/:path*", headers: inmutable },
+      { source: "/juegos/:path*", headers: inmutable },
       { source: "/svg-cards.svg", headers: inmutable },
       { source: "/icon-192.png", headers: inmutable },
       { source: "/icon-512.png", headers: inmutable },

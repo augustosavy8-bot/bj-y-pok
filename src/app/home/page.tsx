@@ -35,6 +35,10 @@ const NOMBRE_JUEGO: Record<Juego, string> = {
   blackjack: "Blackjack",
 };
 const GLIFO: Record<Juego, string> = { poker_holdem: "♠", blackjack: "🂡" };
+const BANNER: Record<Juego, string> = {
+  poker_holdem: "/juegos/poker.webp",
+  blackjack: "/juegos/blackjack.webp",
+};
 
 const REGLAS_CASA = [
   { label: "Blackjack paga", value: "3 : 2" },
@@ -50,7 +54,6 @@ export default function HomePage() {
   const [casa, setCasa] = useState<MesaCasa[]>([]);
   const [cat, setCat] = useState<Cat>("todas");
   const [q, setQ] = useState("");
-  const [codigo, setCodigo] = useState("");
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -104,26 +107,6 @@ export default function HomePage() {
       return;
     }
     cargarMesas();
-  }
-
-  async function unirse() {
-    const c = codigo.trim().toUpperCase();
-    if (c.length !== 6) {
-      setError("El código tiene 6 caracteres.");
-      return;
-    }
-    setError(null);
-    const r = await fetch(`/api/mesa/${c}/info`);
-    if (!r.ok) {
-      setError((await r.json())?.error ?? "No se encontró la mesa.");
-      return;
-    }
-    const info = await r.json();
-    if (!info.puedo_entrar) {
-      setError(`Necesitás ${info.creditos_minimos} créditos para entrar; tenés ${info.mi_saldo}.`);
-      return;
-    }
-    router.push(`/mesa/${c}`);
   }
 
   return (
@@ -227,72 +210,88 @@ export default function HomePage() {
             {casa.map((m) => (
               <div
                 key={m.codigo_sala}
-                className="ncard relative overflow-hidden border border-acento/30 p-5 transition hover:border-acento/60"
-                style={{
-                  backgroundImage:
-                    "radial-gradient(90% 120% at 100% 0%, color-mix(in srgb, var(--color-accent-900) 45%, transparent), transparent 65%)",
-                }}
+                className="ncard overflow-hidden border border-acento/30 p-0 transition hover:border-acento/60 hover:shadow-2xl"
               >
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <div className="inline-flex items-center gap-2">
-                      <span className="relative flex h-2 w-2">
-                        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
-                        <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-400" />
-                      </span>
-                      <span className="text-[10px] uppercase tracking-[0.14em] text-emerald-300">
-                        Abierta 24 hs
-                      </span>
-                    </div>
-                    <div className="mt-1.5 text-[22px] font-medium leading-tight">
+                {/* Banner del juego con el nombre superpuesto */}
+                <div className="relative aspect-[16/9] w-full overflow-hidden">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={BANNER[m.tipo_juego] ?? BANNER.poker_holdem}
+                    alt={NOMBRE_JUEGO[m.tipo_juego] ?? m.tipo_juego}
+                    loading="lazy"
+                    className="absolute inset-0 h-full w-full object-cover"
+                  />
+                  <div
+                    className="absolute inset-0"
+                    style={{
+                      background:
+                        "linear-gradient(180deg, rgba(5,9,11,.15) 0%, rgba(5,9,11,0) 34%, rgba(5,9,11,.9) 100%)",
+                    }}
+                  />
+                  <div className="absolute left-3 top-3 inline-flex items-center gap-2 rounded bg-black/45 px-2 py-1 backdrop-blur">
+                    <span className="relative flex h-2 w-2">
+                      <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+                      <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-400" />
+                    </span>
+                    <span className="text-[10px] uppercase tracking-[0.14em] text-emerald-300">
+                      Abierta 24 hs
+                    </span>
+                  </div>
+                  <div className="absolute inset-x-0 bottom-0 p-4">
+                    <div
+                      className="text-[22px] font-semibold leading-tight text-white"
+                      style={{ textShadow: "0 2px 10px rgba(0,0,0,.75)" }}
+                    >
                       {NOMBRE_JUEGO[m.tipo_juego] ?? m.tipo_juego}
                     </div>
-                    <div className="mt-0.5 text-[13px] text-tinta/60">
+                    <div className="text-[13px] text-white/75">
                       {m.jugadores === 0
                         ? "Mesa libre · sos el primero"
                         : `${m.jugadores} ${m.jugadores === 1 ? "jugador sentado" : "jugadores sentados"}`}
                     </div>
                   </div>
-                  <span className="text-4xl text-white/10">{GLIFO[m.tipo_juego] ?? "♠"}</span>
                 </div>
 
-                <div className="mt-4 flex flex-wrap gap-1.5 text-[11px]">
-                  {m.apuesta_min !== null && (
+                {/* Cuerpo: datos + botón de entrada */}
+                <div className="p-5 pt-4">
+                  <div className="flex flex-wrap gap-1.5 text-[11px]">
+                    {m.apuesta_min !== null && (
+                      <span className="rounded bg-white/[0.06] px-2 py-0.5 text-tinta/70">
+                        Apuesta {m.apuesta_min}–{m.apuesta_max}
+                      </span>
+                    )}
                     <span className="rounded bg-white/[0.06] px-2 py-0.5 text-tinta/70">
-                      Apuesta {m.apuesta_min}–{m.apuesta_max}
+                      {m.es_practica ? "Práctica" : `Entrada ${m.creditos_minimos} créditos`}
                     </span>
-                  )}
-                  <span className="rounded bg-white/[0.06] px-2 py-0.5 text-tinta/70">
-                    {m.es_practica ? "Práctica" : `Entrada ${m.creditos_minimos} créditos`}
-                  </span>
-                  <span className="rounded bg-white/[0.06] px-2 py-0.5 text-tinta/70">
-                    {m.cantidad_mazos} mazos · RNG
-                  </span>
-                </div>
+                    <span className="rounded bg-white/[0.06] px-2 py-0.5 text-tinta/70">
+                      {m.cantidad_mazos} mazos · RNG
+                    </span>
+                  </div>
 
-                <button
-                  onClick={() =>
-                    router.push(`/mesa/${m.codigo_sala}${m.soy_crupier ? "/crupier" : ""}`)
-                  }
-                  disabled={!m.puedo_entrar && !m.ya_sentado && !m.soy_crupier}
-                  className="nbtn nbtn-primary mt-4 w-full py-2.5 text-[15px] disabled:opacity-40"
-                >
-                  {m.soy_crupier
-                    ? "Abrir como crupier"
-                    : m.ya_sentado
-                    ? "Volver a la mesa"
-                    : !m.puedo_entrar
-                    ? `Necesitás ${m.creditos_minimos + m.costo_reingreso} créditos`
-                    : m.costo_reingreso > 0
-                    ? `Volver a entrar · ${m.costo_reingreso} créditos`
-                    : "Entrar a jugar"}
-                </button>
-                {m.costo_reingreso > 0 && !m.ya_sentado && !m.soy_crupier && (
-                  <p className="mt-2 mb-0 text-center text-[11px] leading-snug text-tinta/45">
-                    Ya te habías sentado en esta mesa: volver a entrar cuesta{" "}
-                    {m.costo_reingreso} créditos.
-                  </p>
-                )}
+                  <button
+                    onClick={() =>
+                      router.push(`/mesa/${m.codigo_sala}${m.soy_crupier ? "/crupier" : ""}`)
+                    }
+                    disabled={!m.puedo_entrar && !m.ya_sentado && !m.soy_crupier}
+                    className="nbtn nbtn-primary mt-4 w-full py-2.5 text-[15px] disabled:opacity-40"
+                  >
+                    {m.soy_crupier
+                      ? "Abrir como crupier"
+                      : m.ya_sentado
+                      ? "Volver a la mesa"
+                      : !m.puedo_entrar
+                      ? `Necesitás ${m.creditos_minimos + m.costo_reingreso} créditos`
+                      : m.costo_reingreso > 0
+                      ? `Volver a entrar · ${m.costo_reingreso} créditos`
+                      : "Entrar a jugar"}
+                  </button>
+                  {m.costo_reingreso > 0 && !m.ya_sentado && !m.soy_crupier && (
+                    <p className="mt-2 mb-0 text-center text-[11px] leading-snug text-tinta/45">
+                      Ya te habías sentado en esta mesa: volver a entrar cuesta{" "}
+                      {m.costo_reingreso} créditos.
+                    </p>
+                  )}
+                </div>
               </div>
             ))}
           </div>
@@ -441,30 +440,17 @@ export default function HomePage() {
         ) : (
           <div className="ncard border border-white/[0.06] p-8 text-center text-sm text-tinta/55">
             {mesas.length === 0
-              ? "Todavía no estás en ninguna mesa. Unite con un código o pedile a un admin que cree una."
+              ? "Todavía no estás en ninguna mesa. Entrá a la mesa de la casa (siempre abierta) o pedile a un admin que cree una."
               : "Sin mesas para ese filtro."}
           </div>
         )}
 
-        {/* Unirme con código */}
-        <div className="mt-8 grid gap-3 sm:grid-cols-2">
-          <div className="ncard flex flex-col gap-2 border border-white/[0.06] p-4">
-            <h3 className="text-[15px] font-medium">Unirme con código</h3>
-            <div className="flex gap-2">
-              <input
-                value={codigo}
-                onChange={(e) => setCodigo(e.target.value.toUpperCase())}
-                maxLength={6}
-                placeholder="CÓDIGO"
-                className="ninput flex-1 text-center text-lg uppercase tracking-[0.3em] placeholder:tracking-normal"
-              />
-              <button className="nbtn nbtn-primary" onClick={unirse}>
-                Entrar
-              </button>
-            </div>
+        {/* Crear mesa (solo admin) */}
+        {esAdmin && (
+          <div className="mt-8 grid gap-3 sm:grid-cols-2">
+            <CrearMesa router={router} onCreada={cargarMesas} cat={cat} />
           </div>
-          {esAdmin && <CrearMesa router={router} onCreada={cargarMesas} cat={cat} />}
-        </div>
+        )}
 
         {error && (
           <div className="mt-4 rounded-md border border-red-500/40 bg-red-500/10 px-3 py-2 text-center text-sm text-red-200">
