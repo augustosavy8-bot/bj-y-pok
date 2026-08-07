@@ -34,7 +34,6 @@ export function NocturneShell({ children }: { children: React.ReactNode }) {
   const nav = [
     { href: "/home", label: "Mesas" },
     { href: "/slots", label: "Slots", juego: "slots" },
-    { href: "/quiniela", label: "Prode", juego: "quiniela" },
     { href: "/perfil", label: "Perfil" },
     ...(esAdmin ? [{ href: "/admin", label: "Admin" }] : []),
   ].filter((n) => !n.juego || puedeVerJuego(n.juego, esAdmin));
