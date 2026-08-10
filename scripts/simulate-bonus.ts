@@ -38,11 +38,14 @@ const SLOTS: Record<string, SlotCfg> = {
 const BET = 45;
 const MULTMAX = 50;
 
-// RTP objetivo (%). Se bajó de 95 a 90: recorte parejo de ~5 puntos en líneas,
-// bonus natural y bonus comprado. Los `factor` base se escalan por RTP/95 para
-// que las líneas paguen proporcionalmente menos; natural y tiers se recalibran.
-const RTP = 90;
+// RTP objetivo (%). Se mantiene en 95 (juego base, natural y compra). La
+// volatilidad se controla aparte con un TECHO DURO de premio (max_win, 200.000
+// fichas) aplicado en la RPC play_spin: por giro y por bonus completo. Con
+// apuesta 45 el techo casi nunca toca (200k ≈ 4444×), así que la calibración a
+// 95% no cambia; el techo sólo recorta la cola extrema y las apuestas altas.
+const RTP = 95;
 const FSCALE = RTP / 95;
+const MAXWIN = 200000; // referencia; el corte real vive en la RPC.
 for (const c of Object.values(SLOTS)) {
   for (const k of Object.keys(c.factor)) {
     c.factor[+k] = Math.round(c.factor[+k] * FSCALE * 100) / 100;
@@ -91,6 +94,7 @@ function bonusTanda(c: SlotCfg, P: Prep, scale: number, spins0: number, multStar
     const ls = lineSum(c, P, g);
     const pagoBase = ls * scale;
     win += Math.round(pagoBase * mult);
+    if (win > MAXWIN) win = MAXWIN;               // techo del bonus completo
     if (pagoBase > 0) mult = Math.min(MULTMAX, mult + multInc);
     if (scatterCount(c,P,g) >= c.min) spinsTotal = Math.min(30, spinsTotal + Math.round(c.grant/2));
   }
@@ -111,7 +115,7 @@ function baseSim(c: SlotCfg, P: Prep, spins: number): { linesRtp:number; trigRat
     const g = makeGrid(c,P);
     const ls = lineSum(c,P,g);
     let mult=1; if(ls>0){ const u=Math.random(); if(u<0.03)mult=3; else if(u<0.15)mult=2; }
-    win += ls*mult;
+    win += Math.min(ls*mult, MAXWIN);             // techo por giro del juego base
     if (scatterCount(c,P,g) >= c.min) trig++;
   }
   return { linesRtp: win/paidIn*100, trigRate: trig/spins };
