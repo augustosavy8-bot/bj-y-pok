@@ -701,6 +701,11 @@ export function SlotMachine({
 
 const estilos = `
 .slot-scene{min-height:100vh;color:var(--cream);position:relative;overflow-x:hidden;
+  background:linear-gradient(180deg,var(--cabinet-1),var(--cabinet-2));}
+/* La imagen de la escena va en una capa FIJA al viewport: asi el cover es
+   relativo a la pantalla y NO se re-escala cuando el contenido cambia de alto
+   (p.ej. aparece/desaparece el desglose de premios en auto). */
+.slot-scene::before{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;
   background:var(--scene, radial-gradient(1000px 700px at 50% -8%, color-mix(in srgb,var(--brass) 18%,transparent), transparent 60%), linear-gradient(180deg,var(--cabinet-1),var(--cabinet-2)));}
 .slot-scene::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
   background:radial-gradient(130% 100% at 50% 42%, transparent 52%, rgba(0,0,0,.55));}
