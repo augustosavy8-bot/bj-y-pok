@@ -49,6 +49,8 @@ export class SlotEngine {
   private reelEls: ReelDOM[] = [];
   private spinning = false;
   private winLinesEl: SVGSVGElement | null = null;
+  /** Multiplicador de duración del giro. 1 = normal; <1 = más rápido. */
+  private speed = 1;
 
   constructor(mount: HTMLElement, opts: EngineOptions) {
     this.mount = mount;
@@ -140,7 +142,10 @@ export class SlotEngine {
     // Parada escalonada: los rodillos de la derecha giran MÁS (más vueltas),
     // no más lento. La distancia escala con el factor → velocidad constante.
     const factor = 1 + Math.pow(reel / 2, 2);
-    const duration = baseMs * factor;
+    // La velocidad comprime también el escalonado entre rodillos: a mayor
+    // velocidad, el último rodillo (factor alto) frena mucho antes, no sólo el
+    // primero. speed=1 deja el comportamiento original (duration = baseMs*factor).
+    const duration = Math.max(80, baseMs * this.speed * (1 + (factor - 1) * this.speed));
     const filler = Math.round(BASE_FILLER * factor);
 
     // Tira: arriba el RESULTADO (las `rows` finales), debajo el relleno que se
@@ -287,6 +292,11 @@ export class SlotEngine {
   clearWinLines(): void {
     this.winLinesEl?.remove();
     this.winLinesEl = null;
+  }
+
+  /** Ajusta la velocidad de giro (1 = normal, 0.5 = 2×, 0.25 = 4×…). */
+  setSpeed(mult: number): void {
+    this.speed = mult > 0 ? mult : 1;
   }
 
   get isSpinning(): boolean {

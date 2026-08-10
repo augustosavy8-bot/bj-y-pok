@@ -108,6 +108,8 @@ export function SlotMachine({
   const [fsFx, setFsFx] = useState<number | null>(null);
   const [mute, setMute] = useState(false);
   const [comprando, setComprando] = useState(false);
+  const [vel, setVel] = useState(1); // 1 normal · 0.5 rápido (2×) · 0.25 turbo (4×)
+  const velRef = useRef(1);
   const [msg, setMsg] = useState<{ txt: string; tono: "ok" | "err" | "info" } | null>(null);
   const [ultimo, setUltimo] = useState<SpinResult | null>(null);
   const [hist, setHist] = useState<HistItem[]>([]);
@@ -151,6 +153,7 @@ export function SlotMachine({
         cellPad: theme.tile ? 0 : 6,
       });
       engine.render(gridDecorativa(cell));
+      engine.setSpeed(velRef.current);
       engineRef.current = engine;
     };
 
@@ -161,12 +164,28 @@ export function SlotMachine({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Velocidad de giro (persistida): aplica al engine y escala las animaciones.
+  useEffect(() => {
+    try {
+      const s = Number(localStorage.getItem("slot_speed"));
+      if (s === 1 || s === 0.5 || s === 0.25) setVel(s);
+    } catch {}
+  }, []);
+  useEffect(() => {
+    velRef.current = vel;
+    engineRef.current?.setSpeed(vel);
+  }, [vel]);
+  const cambiarVel = (m: number) => {
+    setVel(m);
+    try { localStorage.setItem("slot_speed", String(m)); } catch {}
+  };
+
   // Conteo animado de la ganancia (ease-out).
   const contarHasta = useCallback((to: number) => {
     cancelAnimationFrame(countRef.current);
     if (to <= 0) { setWinShown(0); return; }
     const start = performance.now();
-    const dur = 700;
+    const dur = Math.max(220, 700 * velRef.current);
     const tick = (t: number) => {
       const k = Math.min(1, (t - start) / dur);
       setWinShown(Math.round(to * (1 - Math.pow(1 - k, 2))));
@@ -243,7 +262,7 @@ export function SlotMachine({
         lluviaMonedas(level >= 3 ? 28 : level >= 2 ? 18 : 12);
         setWinFx({ amount: res.total_win, big: level >= 2 });
         clearTimeout(winTimer.current);
-        winTimer.current = setTimeout(() => setWinFx(null), level >= 2 ? 2400 : 1700);
+        winTimer.current = setTimeout(() => setWinFx(null), Math.max(650, (level >= 2 ? 2400 : 1700) * velRef.current));
         const extra = res.mult > 1 ? ` ×${res.mult}` : "";
         const fs = res.free_awarded > 0 ? ` · +${res.free_awarded} gratis` : "";
         setMsg({ txt: `¡Ganaste ${fmt(res.total_win)}${extra}!${fs}`, tono: "ok" });
@@ -257,7 +276,7 @@ export function SlotMachine({
         soundRef.current?.freeSpins();
         setFsFx(res.free_awarded);
         clearTimeout(fsTimer.current);
-        fsTimer.current = setTimeout(() => setFsFx(null), 2400);
+        fsTimer.current = setTimeout(() => setFsFx(null), Math.max(800, 2400 * velRef.current));
       }
     } catch (e) {
       setMsg({ txt: e instanceof Error ? e.message : "Error de red.", tono: "err" });
@@ -279,7 +298,7 @@ export function SlotMachine({
       setAuto(false);
       return;
     }
-    const t = setTimeout(() => girarRef.current(), 750);
+    const t = setTimeout(() => girarRef.current(), Math.max(110, 650 * velRef.current));
     return () => clearTimeout(t);
   }, [auto, girando, free, saldo, bet]);
 
@@ -335,7 +354,7 @@ export function SlotMachine({
         soundRef.current?.freeSpins();
         setFsFx(data.bought);
         clearTimeout(fsTimer.current);
-        fsTimer.current = setTimeout(() => setFsFx(null), 2000);
+        fsTimer.current = setTimeout(() => setFsFx(null), Math.max(800, 2000 * velRef.current));
         setMsg({ txt: `Compraste ${data.bought} giros gratis por ${fmt(data.price)}. ¡Dale a GIRAR!`, tono: "ok" });
       } catch (e) {
         setMsg({ txt: e instanceof Error ? e.message : "Error de red.", tono: "err" });
@@ -449,6 +468,30 @@ export function SlotMachine({
               <span className="auto-dot" />
               {auto ? "AUTO ON" : "AUTO"}
             </button>
+          </div>
+
+          {/* Velocidad de giro */}
+          <div className="mt-2 flex items-center justify-center gap-2 text-[12px]">
+            <span className="text-white/50">Velocidad</span>
+            {[
+              { m: 1, l: "1×" },
+              { m: 0.5, l: "2×" },
+              { m: 0.25, l: "3×" },
+            ].map((o) => (
+              <button
+                key={o.l}
+                onClick={() => cambiarVel(o.m)}
+                aria-pressed={vel === o.m}
+                className="rounded-md border px-2.5 py-1 font-semibold transition"
+                style={
+                  vel === o.m
+                    ? { borderColor: "var(--brass)", background: "color-mix(in srgb, var(--brass) 22%, transparent)", color: "var(--cream)" }
+                    : { borderColor: "rgba(255,255,255,.15)", color: "rgba(255,255,255,.65)" }
+                }
+              >
+                {o.l}
+              </button>
+            ))}
           </div>
         </div>
 
