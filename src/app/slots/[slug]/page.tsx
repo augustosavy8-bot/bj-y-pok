@@ -20,15 +20,17 @@ export default async function SlotPage({ params }: { params: { slug: string } })
   if (!tema) notFound();
 
   const admin = getSupabaseAdmin();
-  const [{ data: slot }, { data: symbols }, saldo, { data: free }] = await Promise.all([
+  const [{ data: slot }, { data: symbols }, saldo, { data: bonus }] = await Promise.all([
     admin.from("slots").select("*").eq("slug", slug).eq("active", true).maybeSingle(),
     admin.from("slot_symbols").select("*").eq("slot_slug", slug).order("sort", { ascending: true }),
     saldoActual(admin, perfil.id),
+    // Sesión de bonus activa (para retomar la tanda si se recarga la página).
     admin
-      .from("slot_free_balance")
-      .select("free_spins")
+      .from("bonus_sessions")
+      .select("source, tier, bet_locked, spins_total, spins_played, total_multiplier")
       .eq("user_id", perfil.id)
       .eq("slot_slug", slug)
+      .eq("status", "active")
       .maybeSingle(),
   ]);
 
@@ -36,7 +38,6 @@ export default async function SlotPage({ params }: { params: { slug: string } })
 
   const config = slot as unknown as SlotConfig;
   const simbolos = (symbols ?? []) as unknown as SlotSymbolRow[];
-  const freeSpins = (free as { free_spins: number } | null)?.free_spins ?? 0;
 
   return (
     <SlotMachine
@@ -44,7 +45,7 @@ export default async function SlotPage({ params }: { params: { slug: string } })
       symbols={simbolos}
       theme={tema}
       saldoInicial={saldo}
-      freeInicial={freeSpins}
+      bonusInicial={(bonus as unknown as import("@/components/SlotMachine").BonusSesion | null) ?? null}
     />
   );
 }

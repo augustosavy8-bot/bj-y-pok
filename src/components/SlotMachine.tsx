@@ -16,8 +16,31 @@ export interface SlotConfig {
   bet_options: number[];
   factor: Record<string, number>;
   mult_config: Record<string, number>;
-  freespins: { trigger: string; min: number; grant: number };
+  freespins: {
+    trigger: string;
+    min: number;
+    grant: number;
+    persistent_mult?: { start: number; increment: number; max: number };
+    bonus_factor_scale?: number;
+    natural_factor_scale?: number;
+    buy_tiers?: Record<TierKey, BuyTier>;
+  };
   active: boolean;
+}
+export type TierKey = "standard" | "super" | "max";
+export interface BuyTier {
+  price_x: number;
+  spins: number;
+  mult_start: number;
+  mult_increment: number;
+}
+export interface BonusSesion {
+  source: "natural" | "buy";
+  tier: TierKey | null;
+  bet_locked: number;
+  spins_total: number;
+  spins_played: number;
+  total_multiplier: number;
 }
 export interface SlotSymbolRow {
   slot_slug: string;
@@ -44,10 +67,22 @@ interface SpinResult {
   was_free: boolean;
   free_awarded: number;
   free_remaining: number;
-  free_bet?: number;
   new_balance: number;
   server_seed_hash: string;
   nonce: number;
+  // Bonus
+  in_bonus?: boolean;
+  bonus_started?: boolean;
+  bonus_source?: "natural" | "buy";
+  bonus_tier?: TierKey | null;
+  bet_locked?: number;
+  pago_base?: number;
+  pago_final?: number;
+  mult_applied?: number;
+  total_multiplier?: number;
+  spins_remaining?: number;
+  bonus_ended?: boolean;
+  bonus_summary?: { total_win: number; final_mult: number; spins: number; source: string; tier: string | null };
 }
 interface HistItem {
   spinId: string;
@@ -79,13 +114,13 @@ export function SlotMachine({
   symbols,
   theme,
   saldoInicial,
-  freeInicial,
+  bonusInicial,
 }: {
   config: SlotConfig;
   symbols: SlotSymbolRow[];
   theme: SlotTheme;
   saldoInicial: number;
-  freeInicial: number;
+  bonusInicial: BonusSesion | null;
 }) {
   const mountRef = useRef<HTMLDivElement | null>(null);
   const windowRef = useRef<HTMLDivElement | null>(null);
@@ -98,8 +133,27 @@ export function SlotMachine({
   const fsTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   const [saldo, setSaldo] = useState(saldoInicial);
-  const [free, setFree] = useState(freeInicial);
-  const [bet, setBet] = useState(config.bet_options[0]);
+  const [free, setFree] = useState(bonusInicial ? bonusInicial.spins_total - bonusInicial.spins_played : 0);
+  const [bet, setBet] = useState(bonusInicial ? bonusInicial.bet_locked : config.bet_options[0]);
+  // Estado del bonus en curso (multiplicador persistente, giros restantes).
+  const [bonus, setBonus] = useState<{
+    source: "natural" | "buy";
+    tier: TierKey | null;
+    mult: number;
+    spinsRemaining: number;
+    betLocked: number;
+  } | null>(
+    bonusInicial
+      ? {
+          source: bonusInicial.source,
+          tier: bonusInicial.tier,
+          mult: Number(bonusInicial.total_multiplier),
+          spinsRemaining: bonusInicial.spins_total - bonusInicial.spins_played,
+          betLocked: bonusInicial.bet_locked,
+        }
+      : null
+  );
+  const [tierModal, setTierModal] = useState(false);
   const [girando, setGirando] = useState(false);
   const [auto, setAuto] = useState(false);
   const [win, setWin] = useState(0);
@@ -110,15 +164,8 @@ export function SlotMachine({
   const [comprando, setComprando] = useState(false);
   const [vel, setVel] = useState(1); // 1 normal · 0.5 rápido (2×) · 0.25 turbo (4×)
   const velRef = useRef(1);
-  const [bonusResumen, setBonusResumen] = useState<{ total: number; giros: number } | null>(null);
+  const [bonusResumen, setBonusResumen] = useState<{ total: number; giros: number; mult: number } | null>(null);
   const [bonusShown, setBonusShown] = useState(0);
-  // Acumulador de la tanda de giros gratis en curso (para el resumen final).
-  const bonusRunRef = useRef<{ active: boolean; bought: boolean; total: number; giros: number }>({
-    active: false,
-    bought: false,
-    total: 0,
-    giros: 0,
-  });
   const [msg, setMsg] = useState<{ txt: string; tono: "ok" | "err" | "info" } | null>(null);
   const [ultimo, setUltimo] = useState<SpinResult | null>(null);
   const [hist, setHist] = useState<HistItem[]>([]);
@@ -272,54 +319,70 @@ export function SlotMachine({
 
       setSaldo(res.new_balance);
       setFree(res.free_remaining);
-      // Durante los giros gratis la apuesta queda bloqueada a la del lote.
-      if (res.free_remaining > 0 && res.free_bet) setBet(res.free_bet);
+      if (res.bet_locked && (res.in_bonus || res.bonus_started)) setBet(res.bet_locked);
       setWin(res.total_win);
-
-      // Resumen de bonus: acumular lo ganado en la tanda de giros gratis y, al
-      // agotarse, mostrar el total. Sólo para tandas COMPRADAS.
-      {
-        const run = bonusRunRef.current;
-        if (res.was_free && run.active) {
-          run.total += res.total_win;
-          run.giros += 1;
-        }
-        if (run.active && run.bought && res.was_free && res.free_remaining === 0) {
-          const resumen = { total: run.total, giros: run.giros };
-          bonusRunRef.current = { active: false, bought: false, total: 0, giros: 0 };
-          setAuto(false);
-          // Pequeño delay para que se vea la última grilla/premio antes del resumen.
-          setTimeout(() => setBonusResumen(resumen), Math.max(350, 600 * velRef.current));
-        }
-      }
       contarHasta(res.total_win);
       setUltimo(res);
       setHist((h) =>
-        [{ spinId: res.spin_id, bet, total: res.total_win, mult: res.mult, wasFree: res.was_free }, ...h].slice(0, 12)
+        [{ spinId: res.spin_id, bet: res.bet_locked ?? bet, total: res.total_win, mult: res.mult, wasFree: res.was_free }, ...h].slice(0, 12)
       );
 
-      if (res.total_win > 0) {
-        const ratio = res.total_win / bet;
-        const level = ratio >= 15 ? 3 : ratio >= 5 ? 2 : 1;
-        soundRef.current?.win(level);
-        lluviaMonedas(level >= 3 ? 28 : level >= 2 ? 18 : 12);
-        setWinFx({ amount: res.total_win, big: level >= 2 });
-        clearTimeout(winTimer.current);
-        winTimer.current = setTimeout(() => setWinFx(null), Math.max(650, (level >= 2 ? 2400 : 1700) * velRef.current));
-        const extra = res.mult > 1 ? ` ×${res.mult}` : "";
-        const fs = res.free_awarded > 0 ? ` · +${res.free_awarded} gratis` : "";
-        setMsg({ txt: `¡Ganaste ${fmt(res.total_win)}${extra}!${fs}`, tono: "ok" });
-      } else if (res.free_awarded > 0) {
-        setMsg({ txt: `+${res.free_awarded} giros gratis`, tono: "ok" });
+      if (res.in_bonus) {
+        // ── Giro DENTRO del bonus: multiplicador total persistente ──
+        setBonus((b) =>
+          b ? { ...b, mult: res.total_multiplier ?? b.mult, spinsRemaining: res.spins_remaining ?? 0 } : b
+        );
+        if ((res.pago_final ?? res.total_win) > 0) {
+          const applied = res.mult_applied ?? res.total_multiplier ?? 1;
+          soundRef.current?.win(applied >= 3 ? 3 : 2);
+          lluviaMonedas(applied >= 5 ? 26 : 16);
+          setWinFx({ amount: res.pago_final ?? res.total_win, big: applied >= 3 });
+          clearTimeout(winTimer.current);
+          winTimer.current = setTimeout(() => setWinFx(null), Math.max(650, 1800 * velRef.current));
+          setMsg({ txt: `${fmt(res.pago_base ?? 0)} × ${applied} = ${fmt(res.pago_final ?? res.total_win)}`, tono: "ok" });
+        } else {
+          setMsg({ txt: `Giro de bonus · ×${res.total_multiplier ?? 1}`, tono: "info" });
+        }
+        if (res.bonus_ended && res.bonus_summary) {
+          const s = res.bonus_summary;
+          setBonus(null);
+          setFree(0);
+          setAuto(false);
+          setTimeout(
+            () => setBonusResumen({ total: s.total_win, giros: s.spins, mult: s.final_mult }),
+            Math.max(400, 700 * velRef.current)
+          );
+        }
       } else {
-        setMsg({ txt: res.was_free ? "Giro gratis sin premio." : "Sin premio.", tono: "info" });
-      }
-
-      if (res.free_awarded > 0) {
-        soundRef.current?.freeSpins();
-        setFsFx(res.free_awarded);
-        clearTimeout(fsTimer.current);
-        fsTimer.current = setTimeout(() => setFsFx(null), Math.max(800, 2400 * velRef.current));
+        // ── Giro BASE (puede disparar el bonus natural) ──
+        if (res.total_win > 0) {
+          const ratio = res.total_win / bet;
+          const level = ratio >= 15 ? 3 : ratio >= 5 ? 2 : 1;
+          soundRef.current?.win(level);
+          lluviaMonedas(level >= 3 ? 28 : level >= 2 ? 18 : 12);
+          setWinFx({ amount: res.total_win, big: level >= 2 });
+          clearTimeout(winTimer.current);
+          winTimer.current = setTimeout(() => setWinFx(null), Math.max(650, (level >= 2 ? 2400 : 1700) * velRef.current));
+          const extra = res.mult > 1 ? ` ×${res.mult}` : "";
+          setMsg({ txt: `¡Ganaste ${fmt(res.total_win)}${extra}!`, tono: "ok" });
+        } else if (!res.bonus_started) {
+          setMsg({ txt: "Sin premio.", tono: "info" });
+        }
+        if (res.bonus_started) {
+          // Trigger natural → arranca la tanda de bonus.
+          setBonus({
+            source: "natural",
+            tier: null,
+            mult: res.total_multiplier ?? 1,
+            spinsRemaining: res.spins_remaining ?? config.freespins.grant,
+            betLocked: res.bet_locked ?? bet,
+          });
+          soundRef.current?.freeSpins();
+          setFsFx(res.spins_remaining ?? config.freespins.grant);
+          clearTimeout(fsTimer.current);
+          fsTimer.current = setTimeout(() => setFsFx(null), Math.max(800, 2400 * velRef.current));
+          setMsg({ txt: `¡BONUS! ${res.spins_remaining ?? config.freespins.grant} giros gratis`, tono: "ok" });
+        }
       }
     } catch (e) {
       setMsg({ txt: e instanceof Error ? e.message : "Error de red.", tono: "err" });
@@ -374,41 +437,42 @@ export function SlotMachine({
   };
 
   // Comprar giros gratis / bonus buy. Precio = qty × apuesta (mismo RTP).
-  const comprar = useCallback(
-    async (qty: number) => {
-      if (comprando || girando) return;
+  // Comprar un tier de bonus. Crea la sesión en el server; luego se juega.
+  const comprarTier = useCallback(
+    async (tier: TierKey) => {
+      if (comprando || girando || bonus) return;
       unlockAudio();
       setComprando(true);
       setMsg(null);
       try {
-        const r = await fetch("/api/slots/comprar", {
+        const r = await fetch("/api/slots/buy-bonus", {
           method: "POST",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify({ slot: config.slug, bet, qty }),
+          body: JSON.stringify({ slot: config.slug, bet, tier }),
         });
         const data = await r.json();
         if (!r.ok) {
-          setMsg({ txt: data?.error ?? "No se pudo comprar.", tono: "err" });
+          setMsg({ txt: data?.error ?? "No se pudo comprar el bonus.", tono: "err" });
           return;
         }
         setSaldo(data.new_balance);
-        setFree(data.free_remaining);
-        if (data.free_bet) setBet(data.free_bet);
-        // Arranca una tanda de bonus (comprada): al terminar muestra el resumen.
-        bonusRunRef.current = { active: true, bought: true, total: 0, giros: 0 };
+        setBet(data.bet_locked);
+        setFree(data.spins);
+        setBonus({ source: "buy", tier, mult: Number(data.total_multiplier), spinsRemaining: data.spins, betLocked: data.bet_locked });
         setBonusResumen(null);
+        setTierModal(false);
         soundRef.current?.freeSpins();
-        setFsFx(data.bought);
+        setFsFx(data.spins);
         clearTimeout(fsTimer.current);
         fsTimer.current = setTimeout(() => setFsFx(null), Math.max(800, 2000 * velRef.current));
-        setMsg({ txt: `Compraste ${data.bought} giros gratis por ${fmt(data.price)}. ¡Dale a GIRAR!`, tono: "ok" });
+        setMsg({ txt: `Bonus ${tier.toUpperCase()}: ${data.spins} giros por ${fmt(data.price)}. ¡Dale a GIRAR!`, tono: "ok" });
       } catch (e) {
         setMsg({ txt: e instanceof Error ? e.message : "Error de red.", tono: "err" });
       } finally {
         setComprando(false);
       }
     },
-    [comprando, girando, config.slug, bet]
+    [comprando, girando, bonus, config.slug, bet]
   );
 
   const sinFichas = free <= 0 && saldo < bet;
@@ -481,10 +545,77 @@ export function SlotMachine({
               {fmt(bonusShown)}
             </div>
             <div className="text-sm text-white/70">
-              {bonusResumen.giros} giros gratis · {config.name}
+              {bonusResumen.giros} giros · {config.name}
+            </div>
+            <div className="mt-1 text-[13px] font-semibold" style={{ color: "var(--brass, #e7c477)" }}>
+              Multiplicador final ×{bonusResumen.mult}
             </div>
             <button className="nbtn nbtn-primary mt-5 w-full py-2.5 text-[15px]" onClick={() => setBonusResumen(null)}>
               Seguir jugando
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Bonus Buy por tiers */}
+      {tierModal && config.freespins.buy_tiers && (
+        <div
+          className="fixed inset-0 z-[70] grid place-items-center bg-black/72 p-4 backdrop-blur-sm"
+          onClick={() => setTierModal(false)}
+        >
+          <div
+            className="animate-card-in w-full max-w-2xl rounded-2xl border p-5"
+            style={{
+              borderColor: "color-mix(in srgb, var(--brass) 50%, transparent)",
+              background: "linear-gradient(180deg, color-mix(in srgb, var(--cabinet-1, #241a0d) 96%, #000), color-mix(in srgb, var(--cabinet-2, #0f0b06) 96%, #000))",
+              boxShadow: "0 22px 70px rgba(0,0,0,.6)",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mb-1 text-center text-[12px] uppercase tracking-[0.22em]" style={{ color: "var(--brass)" }}>
+              Comprar bonus
+            </div>
+            <div className="mb-4 text-center text-xs text-white/55">
+              Apuesta {fmt(bet)} · el multiplicador total crece con cada premio y no se resetea.
+            </div>
+            <div className="grid gap-3 sm:grid-cols-3">
+              {(["standard", "super", "max"] as TierKey[]).map((tk) => {
+                const t = config.freespins.buy_tiers![tk];
+                if (!t) return null;
+                const price = t.price_x * bet;
+                const nombre = tk === "standard" ? "Standard" : tk === "super" ? "Super" : "Max";
+                const destacado = tk === "max";
+                const puede = saldo >= price && !comprando;
+                return (
+                  <div
+                    key={tk}
+                    className="flex flex-col rounded-xl border p-4 text-center"
+                    style={{
+                      borderColor: destacado ? "var(--brass)" : "rgba(255,255,255,.12)",
+                      background: destacado ? "color-mix(in srgb, var(--brass) 12%, transparent)" : "rgba(255,255,255,.03)",
+                    }}
+                  >
+                    <div className="font-serif text-xl font-semibold" style={{ color: "var(--brass, #e7c477)" }}>{nombre}</div>
+                    <div className="mt-1 text-[12px] text-white/60">{t.spins} giros</div>
+                    <div className="mt-2 text-[13px] text-white/80">
+                      Multiplicador inicial <b>×{t.mult_start}</b>
+                    </div>
+                    <div className="text-[12px] text-white/60">+{t.mult_increment} por premio</div>
+                    <div className="my-3 font-mono text-lg font-bold" style={{ color: "var(--lcd, #ffcf5a)" }}>{fmt(price)}</div>
+                    <button
+                      onClick={() => comprarTier(tk)}
+                      disabled={!puede}
+                      className="mt-auto rounded-md px-3 py-2 text-[14px] font-semibold transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40"
+                      style={{ background: "var(--brass)", color: "#241a04" }}
+                    >
+                      {saldo < price ? "Sin fichas" : comprando ? "…" : "Comprar"}
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+            <button className="mt-4 w-full text-center text-[13px] text-white/50 hover:text-white/80" onClick={() => setTierModal(false)}>
+              Cancelar
             </button>
           </div>
         </div>
@@ -500,7 +631,16 @@ export function SlotMachine({
               <div className="slot-title">{config.name}</div>
             )}
             <div className="slot-sub">{config.tagline}</div>
-            {free > 0 && <div className="slot-free">🎟 {free} GRATIS</div>}
+            {bonus ? (
+              <div className="bonus-hud">
+                <span className="bonus-hud-mult">TOTAL ×{bonus.mult}</span>
+                <span className="bonus-hud-spins">
+                  🎟 {bonus.spinsRemaining} giros{bonus.source === "buy" && bonus.tier ? ` · ${bonus.tier.toUpperCase()}` : ""}
+                </span>
+              </div>
+            ) : (
+              free > 0 && <div className="slot-free">🎟 {free} GRATIS</div>
+            )}
           </div>
 
           {/* Ventana de rodillos con vidrio + viñeta + línea de pago */}
@@ -589,35 +729,23 @@ export function SlotMachine({
           </div>
         </div>
 
-        {/* Comprar giros gratis / bonus buy */}
-        <div className="panel mt-4">
-          <div className="panel-title">Comprar giros gratis</div>
-          <p className="mt-1 mb-2 text-xs text-white/55">
-            Precio: 1× tu apuesta por giro (mismo retorno que jugar normal). Apuesta actual: {fmt(bet)}.
-          </p>
-          <div className="flex flex-wrap gap-2">
-            {[10, 25, 50].map((q) => (
-              <button
-                key={q}
-                onClick={() => comprar(q)}
-                disabled={comprando || girando || saldo < q * bet}
-                className="rounded-md border px-3 py-1.5 text-[13px] transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40"
-                style={{ borderColor: "color-mix(in srgb, var(--brass) 45%, transparent)", color: "var(--cream)" }}
-              >
-                {q} giros · {fmt(q * bet)}
-              </button>
-            ))}
+        {/* Bonus Buy (tiers) */}
+        {!bonus && config.freespins.buy_tiers && (
+          <div className="panel mt-4">
+            <div className="panel-title">Bonus Buy</div>
+            <p className="mt-1 mb-2 text-xs text-white/55">
+              Comprá una tanda de giros con <b>Total Multiplier persistente</b> que crece con cada premio. Apuesta actual: {fmt(bet)}.
+            </p>
             <button
-              onClick={() => comprar(100)}
-              disabled={comprando || girando || saldo < 100 * bet}
-              className="rounded-md px-3 py-1.5 text-[13px] font-semibold transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40"
+              onClick={() => setTierModal(true)}
+              disabled={comprando || girando}
+              className="rounded-md px-4 py-2 text-[14px] font-semibold transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40"
               style={{ background: "var(--brass)", color: "#241a04" }}
             >
-              🎁 BONUS BUY · 100 giros · {fmt(100 * bet)}
+              🎁 Comprar bonus
             </button>
           </div>
-          {comprando && <div className="mt-2 text-xs text-white/50">Procesando…</div>}
-        </div>
+        )}
 
         {/* Desglose del último giro */}
         {ultimo && ultimo.wins.length > 0 && (
@@ -732,6 +860,11 @@ const estilos = `
 .slot-sub{font-size:11px;letter-spacing:.28em;text-transform:uppercase;color:var(--brass);opacity:.8}
 .slot-free{display:inline-block;margin-top:6px;padding:2px 10px;border-radius:999px;font-size:12px;font-weight:700;
   background:var(--ruby);color:#fff;box-shadow:0 0 12px rgba(200,49,63,.6)}
+.bonus-hud{display:inline-flex;flex-direction:column;align-items:center;gap:1px;margin-top:6px;padding:5px 18px;border-radius:12px;
+  background:linear-gradient(180deg,color-mix(in srgb,var(--brass) 28%,transparent),transparent);
+  box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--brass) 55%,transparent)}
+.bonus-hud-mult{font-family:ui-monospace,monospace;font-weight:800;font-size:22px;color:var(--lcd,#ffcf5a);text-shadow:0 0 12px rgba(255,207,90,.5)}
+.bonus-hud-spins{font-size:11px;font-weight:700;color:var(--cream);letter-spacing:.03em}
 
 .reel-window{position:relative;border-radius:14px;overflow:hidden;padding:10px;
   background:linear-gradient(180deg,#05060a,#0b0d13);
