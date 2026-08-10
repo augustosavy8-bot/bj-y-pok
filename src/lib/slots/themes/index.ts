@@ -3,6 +3,7 @@ import { elSalon } from "./el-salon";
 import { faraones } from "./faraones";
 import { olympus } from "./olympus";
 import { clandestino } from "./clandestino";
+import { cowboy } from "./cowboy";
 
 // Registro de temas por slug. Para sumar un slot nuevo: creá su archivo de tema
 // y agregá una línea acá. El resto (motor, RPC, ruta) funciona solo.
@@ -11,6 +12,7 @@ export const TEMAS: Record<string, SlotTheme> = {
   faraones: faraones,
   olympus: olympus,
   clandestino: clandestino,
+  cowboy: cowboy,
 };
 
 export function temaDe(slug: string): SlotTheme | null {
