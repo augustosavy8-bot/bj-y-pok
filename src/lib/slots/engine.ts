@@ -48,6 +48,7 @@ export class SlotEngine {
   private o: Required<EngineOptions>;
   private reelEls: ReelDOM[] = [];
   private spinning = false;
+  private winLinesEl: SVGSVGElement | null = null;
 
   constructor(mount: HTMLElement, opts: EngineOptions) {
     this.mount = mount;
@@ -64,6 +65,7 @@ export class SlotEngine {
     const { reels, rows, cell } = this.o;
     this.mount.textContent = "";
     this.mount.style.display = "grid";
+    this.mount.style.position = "relative"; // ancla del overlay de líneas ganadoras
     this.mount.style.gridTemplateColumns = `repeat(${reels}, ${cell}px)`;
     this.mount.style.gap = "var(--reel-gap, 8px)";
     this.reelEls = [];
@@ -116,6 +118,7 @@ export class SlotEngine {
     if (this.spinning) return;
     this.spinning = true;
     this.clearHighlight();
+    this.clearWinLines();
     try {
       const proms = this.reelEls.map((_, r) =>
         this.spinReel(r, target[r] ?? []).then(() => onReelStop?.(r))
@@ -190,6 +193,100 @@ export class SlotEngine {
     for (const rd of this.reelEls) {
       for (const el of rd.finalCells) el.classList.remove("reel-win");
     }
+  }
+
+  /**
+   * Dibuja una polilínea animada por cada línea ganadora, uniendo el centro de
+   * las celdas que pagaron (de izquierda a derecha). Cada línea tiene su color
+   * y se "traza" con un pequeño delay escalonado. Las posiciones se toman del
+   * DOM real (getBoundingClientRect), así funcionan con cualquier tamaño/gap.
+   */
+  showWinLines(lines: { cells: [number, number][] }[]): void {
+    this.clearWinLines();
+    if (!lines || lines.length === 0) return;
+    const NS = "http://www.w3.org/2000/svg";
+    // Contenedor = la ventana de rodillos (padre): así el overlay queda por
+    // encima del vidrio/viñeta del gabinete, que son hermanos del `.reels`.
+    const container = (this.mount.parentElement as HTMLElement) ?? this.mount;
+    const mRect = container.getBoundingClientRect();
+    const svg = document.createElementNS(NS, "svg");
+    svg.setAttribute("class", "win-lines");
+    svg.style.cssText =
+      `position:absolute;left:0;top:0;width:${container.clientWidth}px;height:${container.clientHeight}px;` +
+      `pointer-events:none;overflow:visible;z-index:20`;
+
+    const COLORS = ["#ffd76b", "#7fdcff", "#ff9ecf", "#a6ff98", "#c9a3ff", "#ffb27a"];
+
+    lines.forEach((line, i) => {
+      const pts: number[][] = [];
+      for (const [reel, row] of line.cells) {
+        const el = this.reelEls[reel]?.finalCells[row];
+        if (!el) continue;
+        const r = el.getBoundingClientRect();
+        pts.push([r.left - mRect.left + r.width / 2, r.top - mRect.top + r.height / 2]);
+      }
+      if (pts.length < 2) return;
+      const color = COLORS[i % COLORS.length];
+
+      // Halo por debajo (línea más gruesa y translúcida).
+      const halo = document.createElementNS(NS, "polyline");
+      halo.setAttribute("points", pts.map((p) => p.join(",")).join(" "));
+      halo.setAttribute("fill", "none");
+      halo.setAttribute("stroke", color);
+      halo.setAttribute("stroke-width", "10");
+      halo.setAttribute("stroke-linecap", "round");
+      halo.setAttribute("stroke-linejoin", "round");
+      halo.setAttribute("opacity", "0.22");
+
+      const poly = document.createElementNS(NS, "polyline");
+      poly.setAttribute("points", pts.map((p) => p.join(",")).join(" "));
+      poly.setAttribute("fill", "none");
+      poly.setAttribute("stroke", color);
+      poly.setAttribute("stroke-width", "3.5");
+      poly.setAttribute("stroke-linecap", "round");
+      poly.setAttribute("stroke-linejoin", "round");
+      poly.style.filter = `drop-shadow(0 0 5px ${color})`;
+
+      // Largo total para el efecto "trazado".
+      let len = 0;
+      for (let k = 1; k < pts.length; k++) {
+        len += Math.hypot(pts[k][0] - pts[k - 1][0], pts[k][1] - pts[k - 1][1]);
+      }
+      for (const p of [halo, poly]) {
+        p.style.strokeDasharray = String(len);
+        p.style.strokeDashoffset = String(len);
+        p.animate(
+          [{ strokeDashoffset: len }, { strokeDashoffset: 0 }],
+          { duration: 420, delay: i * 150, easing: "ease-out", fill: "forwards" }
+        );
+      }
+
+      // Nodo pulsante en cada celda ganadora.
+      for (const [x, y] of pts) {
+        const dot = document.createElementNS(NS, "circle");
+        dot.setAttribute("cx", String(x));
+        dot.setAttribute("cy", String(y));
+        dot.setAttribute("r", "5");
+        dot.setAttribute("fill", color);
+        dot.style.filter = `drop-shadow(0 0 4px ${color})`;
+        dot.animate(
+          [{ opacity: 0.4, transform: "scale(0.7)" }, { opacity: 1, transform: "scale(1.25)" }, { opacity: 0.4, transform: "scale(0.7)" }],
+          { duration: 1000, iterations: Infinity, easing: "ease-in-out", delay: i * 150 }
+        );
+        dot.style.transformOrigin = `${x}px ${y}px`;
+        svg.appendChild(dot);
+      }
+      svg.insertBefore(poly, svg.firstChild);
+      svg.insertBefore(halo, svg.firstChild);
+    });
+
+    container.appendChild(svg);
+    this.winLinesEl = svg;
+  }
+
+  clearWinLines(): void {
+    this.winLinesEl?.remove();
+    this.winLinesEl = null;
   }
 
   get isSpinning(): boolean {

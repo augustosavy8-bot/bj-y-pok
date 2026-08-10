@@ -106,6 +106,7 @@ export function SlotMachine({
   const [winFx, setWinFx] = useState<{ amount: number; big: boolean } | null>(null);
   const [fsFx, setFsFx] = useState<number | null>(null);
   const [mute, setMute] = useState(false);
+  const [comprando, setComprando] = useState(false);
   const [msg, setMsg] = useState<{ txt: string; tono: "ok" | "err" | "info" } | null>(null);
   const [ultimo, setUltimo] = useState<SpinResult | null>(null);
   const [hist, setHist] = useState<HistItem[]>([]);
@@ -221,6 +222,7 @@ export function SlotMachine({
 
       await engine.spin(res.grid, (r) => soundRef.current?.reelStop(r));
       engine.highlight(res.wins.flatMap((w) => w.cells));
+      engine.showWinLines(res.wins.map((w) => ({ cells: w.cells })));
 
       setSaldo(res.new_balance);
       setFree(res.free_remaining);
@@ -305,6 +307,40 @@ export function SlotMachine({
     setMuted(m);
     if (!m) unlockAudio();
   };
+
+  // Comprar giros gratis / bonus buy. Precio = qty × apuesta (mismo RTP).
+  const comprar = useCallback(
+    async (qty: number) => {
+      if (comprando || girando) return;
+      unlockAudio();
+      setComprando(true);
+      setMsg(null);
+      try {
+        const r = await fetch("/api/slots/comprar", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ slot: config.slug, bet, qty }),
+        });
+        const data = await r.json();
+        if (!r.ok) {
+          setMsg({ txt: data?.error ?? "No se pudo comprar.", tono: "err" });
+          return;
+        }
+        setSaldo(data.new_balance);
+        setFree(data.free_remaining);
+        soundRef.current?.freeSpins();
+        setFsFx(data.bought);
+        clearTimeout(fsTimer.current);
+        fsTimer.current = setTimeout(() => setFsFx(null), 2000);
+        setMsg({ txt: `Compraste ${data.bought} giros gratis por ${fmt(data.price)}. ¡Dale a GIRAR!`, tono: "ok" });
+      } catch (e) {
+        setMsg({ txt: e instanceof Error ? e.message : "Error de red.", tono: "err" });
+      } finally {
+        setComprando(false);
+      }
+    },
+    [comprando, girando, config.slug, bet]
+  );
 
   const sinFichas = free <= 0 && saldo < bet;
 
@@ -408,6 +444,36 @@ export function SlotMachine({
               {auto ? "AUTO ON" : "AUTO"}
             </button>
           </div>
+        </div>
+
+        {/* Comprar giros gratis / bonus buy */}
+        <div className="panel mt-4">
+          <div className="panel-title">Comprar giros gratis</div>
+          <p className="mt-1 mb-2 text-xs text-white/55">
+            Precio: 1× tu apuesta por giro (mismo retorno que jugar normal). Apuesta actual: {fmt(bet)}.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {[10, 25, 50].map((q) => (
+              <button
+                key={q}
+                onClick={() => comprar(q)}
+                disabled={comprando || girando || saldo < q * bet}
+                className="rounded-md border px-3 py-1.5 text-[13px] transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40"
+                style={{ borderColor: "color-mix(in srgb, var(--brass) 45%, transparent)", color: "var(--cream)" }}
+              >
+                {q} giros · {fmt(q * bet)}
+              </button>
+            ))}
+            <button
+              onClick={() => comprar(100)}
+              disabled={comprando || girando || saldo < 100 * bet}
+              className="rounded-md px-3 py-1.5 text-[13px] font-semibold transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40"
+              style={{ background: "var(--brass)", color: "#241a04" }}
+            >
+              🎁 BONUS BUY · 100 giros · {fmt(100 * bet)}
+            </button>
+          </div>
+          {comprando && <div className="mt-2 text-xs text-white/50">Procesando…</div>}
         </div>
 
         {/* Desglose del último giro */}
