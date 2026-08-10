@@ -44,6 +44,7 @@ interface SpinResult {
   was_free: boolean;
   free_awarded: number;
   free_remaining: number;
+  free_bet?: number;
   new_balance: number;
   server_seed_hash: string;
   nonce: number;
@@ -226,6 +227,8 @@ export function SlotMachine({
 
       setSaldo(res.new_balance);
       setFree(res.free_remaining);
+      // Durante los giros gratis la apuesta queda bloqueada a la del lote.
+      if (res.free_remaining > 0 && res.free_bet) setBet(res.free_bet);
       setWin(res.total_win);
       contarHasta(res.total_win);
       setUltimo(res);
@@ -328,6 +331,7 @@ export function SlotMachine({
         }
         setSaldo(data.new_balance);
         setFree(data.free_remaining);
+        if (data.free_bet) setBet(data.free_bet);
         soundRef.current?.freeSpins();
         setFsFx(data.bought);
         clearTimeout(fsTimer.current);
@@ -425,9 +429,11 @@ export function SlotMachine({
           {/* Controles */}
           <div className="controls">
             <div className="bet-ctrl">
-              <button className="bet-btn" onClick={() => stepBet(-1)} disabled={girando || bet === config.bet_options[0]} aria-label="Bajar apuesta">−</button>
-              <div className="bet-val">{fmt(bet)}</div>
-              <button className="bet-btn" onClick={() => stepBet(1)} disabled={girando || bet === config.bet_options[config.bet_options.length - 1]} aria-label="Subir apuesta">+</button>
+              <button className="bet-btn" onClick={() => stepBet(-1)} disabled={girando || free > 0 || bet === config.bet_options[0]} aria-label="Bajar apuesta">−</button>
+              <div className="bet-val" title={free > 0 ? "Apuesta bloqueada durante los giros gratis" : undefined}>
+                {fmt(bet)}{free > 0 ? " 🔒" : ""}
+              </div>
+              <button className="bet-btn" onClick={() => stepBet(1)} disabled={girando || free > 0 || bet === config.bet_options[config.bet_options.length - 1]} aria-label="Subir apuesta">+</button>
             </div>
 
             <button className="spin-btn" onClick={girar} disabled={girando || sinFichas} aria-label="Girar">

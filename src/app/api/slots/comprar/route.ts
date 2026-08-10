@@ -32,6 +32,7 @@ export async function POST(req: Request) {
     if (error) {
       const m = error.message || "";
       if (/saldo_insuficiente/.test(m)) return errorJson("No te alcanzan las fichas para esta compra.", 402);
+      if (/giros_gratis_otra_apuesta/.test(m)) return errorJson("Terminá tus giros gratis actuales antes de comprar a otra apuesta.", 409);
       if (/cantidad_invalida/.test(m)) return errorJson("Esa cantidad no está permitida.", 400);
       if (/apuesta_invalida/.test(m)) return errorJson("Esa apuesta no está permitida.", 400);
       if (/slot_no_encontrado/.test(m)) return errorJson("Ese slot no existe o está inactivo.", 404);
