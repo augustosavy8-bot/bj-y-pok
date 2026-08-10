@@ -38,6 +38,17 @@ const SLOTS: Record<string, SlotCfg> = {
 const BET = 45;
 const MULTMAX = 50;
 
+// RTP objetivo (%). Se bajó de 95 a 90: recorte parejo de ~5 puntos en líneas,
+// bonus natural y bonus comprado. Los `factor` base se escalan por RTP/95 para
+// que las líneas paguen proporcionalmente menos; natural y tiers se recalibran.
+const RTP = 90;
+const FSCALE = RTP / 95;
+for (const c of Object.values(SLOTS)) {
+  for (const k of Object.keys(c.factor)) {
+    c.factor[+k] = Math.round(c.factor[+k] * FSCALE * 100) / 100;
+  }
+}
+
 interface Prep { names:string[]; valArr:number[]; cum:number[]; total:number; wildI:number; trigI:number; topI:number; numlines:number; }
 function prep(c: SlotCfg): Prep {
   const names = c.syms.map(s=>s[0]);
@@ -115,22 +126,22 @@ for (const slug of Object.keys(SLOTS)) {
   const c = SLOTS[slug]; const P = prep(c);
   const NT = slug==="cowboy" ? 120000 : N_TIER;
   const NB = slug==="cowboy" ? 2000000 : 4000000;
-  // 1) escala del BUY: Standard (mult 1/1, spins 10, precio 100) = 95%
+  // 1) escala del BUY: Standard (mult 1/1, spins 10, precio 100) = RTP%
   const evStd1 = evTanda(c,P,1,10,1,1,NT);
-  const buyScale = round2(95 / evStd1);
+  const buyScale = round2(RTP / evStd1);
   const evStd = evTanda(c,P,buyScale,10,1,1,NT);
   const evSuper = evTanda(c,P,buyScale,10,2,2,NT);
   const evMax = evTanda(c,P,buyScale,10,5,3,NT);
-  const priceSuper = niceCredits(evSuper/0.95);
-  const priceMax = niceCredits(evMax/0.95);
-  // 2) escala del NATURAL: líneas base + bonus natural = 95%.
+  const priceSuper = niceCredits(evSuper/(RTP/100));
+  const priceMax = niceCredits(evMax/(RTP/100));
+  // 2) escala del NATURAL: líneas base + bonus natural = RTP%.
   const { linesRtp, trigRate } = baseSim(c,P,NB);
   const evNat1 = evTanda(c,P,1,c.grant,1,1,NT);       // EV natural por tanda (scale=1)
   const natContribPerUnit = trigRate * evNat1 * 100;  // % de RTP por unidad de escala
-  const natScale = round2(Math.max(0, (95 - linesRtp) / natContribPerUnit));
+  const natScale = round2(Math.max(0, (RTP - linesRtp) / natContribPerUnit));
   const baseFinal = round2(linesRtp + natContribPerUnit * natScale);
   out[slug] = { bonus_factor_scale: buyScale, natural_factor_scale: natScale,
-    priceSuper, priceMax,
+    factor: c.factor, priceSuper, priceMax,
     rtpStd: round2(evStd/100*100), rtpSuper: round2(evSuper/priceSuper*100), rtpMax: round2(evMax/priceMax*100),
     linesRtp: round2(linesRtp), baseFinal };
   console.log(slug.padEnd(12)+
