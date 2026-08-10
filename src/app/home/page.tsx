@@ -394,6 +394,53 @@ export default function HomePage() {
       </section>
       )}
 
+      {/* Dino Crash. La visibilidad sale de src/lib/juegos-visibles.ts */}
+      {puedeVerJuego("dino-crash", esAdmin) && (
+      <section id="dino-crash" className="mx-auto max-w-6xl px-4 pt-14 sm:px-8">
+        <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <span className="inline-flex items-center gap-2 text-[12px] uppercase tracking-[0.16em] text-[#e7c477]">
+              <span aria-hidden>✦</span> Nuevo · Crash
+              {estaOculto("dino-crash") && esAdmin && (
+                <span className="rounded bg-amber-400/15 px-2 py-0.5 text-[10px] normal-case tracking-normal text-amber-300">
+                  oculto · sólo lo ves vos
+                </span>
+              )}
+            </span>
+            <h2 className="font-serif text-[34px] font-semibold leading-tight">Dino Crash</h2>
+            <p className="m-0 text-[13px] text-tinta/55">El dino corre sin parar · retirá antes del meteorito.</p>
+          </div>
+          <a href="/juegos/dino-crash" className="text-[14px] text-acento hover:underline">Jugar →</a>
+        </div>
+
+        <a
+          href="/juegos/dino-crash"
+          className="group relative block overflow-hidden rounded-2xl border border-[#f0912a]/25 transition hover:-translate-y-0.5 hover:border-[#f0912a]/55 hover:shadow-2xl"
+        >
+          <div className="relative aspect-[16/6] overflow-hidden" style={{ background: "linear-gradient(120deg,#1a1140 0%,#3a1a55 45%,#7a2b53 100%)" }}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/juegos/dino-crash/night_sky.webp" alt="" aria-hidden loading="lazy" className="absolute inset-0 h-full w-full object-cover opacity-60 transition duration-500 group-hover:scale-105" />
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/juegos/dino-crash/ground.webp" alt="" aria-hidden loading="lazy" className="pointer-events-none absolute inset-x-0 bottom-0 w-full" />
+            <div className="absolute inset-0" style={{ background: "linear-gradient(90deg, rgba(10,8,20,.78) 0%, rgba(10,8,20,.3) 46%, transparent 72%)" }} />
+            <div className="relative z-10 flex h-full items-center gap-3 px-5 sm:gap-5 sm:px-9">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/juegos/dino-crash/dino_badge.webp" alt="Dino Crash" loading="lazy" className="h-[72%] w-auto drop-shadow-[0_6px_16px_rgba(240,145,42,.5)]" />
+              <div className="min-w-0">
+                <div className="font-serif text-[26px] font-semibold leading-none text-[#ffd98a] sm:text-[36px]">Dino Crash</div>
+                <p className="mt-1.5 hidden max-w-md text-[13px] text-tinta/75 sm:block">
+                  Cada 5 segundos arranca una ronda. El multiplicador sube… hasta que cae el meteorito de golpe. Retirate a tiempo.
+                </p>
+                <span className="mt-3 inline-flex items-center justify-center rounded-lg px-4 py-2 text-[14px] font-bold text-[#3a1400]" style={{ background: "linear-gradient(180deg,#ffd23f,#ff6a1a)" }}>
+                  Jugar ahora →
+                </span>
+              </div>
+            </div>
+          </div>
+        </a>
+      </section>
+      )}
+
       {/* Mesas */}
       <section id="mesas" className="mx-auto max-w-6xl px-4 pt-14 sm:px-8">
         <div className="mb-5">
