@@ -455,8 +455,8 @@ export function SlotMachine({
               <button className="bet-btn" onClick={() => stepBet(1)} disabled={girando || free > 0 || bet === config.bet_options[config.bet_options.length - 1]} aria-label="Subir apuesta">+</button>
             </div>
 
-            <button className="spin-btn" onClick={girar} disabled={girando || sinFichas} aria-label="Girar">
-              <span className="spin-inner">{girando ? "···" : free > 0 ? "GRATIS" : "GIRAR"}</span>
+            <button className="spin-btn" onClick={girar} disabled={girando || sinFichas || auto} aria-label="Girar">
+              <span className="spin-inner">{auto ? "AUTO" : girando ? "···" : free > 0 ? "GRATIS" : "GIRAR"}</span>
             </button>
 
             <button
