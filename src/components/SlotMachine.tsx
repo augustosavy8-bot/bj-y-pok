@@ -110,6 +110,15 @@ export function SlotMachine({
   const [comprando, setComprando] = useState(false);
   const [vel, setVel] = useState(1); // 1 normal · 0.5 rápido (2×) · 0.25 turbo (4×)
   const velRef = useRef(1);
+  const [bonusResumen, setBonusResumen] = useState<{ total: number; giros: number } | null>(null);
+  const [bonusShown, setBonusShown] = useState(0);
+  // Acumulador de la tanda de giros gratis en curso (para el resumen final).
+  const bonusRunRef = useRef<{ active: boolean; bought: boolean; total: number; giros: number }>({
+    active: false,
+    bought: false,
+    total: 0,
+    giros: 0,
+  });
   const [msg, setMsg] = useState<{ txt: string; tono: "ok" | "err" | "info" } | null>(null);
   const [ultimo, setUltimo] = useState<SpinResult | null>(null);
   const [hist, setHist] = useState<HistItem[]>([]);
@@ -180,6 +189,23 @@ export function SlotMachine({
     try { localStorage.setItem("slot_speed", String(m)); } catch {}
   };
 
+  // Conteo animado del total del resumen de bonus + fanfarria.
+  useEffect(() => {
+    if (!bonusResumen) { setBonusShown(0); return; }
+    soundRef.current?.win(3);
+    const to = bonusResumen.total;
+    const start = performance.now();
+    const dur = 1100;
+    let raf = 0;
+    const tick = (t: number) => {
+      const k = Math.min(1, (t - start) / dur);
+      setBonusShown(Math.round(to * (1 - Math.pow(1 - k, 2))));
+      if (k < 1) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [bonusResumen]);
+
   // Conteo animado de la ganancia (ease-out).
   const contarHasta = useCallback((to: number) => {
     cancelAnimationFrame(countRef.current);
@@ -249,6 +275,23 @@ export function SlotMachine({
       // Durante los giros gratis la apuesta queda bloqueada a la del lote.
       if (res.free_remaining > 0 && res.free_bet) setBet(res.free_bet);
       setWin(res.total_win);
+
+      // Resumen de bonus: acumular lo ganado en la tanda de giros gratis y, al
+      // agotarse, mostrar el total. Sólo para tandas COMPRADAS.
+      {
+        const run = bonusRunRef.current;
+        if (res.was_free && run.active) {
+          run.total += res.total_win;
+          run.giros += 1;
+        }
+        if (run.active && run.bought && res.was_free && res.free_remaining === 0) {
+          const resumen = { total: run.total, giros: run.giros };
+          bonusRunRef.current = { active: false, bought: false, total: 0, giros: 0 };
+          setAuto(false);
+          // Pequeño delay para que se vea la última grilla/premio antes del resumen.
+          setTimeout(() => setBonusResumen(resumen), Math.max(350, 600 * velRef.current));
+        }
+      }
       contarHasta(res.total_win);
       setUltimo(res);
       setHist((h) =>
@@ -351,6 +394,9 @@ export function SlotMachine({
         setSaldo(data.new_balance);
         setFree(data.free_remaining);
         if (data.free_bet) setBet(data.free_bet);
+        // Arranca una tanda de bonus (comprada): al terminar muestra el resumen.
+        bonusRunRef.current = { active: true, bought: true, total: 0, giros: 0 };
+        setBonusResumen(null);
         soundRef.current?.freeSpins();
         setFsFx(data.bought);
         clearTimeout(fsTimer.current);
@@ -392,6 +438,54 @@ export function SlotMachine({
             <div className="fs-spark">✦</div>
             <div className="fs-num">{fsFx}</div>
             <div className="fs-txt">GIROS GRATIS</div>
+          </div>
+        </div>
+      )}
+
+      {/* Resumen final del bonus comprado */}
+      {bonusResumen && (
+        <div
+          className="fixed inset-0 z-[60] grid place-items-center bg-black/72 p-4 backdrop-blur-sm"
+          style={{ animation: "none" }}
+          onClick={() => setBonusResumen(null)}
+        >
+          <div
+            className="animate-card-in relative w-full max-w-sm overflow-hidden rounded-2xl border p-6 text-center"
+            style={{
+              borderColor: "color-mix(in srgb, var(--brass) 55%, transparent)",
+              background:
+                "radial-gradient(120% 90% at 50% 0%, color-mix(in srgb, var(--brass) 14%, transparent), transparent 60%)," +
+                "linear-gradient(180deg, color-mix(in srgb, var(--cabinet-1, #241a0d) 94%, #000), color-mix(in srgb, var(--cabinet-2, #0f0b06) 94%, #000))",
+              boxShadow: "0 22px 70px rgba(0,0,0,.6)",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Monedas rebotando */}
+            <div className="mb-1 flex items-center justify-center gap-1.5 text-2xl">
+              {["🪙", "✦", "🪙", "✦", "🪙"].map((c, i) => (
+                <span key={i} className="animate-bounce" style={{ animationDelay: `${i * 0.09}s` }}>
+                  {c}
+                </span>
+              ))}
+            </div>
+            {theme.logo && (
+              <img src={theme.logo} alt={config.name} className="mx-auto mb-1 h-14 object-contain" />
+            )}
+            <div className="text-[12px] uppercase tracking-[0.22em]" style={{ color: "var(--brass, #e7c477)" }}>
+              Bonus completo
+            </div>
+            <div
+              className="my-1.5 font-serif text-5xl font-bold tabular-nums"
+              style={{ color: "var(--lcd, #ffcf5a)", textShadow: "0 2px 14px rgba(0,0,0,.6)" }}
+            >
+              {fmt(bonusShown)}
+            </div>
+            <div className="text-sm text-white/70">
+              {bonusResumen.giros} giros gratis · {config.name}
+            </div>
+            <button className="nbtn nbtn-primary mt-5 w-full py-2.5 text-[15px]" onClick={() => setBonusResumen(null)}>
+              Seguir jugando
+            </button>
           </div>
         </div>
       )}
