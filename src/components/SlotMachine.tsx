@@ -702,7 +702,7 @@ export function SlotMachine({
 const estilos = `
 .slot-scene{min-height:100vh;color:var(--cream);position:relative;overflow-x:hidden;
   background:linear-gradient(180deg,var(--cabinet-1),var(--cabinet-2));}
-/* La imagen de la escena va en una capa FIJA al viewport: así el `cover` es
+/* La imagen de la escena va en una capa FIJA al viewport: asi el cover es
    relativo a la pantalla y NO se re-escala cuando el contenido cambia de alto
    (p.ej. aparece/desaparece el desglose de premios en auto). */
 .slot-scene::before{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;
