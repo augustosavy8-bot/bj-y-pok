@@ -22,7 +22,10 @@ interface GameState {
   bettingEndsAt: number; runningStartedAt: number; crashPoint: number | null;
   myBet: MyBet | null; betPending: boolean; cashPending: boolean; auto: boolean;
   cfg: Cfg; balance: number; bet: number;
-  serverMult: number; dispMult: number; // dispMult = lo que se muestra; nunca pasa al server (sin overshoot)
+  serverMult: number; dispMult: number;
+  // Ancla del reloj de la ronda: el contador sube desde acá con el reloj local
+  // (independiente de la velocidad de los polls) → fluido.
+  runBaseElapsed: number; runBasePerf: number; runAnchorRound: string | null;
   scroll: number; shake: number; dust: Dust[];
   crashFxRound: string | null; crashFxT: number; cashFxT: number;
   lastVerifyRound: string | null; lastVerifyNonce: number;
@@ -69,7 +72,8 @@ export function DinoCrash({ saldoInicial }: Props) {
       bettingEndsAt: 0, runningStartedAt: 0, crashPoint: null,
       myBet: null, betPending: false, cashPending: false, auto: false,
       cfg: { K: 0.14, maxWin: 200000, minBet: 10, maxBet: 10000, betOptions: [45, 100, 500], bettingSecs: 5, crashHold: 3 },
-      balance: saldoInicial, bet: 100, serverMult: 1, dispMult: 1, scroll: 0, shake: 0, dust: [],
+      balance: saldoInicial, bet: 100, serverMult: 1, dispMult: 1,
+      runBaseElapsed: 0, runBasePerf: 0, runAnchorRound: null, scroll: 0, shake: 0, dust: [],
       crashFxRound: null, crashFxT: 0, cashFxT: 0, lastVerifyRound: null, lastVerifyNonce: 0,
     };
     q.bal.textContent = fmt(S.balance);
@@ -179,13 +183,20 @@ export function DinoCrash({ saldoInicial }: Props) {
       S.myBet = d.my_bet ? (d.my_bet as MyBet) : null;
       S.phase = phase;
 
-      // Multiplicador AUTORITATIVO del server (sólo válido mientras corre). El
-      // display se suaviza hacia acá y nunca lo pasa → no hay overshoot ni salto.
-      if (phase === "running") S.serverMult = Math.max(1, Number(d.mult) || 1);
+      // Anclar el reloj de la ronda: cuánto lleva corriendo según el server. Se
+      // fija UNA vez por ronda (y se re-sincroniza sólo si hay una desviación
+      // grande, p. ej. pestaña en segundo plano). El contador sube desde acá con
+      // el reloj local, así que es fluido sin importar cuánto tarden los polls.
+      if (phase === "running") {
+        const srvElapsed = Math.max(0, Number(d.server_now) - Number(d.running_started_at));
+        const clientElapsed = S.runBaseElapsed + (nowP() - S.runBasePerf) / 1000;
+        if (S.runAnchorRound !== newRound || Math.abs(srvElapsed - clientElapsed) > 0.4) {
+          S.runAnchorRound = newRound; S.runBaseElapsed = srvElapsed; S.runBasePerf = nowP();
+        }
+        S.serverMult = Math.max(1, Number(d.mult) || 1);
+      }
 
       if (roundChanged) {
-        // nueva ronda: reinicio el multiplicador mostrado
-        S.serverMult = phase === "running" ? Math.max(1, Number(d.mult) || 1) : 1;
         S.dispMult = 1;
         if (phase === "betting") {
           S.crashFxRound = null; S.cashFxT = 0;
@@ -258,12 +269,10 @@ export function DinoCrash({ saldoInicial }: Props) {
         q.status.textContent = mine ? "Apostaste — arranca en " + Math.ceil(rem) + "s" : "Apuestas abiertas · " + Math.ceil(rem) + "s";
         q.pay.textContent = mine ? "Apostaste " + fmt(mine.bet) + " fichas" : "";
       } else if (S.phase === "running") {
-        // Sube CONTINUO desde el ancla de la ronda (tiempo real) → fluido, no
-        // escalonado. Con un techo suave respecto al último valor confirmado por
-        // el server para no pasarse del crash entre consultas.
-        const trueM = Math.exp(S.cfg.K * Math.max(0, estNow() - S.runningStartedAt));
-        const cap = Math.max(1, S.serverMult) * Math.exp(S.cfg.K * 0.4);
-        S.dispMult = Math.max(1, Math.min(trueM, cap));
+        // Contador anclado al reloj de la ronda: sube continuo cuadro a cuadro,
+        // sin depender de la velocidad de los polls → fluido.
+        const elapsed = S.runBaseElapsed + (t - S.runBasePerf) / 1000;
+        S.dispMult = Math.max(1, Math.exp(S.cfg.K * elapsed));
         const m = S.dispMult;
         // auto-retiro
         const at = parseFloat(q.auto.value);
