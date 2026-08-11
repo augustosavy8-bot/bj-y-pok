@@ -19,11 +19,23 @@ const cormorant = Cormorant_Garamond({
 });
 
 export const metadata: Metadata = {
-  title: "Nocturna — mesas de casino",
-  description: "Blackjack y póker con reglas publicadas y RNG del lado del servidor.",
+  title: "Nocturna — divertite y ganá",
+  description: "Blackjack, póker, slots y Dino Crash. Apostá, jugá y ganá fichas.",
   manifest: "/manifest.webmanifest",
   applicationName: "Nocturna",
   appleWebApp: { capable: true, title: "Nocturna", statusBarStyle: "black-translucent" },
+  openGraph: {
+    title: "Nocturna — divertite y ganá",
+    description: "Blackjack, póker, slots y Dino Crash. Apostá, jugá y ganá fichas.",
+    siteName: "Nocturna",
+    type: "website",
+    locale: "es_AR",
+  },
+  twitter: {
+    card: "summary",
+    title: "Nocturna — divertite y ganá",
+    description: "Blackjack, póker, slots y Dino Crash. Apostá, jugá y ganá fichas.",
+  },
   icons: {
     icon: [{ url: "/icon-192.png", sizes: "192x192", type: "image/png" }],
     apple: [{ url: "/icon-192.png", sizes: "192x192", type: "image/png" }],
