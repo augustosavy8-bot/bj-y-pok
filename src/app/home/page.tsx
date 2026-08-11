@@ -144,7 +144,7 @@ export default function HomePage() {
         }}
       >
         <ChipsCanvas density={0.45} />
-        <div className="relative z-[2] mx-auto grid max-w-6xl grid-cols-1 items-start gap-10 px-4 py-16 sm:px-8 lg:grid-cols-[1fr_360px] lg:py-20">
+        <div className="relative z-[2] mx-auto grid max-w-6xl grid-cols-1 items-start gap-10 px-4 py-16 sm:px-8 lg:py-20">
           <div className="max-w-xl">
             <span className="inline-flex items-center gap-2 text-[13px] uppercase tracking-[0.16em] text-[#e7c477]">
               <span aria-hidden>✦</span> Blackjack · Póker · Slots
@@ -187,25 +187,6 @@ export default function HomePage() {
               <span className="inline-flex items-center gap-1.5">
                 <Prohibido /> +18 · juego responsable
               </span>
-            </div>
-          </div>
-
-          <div className="flex w-full flex-col gap-3 lg:justify-self-end">
-            <div className="ncard elev-md p-5" style={{ boxShadow: "0 0 0 1px #595d6c, 0 6px 18px rgba(0,0,0,0.55)" }}>
-              <span className="text-[10px] uppercase tracking-[0.1em] text-acento">Reglas de la casa</span>
-              <div className="mt-2 flex flex-col gap-2.5">
-                {REGLAS_CASA.map((r) => (
-                  <div key={r.label} className="flex items-baseline justify-between gap-4 text-[13px]">
-                    <span className="text-tinta/70">{r.label}</span>
-                    <span className="font-medium tabular-nums">{r.value}</span>
-                  </div>
-                ))}
-              </div>
-              <div className="hr my-3" />
-              <p className="m-0 text-[11px] leading-relaxed text-tinta/50">
-                La ventaja de la casa y las reglas de cada mesa aparecen en su ficha, antes
-                de sentarte.
-              </p>
             </div>
           </div>
         </div>
@@ -542,6 +523,17 @@ export default function HomePage() {
             </div>
           ))}
         </div>
+      </section>
+
+      {/* Reglas de la casa — texto plano, al fondo */}
+      <section className="mx-auto max-w-6xl px-4 py-10 sm:px-8">
+        <p className="text-[11px] uppercase tracking-[0.14em] text-tinta/40">Reglas de la casa</p>
+        <p className="mt-2 text-[13px] text-tinta/60">
+          {REGLAS_CASA.map((r) => `${r.label}: ${r.value}`).join("  ·  ")}
+        </p>
+        <p className="mt-1 text-[12px] text-tinta/40">
+          La ventaja de la casa y las reglas de cada mesa aparecen en su ficha, antes de sentarte.
+        </p>
       </section>
     </NocturneShell>
   );
