@@ -2,24 +2,7 @@
 
 import { useEffect, useRef } from "react";
 
-// ── Tipos ──
-export interface CrashConfig {
-  growth: number; // K: m = e^(K·t). DEBE coincidir con el server.
-  maxWin: number;
-  minBet: number;
-  maxBet: number;
-  betOptions: number[];
-}
-export interface ActiveRound {
-  roundId: string;
-  bet: number;
-  startedAt: number; // epoch segundos (server)
-}
-interface Props {
-  config: CrashConfig;
-  saldoInicial: number;
-  activa: ActiveRound | null;
-}
+interface Props { saldoInicial: number }
 
 const BASE = "/juegos/dino-crash";
 const IMG_KEYS = [
@@ -28,22 +11,23 @@ const IMG_KEYS = [
   "run_1", "run_2", "run_3", "run_4", "run_5", "run_6",
 ];
 
-// El dino corre siempre. Ciclo: apuestas(5s) → corriendo → crash → apuestas…
-type Phase = "betting" | "opening" | "running" | "crashed" | "cashed";
-const BETTING_SECS = 5;
-const CRASH_ANIM = 2.0;
-const CASH_ANIM = 1.5;
-
+type Phase = "betting" | "running" | "crashed";
+interface MyBet { bet: number; status: "active" | "cashed" | "lost"; cashout_mult?: number | null; win?: number }
 interface Dust { x: number; y: number; life: number; sc: number; vx: number; vy: number }
+
+interface Cfg { K: number; maxWin: number; minBet: number; maxBet: number; betOptions: number[]; bettingSecs: number; crashHold: number }
 interface GameState {
-  phase: Phase; t0: number; roundId: string | null; K: number; maxWin: number;
-  mult: number; cashAt: number | null; crashPoint: number | null;
-  spectator: boolean; specCrash: number; armed: boolean; auto: boolean; closing: boolean;
-  scroll: number; shake: number; bet: number; dust: Dust[];
-  hashCorto: string; lastRound: string | null; balance: number; busy: boolean;
+  ready: boolean; offset: number; // serverNow - clientNow (s)
+  roundId: string | null; nonce: number; phase: Phase; hash: string;
+  bettingEndsAt: number; runningStartedAt: number; crashPoint: number | null;
+  myBet: MyBet | null; betPending: boolean; cashPending: boolean; auto: boolean;
+  cfg: Cfg; balance: number; bet: number;
+  scroll: number; shake: number; dust: Dust[];
+  crashFxRound: string | null; crashFxT: number; cashFxT: number;
+  lastVerifyRound: string | null; lastVerifyNonce: number;
 }
 
-export function DinoCrash({ config, saldoInicial, activa }: Props) {
+export function DinoCrash({ saldoInicial }: Props) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const rootRef = useRef<HTMLDivElement | null>(null);
 
@@ -52,23 +36,22 @@ export function DinoCrash({ config, saldoInicial, activa }: Props) {
     const cv = canvasRef.current!;
     const ctx = cv.getContext("2d")!;
     const reduce = matchMedia("(prefers-reduced-motion:reduce)").matches;
-    const $ = (sel: string) => root.querySelector(sel) as HTMLElement;
+    const $ = (s: string) => root.querySelector(s) as HTMLElement;
     const q = {
       status: $(".dc-status"), mult: $(".dc-mult"), pay: $(".dc-pay"), bal: $(".dc-bal"),
       action: $(".dc-action") as HTMLButtonElement, hist: $(".dc-hist"), fair: $(".dc-fair"),
-      bet: $(".dc-bet") as HTMLInputElement, auto: $(".dc-auto") as HTMLInputElement,
-      autobet: $(".dc-autobet"),
+      bet: $(".dc-bet") as HTMLInputElement, auto: $(".dc-auto") as HTMLInputElement, autobet: $(".dc-autobet"),
     };
     const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
     const clamp = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v));
     const fmt = (n: number) => Math.round(n).toLocaleString("es-AR");
+    const nowP = () => performance.now();
 
     let W = 0, H = 0, DPR = 1;
     const resize = () => {
       DPR = Math.min(2, window.devicePixelRatio || 1);
       const r = cv.getBoundingClientRect(); W = r.width; H = r.height;
-      cv.width = Math.round(W * DPR); cv.height = Math.round(H * DPR);
-      ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+      cv.width = Math.round(W * DPR); cv.height = Math.round(H * DPR); ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
     };
     const ro = new ResizeObserver(resize); ro.observe(cv); resize();
 
@@ -77,21 +60,20 @@ export function DinoCrash({ config, saldoInicial, activa }: Props) {
 
     const IMG: Record<string, HTMLImageElement> = {};
     const preload = () => new Promise<void>((res) => {
-      let n = 0; IMG_KEYS.forEach((k) => {
-        const im = new Image();
-        im.onload = im.onerror = () => { IMG[k] = im; if (++n === IMG_KEYS.length) res(); };
-        im.src = `${BASE}/${k}.webp`;
-      });
+      let n = 0; IMG_KEYS.forEach((k) => { const im = new Image(); im.onload = im.onerror = () => { IMG[k] = im; if (++n === IMG_KEYS.length) res(); }; im.src = `${BASE}/${k}.webp`; });
     });
 
     const S: GameState = {
-      phase: "betting", t0: 0, roundId: null, K: config.growth, maxWin: config.maxWin,
-      mult: 1, cashAt: null, crashPoint: null, spectator: false, specCrash: 2, armed: false,
-      auto: false, closing: false, scroll: 0, shake: 0, bet: config.betOptions[1] ?? config.minBet,
-      dust: [], hashCorto: "", lastRound: null, balance: saldoInicial, busy: false,
+      ready: false, offset: 0, roundId: null, nonce: 0, phase: "betting", hash: "",
+      bettingEndsAt: 0, runningStartedAt: 0, crashPoint: null,
+      myBet: null, betPending: false, cashPending: false, auto: false,
+      cfg: { K: 0.14, maxWin: 200000, minBet: 10, maxBet: 10000, betOptions: [45, 100, 500], bettingSecs: 5, crashHold: 3 },
+      balance: saldoInicial, bet: 100, scroll: 0, shake: 0, dust: [],
+      crashFxRound: null, crashFxT: 0, cashFxT: 0, lastVerifyRound: null, lastVerifyNonce: 0,
     };
     q.bal.textContent = fmt(S.balance);
-    const now = () => performance.now();
+    const estNow = () => Date.now() / 1000 + S.offset;
+    const localMult = () => S.phase === "running" ? Math.max(1, Math.exp(S.cfg.K * Math.max(0, estNow() - S.runningStartedAt))) : 1;
 
     // ── audio ──
     let AC: AudioContext | null = null;
@@ -105,185 +87,135 @@ export function DinoCrash({ config, saldoInicial, activa }: Props) {
       } catch { /* noop */ }
     };
 
-    // ── red ──
-    const clientSeed = () => {
-      const b = new Uint8Array(16); crypto.getRandomValues(b);
-      return [...b].map((x) => x.toString(16).padStart(2, "0")).join("");
-    };
-    const post = async (path: string, body: unknown) => {
-      const r = await fetch(`/api/juegos/dino-crash/${path}`, {
-        method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body),
-      });
+    const post = async (path: string, body?: unknown) => {
+      const r = await fetch(`/api/juegos/dino-crash/${path}`, { method: "POST", headers: { "content-type": "application/json" }, body: body ? JSON.stringify(body) : "{}" });
       const d = await r.json().catch(() => ({}));
       return { ok: r.ok, d } as { ok: boolean; d: Record<string, unknown> };
     };
-    // Crash cosmético para las rondas que sólo mirás (sin apostar). No mueve fichas.
-    const specCrash = () => clamp(0.95 / (1 - Math.random()), 1, 25);
 
     // ── controles ──
-    const affordable = () => S.bet >= config.minBet && S.bet <= S.balance;
+    const affordable = () => S.bet >= S.cfg.minBet && S.bet <= S.balance;
     const clampBet = () => {
       let b = parseInt(q.bet.value.replace(/\D/g, "")) || 0;
-      b = clamp(b, config.minBet, Math.min(config.maxBet, Math.max(config.minBet, S.balance || config.minBet)));
+      b = clamp(b, S.cfg.minBet, Math.min(S.cfg.maxBet, Math.max(S.cfg.minBet, S.balance || S.cfg.minBet)));
       q.bet.value = String(b); S.bet = b; return b;
     };
     q.bet.value = String(S.bet);
     q.bet.addEventListener("change", clampBet);
-    $(".dc-bminus").addEventListener("click", () => { const v = parseInt(q.bet.value) || 0; q.bet.value = String(Math.max(config.minBet, v - Math.max(10, Math.round(v * 0.2)))); clampBet(); });
+    $(".dc-bminus").addEventListener("click", () => { const v = parseInt(q.bet.value) || 0; q.bet.value = String(Math.max(S.cfg.minBet, v - Math.max(10, Math.round(v * 0.2)))); clampBet(); });
     $(".dc-bplus").addEventListener("click", () => { const v = parseInt(q.bet.value) || 0; q.bet.value = String(v + Math.max(10, Math.round(v * 0.2))); clampBet(); });
-    root.querySelectorAll<HTMLElement>(".dc-quick [data-b]").forEach((b) => b.addEventListener("click", () => {
-      q.bet.value = b.dataset.b === "max" ? String(Math.min(config.maxBet, S.balance)) : b.dataset.b!; clampBet();
-    }));
-    root.querySelectorAll<HTMLElement>(".dc-quick [data-a]").forEach((b) => b.addEventListener("click", () => {
-      q.auto.value = b.dataset.a === "off" ? "" : Number(b.dataset.a).toFixed(2);
-    }));
+    root.querySelectorAll<HTMLElement>(".dc-quick [data-b]").forEach((b) => b.addEventListener("click", () => { q.bet.value = b.dataset.b === "max" ? String(Math.min(S.cfg.maxBet, S.balance)) : b.dataset.b!; clampBet(); }));
+    root.querySelectorAll<HTMLElement>(".dc-quick [data-a]").forEach((b) => b.addEventListener("click", () => { q.auto.value = b.dataset.a === "off" ? "" : Number(b.dataset.a).toFixed(2); }));
 
     const onAction = () => {
-      if (S.phase === "betting") {
-        if (!S.armed) { clampBet(); if (affordable()) { S.armed = true; } else q.status.textContent = "No te alcanzan las fichas"; }
-        else S.armed = false; // cancelar
-      } else if (S.phase === "running" && !S.spectator && S.cashAt === null) {
-        cashOut();
-      }
+      if (S.phase === "betting" && !S.myBet && !S.betPending) placeBet();
+      else if (S.phase === "running" && S.myBet?.status === "active" && !S.cashPending) cashOut();
     };
     q.action.addEventListener("click", onAction);
-    const onAutobet = () => { S.auto = !S.auto; q.autobet.classList.toggle("on", S.auto); if (S.phase === "betting" && S.auto) { clampBet(); S.armed = affordable(); } };
+    const onAutobet = () => { S.auto = !S.auto; q.autobet.classList.toggle("on", S.auto); };
     q.autobet.addEventListener("click", onAutobet);
 
     const setBalance = (v: number) => { S.balance = Math.max(0, Math.round(v)); q.bal.textContent = fmt(S.balance); };
     const chipCls = (m: number) => (m < 2 ? "lo" : m < 10 ? "mid" : "hi");
-    const pushHistory = (m: number, kind: "cashed" | "crashed", real: boolean) => {
-      const c = document.createElement("div"); c.className = "dc-chip " + chipCls(m) + (real ? "" : " spec");
-      c.textContent = (kind === "cashed" ? "✓ " : "") + m.toFixed(2) + "×";
+    const pushHistory = (m: number) => {
+      const c = document.createElement("div"); c.className = "dc-chip " + chipCls(m); c.textContent = m.toFixed(2) + "×";
       q.hist.prepend(c); while (q.hist.children.length > 8) q.hist.lastChild!.remove();
     };
-    const setFairRunning = () => { q.fair.innerHTML = `provably fair<br>hash <b>${S.hashCorto}</b>`; };
-    const setFairIdle = (spec: boolean) => { q.fair.innerHTML = spec ? `ronda de práctica` : `provably fair`; };
-    const setFairVerify = () => {
-      q.fair.innerHTML = `provably fair · <span class="dc-verlink">verificar ✓</span>`;
-      (q.fair.querySelector(".dc-verlink") as HTMLElement)?.addEventListener("click", verificar);
+    const setFairRunning = () => { q.fair.innerHTML = `ronda #${S.nonce}<br>hash <b>${(S.hash || "").slice(0, 10)}…</b>`; };
+    const setFairVerify = (roundId: string) => {
+      q.fair.innerHTML = `ronda #${S.lastVerifyNonce} · <span class="dc-verlink">verificar ✓</span>`;
+      (q.fair.querySelector(".dc-verlink") as HTMLElement)?.addEventListener("click", () => verificar(roundId));
     };
-    async function verificar() {
-      if (!S.lastRound) return;
-      const { ok, d } = await post("verify", { roundId: S.lastRound });
+    async function verificar(roundId: string) {
+      const { ok, d } = await post("verify", { roundId });
       if (!ok) { q.fair.innerHTML = `verificar: ${String(d.error ?? "error")}`; return; }
-      const okHash = d.hash_ok && d.match;
-      q.fair.innerHTML = `${okHash ? "✓ verificado" : "⚠ no coincide"}<br>crash <b>${Number(d.crash_point).toFixed(2)}×</b> = <b>${Number(d.crash_recomputed).toFixed(2)}×</b>`;
+      const good = d.hash_ok && d.match;
+      q.fair.innerHTML = `${good ? "✓ verificado" : "⚠ no coincide"}<br>crash <b>${Number(d.crash_point).toFixed(2)}×</b> = <b>${Number(d.crash_recomputed).toFixed(2)}×</b>`;
     }
 
-    // ── ciclo ──
-    function enterBetting() {
-      S.phase = "betting"; S.t0 = now(); S.closing = false; S.spectator = false; S.cashAt = null;
-      S.crashPoint = null; S.roundId = null; S.mult = 1;
-      clampBet(); S.armed = S.auto && affordable();
-      q.mult.className = "dc-mult count"; q.pay.textContent = "";
-      setFairIdle(false);
+    async function placeBet() {
+      if (S.betPending || S.myBet || S.phase !== "betting") return;
+      const bet = clampBet();
+      if (!affordable()) { q.status.textContent = "No te alcanzan las fichas"; return; }
+      S.betPending = true;
+      const { ok, d } = await post("bet", { bet });
+      S.betPending = false;
+      if (!ok) { q.status.textContent = String(d.error ?? "No se pudo apostar."); return; }
+      setBalance(Number(d.new_balance)); S.myBet = { bet: Number(d.bet), status: "active" };
     }
-    async function closeBetting() {
-      S.closing = true; S.phase = "opening"; S.t0 = now();
-      const willBet = S.armed && affordable();
-      if (willBet) await startRealRound(); else startSpectatorRound();
-    }
-    async function startRealRound() {
-      S.busy = true; q.status.textContent = "¡Arranca!";
-      const { ok, d } = await post("start", { bet: S.bet, clientSeed: clientSeed() });
-      S.busy = false;
-      if (!ok) {
-        q.status.textContent = String(d.error ?? "No se pudo apostar.");
-        if (/fichas|saldo/i.test(String(d.error))) { S.auto = false; q.autobet.classList.remove("on"); }
-        startSpectatorRound(); return;
-      }
-      S.roundId = String(d.round_id); S.K = Number(d.growth) || config.growth; S.maxWin = Number(d.max_win) || config.maxWin;
-      S.bet = Number(d.bet) || S.bet; setBalance(Number(d.new_balance));
-      S.hashCorto = String(d.server_seed_hash).slice(0, 10) + "…"; setFairRunning();
-      S.phase = "running"; S.spectator = false; S.t0 = now(); S.mult = 1; S.cashAt = null;
-      q.mult.className = "dc-mult"; q.pay.textContent = "";
-      startPolling();
-    }
-    function startSpectatorRound() {
-      S.phase = "running"; S.spectator = true; S.specCrash = specCrash(); S.t0 = now(); S.mult = 1;
-      S.roundId = null; q.mult.className = "dc-mult spec"; setFairIdle(true);
-    }
-    function resume(a: ActiveRound) {
-      S.phase = "running"; S.spectator = false; S.roundId = a.roundId; S.bet = a.bet; S.cashAt = null;
-      const elapsed0 = Math.max(0, Date.now() / 1000 - a.startedAt);
-      S.t0 = now() - elapsed0 * 1000; S.hashCorto = "…"; setFairRunning();
-      q.mult.className = "dc-mult"; startPolling();
-    }
-
     async function cashOut() {
-      if (S.phase !== "running" || S.spectator || S.cashAt !== null || !S.roundId) return;
-      const m = S.mult; S.cashAt = m;
-      const { ok, d } = await post("cashout", { roundId: S.roundId, mult: m });
-      if (!ok) { S.cashAt = null; q.status.textContent = String(d.error ?? "No se pudo retirar."); return; }
-      if (d.result === "cashed") settleWin(Number(d.mult), Number(d.win), Number(d.new_balance));
-      else settleBust(Number(d.crash_point), d.new_balance != null ? Number(d.new_balance) : S.balance, true);
-    }
-    function settleWin(mult: number, win: number, balance: number) {
-      if (S.phase !== "running") return;
-      stopPolling(); S.phase = "cashed"; S.t0 = now(); S.mult = mult; S.lastRound = S.roundId; setBalance(balance);
-      q.mult.className = "dc-mult win"; q.mult.textContent = mult.toFixed(2) + "×";
-      q.status.textContent = "¡Te retiraste a tiempo!";
-      q.pay.textContent = "+" + fmt(win - S.bet) + " fichas  ·  cobraste " + fmt(win);
-      blip(660, 0.12, "sine"); blip(880, 0.14, "sine", 0.07); blip(1180, 0.12, "sine", 0.14);
-    }
-    function settleBust(crashPoint: number, balance: number, real: boolean) {
-      if (S.phase !== "running") return;
-      stopPolling(); S.phase = "crashed"; S.t0 = now(); S.crashPoint = crashPoint; S.mult = crashPoint;
-      S.shake = reduce ? 0 : 1;
-      if (real) { S.lastRound = S.roundId; setBalance(balance); }
-      q.mult.className = "dc-mult bust"; q.mult.textContent = crashPoint.toFixed(2) + "×";
-      q.status.textContent = real ? "💥 ¡Meteorito! El dino no la contó" : "💥 Se estrelló";
-      q.pay.textContent = real ? "−" + fmt(S.bet) + " fichas" : "";
-      blip(150, 0.3, "sawtooth"); blip(80, 0.36, "sawtooth", 0.08);
+      if (S.phase !== "running" || S.myBet?.status !== "active" || S.cashPending) return;
+      S.cashPending = true; const m = localMult();
+      const { ok, d } = await post("cashout", { mult: m });
+      S.cashPending = false;
+      if (!ok) { q.status.textContent = String(d.error ?? "No se pudo retirar."); return; }
+      // "cuando retiro que no vuelva a arrancar": apaga el auto-apostar.
+      S.auto = false; q.autobet.classList.remove("on");
+      if (d.result === "cashed") {
+        S.myBet = { bet: S.myBet!.bet, status: "cashed", cashout_mult: Number(d.mult), win: Number(d.win) };
+        setBalance(Number(d.new_balance)); S.cashFxT = nowP();
+        blip(660, 0.12, "sine"); blip(880, 0.14, "sine", 0.07); blip(1180, 0.12, "sine", 0.14);
+      } else {
+        S.myBet = { bet: S.myBet!.bet, status: d.result === "lost" ? "lost" : "active" };
+      }
     }
 
-    // ── poll (sólo rondas reales) ──
-    let pollTimer: ReturnType<typeof setInterval> | null = null;
-    function startPolling() {
-      stopPolling();
-      pollTimer = setInterval(async () => {
-        if (S.phase !== "running" || S.spectator || !S.roundId) return;
-        const { ok, d } = await post("state", { roundId: S.roundId });
-        if (!ok) return;
-        if (d.status === "busted") settleBust(Number(d.crash_point), S.balance, true);
-        else if (d.status === "cashed") settleWin(Number(d.mult), Number(d.win), S.balance);
-      }, 500);
+    // ── poll de la ronda global ──
+    function applyTick(d: Record<string, unknown>) {
+      const cfg = S.cfg;
+      cfg.K = Number(d.growth) || cfg.K; cfg.maxWin = Number(d.max_win) || cfg.maxWin;
+      cfg.minBet = Number(d.min_bet) || cfg.minBet; cfg.maxBet = Number(d.max_bet) || cfg.maxBet;
+      cfg.bettingSecs = Number(d.betting_secs) || cfg.bettingSecs; cfg.crashHold = Number(d.crash_hold) || cfg.crashHold;
+      if (Array.isArray(d.bet_options)) cfg.betOptions = (d.bet_options as number[]).map(Number);
+      S.offset = Number(d.server_now) - Date.now() / 1000;
+
+      const newRound = String(d.round_id);
+      const phase = String(d.phase) as Phase;
+      const roundChanged = newRound !== S.roundId;
+
+      S.roundId = newRound; S.nonce = Number(d.nonce); S.hash = String(d.hash);
+      S.bettingEndsAt = Number(d.betting_ends_at); S.runningStartedAt = Number(d.running_started_at);
+      S.crashPoint = d.crash_point != null ? Number(d.crash_point) : null;
+      S.myBet = d.my_bet ? (d.my_bet as MyBet) : null;
+      S.phase = phase;
+
+      if (roundChanged) {
+        // nueva ronda
+        if (phase === "betting") {
+          S.crashFxRound = null; S.cashFxT = 0;
+          setFairRunning();
+          // auto-apostar: entra solo si está activo y me alcanza
+          if (S.auto && !S.myBet && affordable()) placeBet();
+        }
+      }
+      // detectar crash (una vez por ronda) para disparar la animación del meteorito
+      if (phase === "crashed" && S.crashFxRound !== newRound) {
+        S.crashFxRound = newRound; S.crashFxT = nowP(); S.shake = reduce ? 0 : 1;
+        S.lastVerifyRound = newRound; S.lastVerifyNonce = S.nonce;
+        if (S.crashPoint != null) pushHistory(S.crashPoint);
+        blip(150, 0.3, "sawtooth"); blip(80, 0.36, "sawtooth", 0.08);
+      }
     }
-    function stopPolling() { if (pollTimer) { clearInterval(pollTimer); pollTimer = null; } }
+    let pollTimer: ReturnType<typeof setInterval> | null = null;
+    async function poll() { const { ok, d } = await post("tick"); if (ok) { applyTick(d); S.ready = true; } }
 
     // ── dibujo ──
     const cover = (im: HTMLImageElement) => { const s = Math.max(W / im.width, H / im.height), w = im.width * s, h = im.height * s; ctx.drawImage(im, (W - w) / 2, (H - h) * 0.35, w, h); };
-    const bandDraw = (im: HTMLImageElement, scaleW: number, yBottom: number, off: number) => {
-      const s = scaleW / im.width, w = im.width * s, h = im.height * s, y = yBottom - h;
-      let x = -(((off % w) + w) % w); for (; x < W; x += w - 1) ctx.drawImage(im, x, y, w, h);
-    };
-    const spr = (key: string, cx: number, by: number, targetH: number, alpha?: number) => {
-      const im = IMG[key]; if (!im) return; const s = targetH / im.height, w = im.width * s;
-      ctx.save(); if (alpha != null) ctx.globalAlpha = alpha; ctx.drawImage(im, cx - w / 2, by - targetH, w, targetH); ctx.restore();
-    };
-    const sprC = (key: string, cx: number, cy: number, targetH: number, alpha?: number, rot?: number) => {
-      const im = IMG[key]; if (!im) return; const s = targetH / im.height, w = im.width * s;
-      ctx.save(); if (alpha != null) ctx.globalAlpha = alpha; ctx.translate(cx, cy); if (rot) ctx.rotate(rot);
-      ctx.drawImage(im, -w / 2, -targetH / 2, w, targetH); ctx.restore();
-    };
+    const band = (im: HTMLImageElement, scaleW: number, yBottom: number, off: number) => { const s = scaleW / im.width, w = im.width * s, h = im.height * s, y = yBottom - h; let x = -(((off % w) + w) % w); for (; x < W; x += w - 1) ctx.drawImage(im, x, y, w, h); };
+    const spr = (key: string, cx: number, by: number, tH: number, a?: number) => { const im = IMG[key]; if (!im) return; const s = tH / im.height, w = im.width * s; ctx.save(); if (a != null) ctx.globalAlpha = a; ctx.drawImage(im, cx - w / 2, by - tH, w, tH); ctx.restore(); };
+    const sprC = (key: string, cx: number, cy: number, tH: number, a?: number, rot?: number) => { const im = IMG[key]; if (!im) return; const s = tH / im.height, w = im.width * s; ctx.save(); if (a != null) ctx.globalAlpha = a; ctx.translate(cx, cy); if (rot) ctx.rotate(rot); ctx.drawImage(im, -w / 2, -tH / 2, w, tH); ctx.restore(); };
     const METEOR_FALL = 0.17;
     const runFrame = (t: number) => "run_" + (1 + Math.floor(t / 70) % 6);
 
     function drawScene(t: number) {
       if (IMG.night_sky) cover(IMG.night_sky);
-      if (IMG.mountains) bandDraw(IMG.mountains, W * 1.25, groundY() + H * 0.06, S.scroll * 0.16);
-      if (IMG.ground) bandDraw(IMG.ground, W * 1.06, H, S.scroll * 1.0);
-
+      if (IMG.mountains) band(IMG.mountains, W * 1.25, groundY() + H * 0.06, S.scroll * 0.16);
+      if (IMG.ground) band(IMG.ground, W * 1.06, H, S.scroll * 1.0);
       const bx = dinoX(), by = groundY();
-      for (let i = S.dust.length - 1; i >= 0; i--) {
-        const d = S.dust[i]; d.x += d.vx; d.y += d.vy; d.life -= 0.03; d.sc += 0.02;
-        if (d.life <= 0) { S.dust.splice(i, 1); continue; }
-        spr("dust_trail", d.x, d.y, H * 0.10 * d.sc, Math.max(0, d.life * 0.85));
-      }
+      for (let i = S.dust.length - 1; i >= 0; i--) { const d = S.dust[i]; d.x += d.vx; d.y += d.vy; d.life -= 0.03; d.sc += 0.02; if (d.life <= 0) { S.dust.splice(i, 1); continue; } spr("dust_trail", d.x, d.y, H * 0.10 * d.sc, Math.max(0, d.life * 0.85)); }
       const dinoH = H * 0.26;
       if (S.phase === "crashed") {
-        const a = (t - S.t0) / 1000;
+        const a = (t - S.crashFxT) / 1000;
         if (a < METEOR_FALL) {
           spr(runFrame(t), bx, by, dinoH);
           const tt = a / METEOR_FALL, mx = lerp(bx + W * 0.16, bx + 6, tt), my = lerp(-H * 0.25, by - dinoH * 0.5, tt * tt);
@@ -293,12 +225,9 @@ export function DinoCrash({ config, saldoInicial, activa }: Props) {
           const sc = clamp(b / 0.14, 0, 1), fade = clamp(1 - (b - 0.18) / 0.5, 0, 1);
           sprC("impact_explosion", bx, by - dinoH * 0.42, H * 0.5 * lerp(0.7, 1.12, sc), fade);
         }
-      } else if (S.phase === "cashed") {
-        spr(runFrame(t), bx, by, dinoH);
-        const a = (t - S.t0) / 1000, sc = clamp(a / 0.16, 0, 1), fade = clamp(1 - (a - 0.2) / 0.9, 0, 1);
-        sprC("gold_burst", bx, by - dinoH * 0.5, H * 0.6 * lerp(0.6, 1.1, sc), fade);
       } else {
-        spr(runFrame(t), bx, by, dinoH); // betting / opening / running: el dino corre siempre
+        spr(runFrame(t), bx, by, dinoH);
+        if (S.cashFxT && t - S.cashFxT < 900) { const a = (t - S.cashFxT) / 1000, s2 = clamp(a / 0.16, 0, 1), fade = clamp(1 - (a - 0.2) / 0.7, 0, 1); sprC("gold_burst", bx, by - dinoH * 0.5, H * 0.6 * lerp(0.6, 1.1, s2), fade); }
       }
     }
 
@@ -306,59 +235,57 @@ export function DinoCrash({ config, saldoInicial, activa }: Props) {
     let dustTick = 0;
     const update = (t: number) => {
       const runningish = S.phase !== "crashed";
-      if (runningish) S.scroll += 3.6;
-      if (runningish && !reduce && (dustTick = (dustTick + 1) % 5) === 0) {
-        const bx = dinoX(), by = groundY();
-        S.dust.push({ x: bx - H * 0.09, y: by - H * 0.03, vx: -1.5 - Math.random(), vy: -0.2 - Math.random() * 0.3, life: 1, sc: 0.6 });
-      }
+      if (runningish) { S.scroll += 3.6; if (!reduce && (dustTick = (dustTick + 1) % 5) === 0) { const bx = dinoX(), by = groundY(); S.dust.push({ x: bx - H * 0.09, y: by - H * 0.03, vx: -1.5 - Math.random(), vy: -0.2 - Math.random() * 0.3, life: 1, sc: 0.6 }); } }
+      if (S.shake > 0) S.shake = Math.max(0, S.shake - 0.05);
+      if (!S.ready) { q.status.textContent = "Cargando…"; return; }
 
+      const mine = S.myBet;
       if (S.phase === "betting") {
-        const rem = BETTING_SECS - (t - S.t0) / 1000;
-        if (rem <= 0 && !S.closing) closeBetting();
-        else q.mult.textContent = Math.max(1, Math.ceil(rem)) + "";
-        q.status.textContent = S.armed ? "Apuesta lista — arranca ya" : "Apuestas abiertas";
+        const rem = Math.max(0, S.bettingEndsAt - estNow());
+        q.mult.className = "dc-mult count"; q.mult.textContent = Math.max(1, Math.ceil(rem)) + "";
+        q.status.textContent = mine ? "Apostaste — arranca en " + Math.ceil(rem) + "s" : "Apuestas abiertas · " + Math.ceil(rem) + "s";
+        q.pay.textContent = mine ? "Apostaste " + fmt(mine.bet) + " fichas" : "";
       } else if (S.phase === "running") {
-        const el = Math.max(0, (t - S.t0) / 1000); S.mult = Math.max(1, Math.exp(S.K * el));
-        if (S.spectator) { if (S.mult >= S.specCrash) settleBust(S.specCrash, S.balance, false); }
-        else {
-          const a = parseFloat(q.auto.value);
-          if (!isNaN(a) && a > 1 && S.cashAt === null && S.mult >= a) cashOut();
-        }
-        q.mult.textContent = S.mult.toFixed(2) + "×";
-        q.status.textContent = S.spectator ? "Ronda en curso · apostá en la próxima" : "¡Corré! retirá cuando quieras";
-      } else if (S.phase === "crashed") {
-        if ((t - S.t0) / 1000 > CRASH_ANIM) { pushHistory(S.crashPoint ?? 1, "crashed", !S.spectator); enterBetting(); }
-      } else if (S.phase === "cashed") {
-        if ((t - S.t0) / 1000 > CASH_ANIM) { pushHistory(S.mult, "cashed", true); setFairVerify(); enterBetting(); }
+        const m = localMult();
+        // auto-retiro
+        const at = parseFloat(q.auto.value);
+        if (mine?.status === "active" && !isNaN(at) && at > 1 && !S.cashPending && m >= at) cashOut();
+        q.mult.className = "dc-mult" + (mine?.status === "cashed" ? " win" : "");
+        q.mult.textContent = m.toFixed(2) + "×";
+        if (mine?.status === "cashed") { q.status.textContent = "✓ Cobraste a " + Number(mine.cashout_mult).toFixed(2) + "×"; q.pay.textContent = "+" + fmt((mine.win ?? 0) - mine.bet) + " fichas"; }
+        else if (mine?.status === "active") { q.status.textContent = "¡Retirate antes del meteorito!"; q.pay.textContent = fmt(m * mine.bet) + " fichas"; }
+        else { q.status.textContent = "Ronda en curso · apostá en la próxima"; q.pay.textContent = ""; }
+      } else { // crashed
+        q.mult.className = "dc-mult bust"; q.mult.textContent = (S.crashPoint ?? 1).toFixed(2) + "×";
+        if (mine?.status === "cashed") { q.status.textContent = "✓ Cobraste a " + Number(mine.cashout_mult).toFixed(2) + "×"; q.pay.textContent = "+" + fmt((mine.win ?? 0) - mine.bet) + " fichas"; }
+        else if (mine) { q.status.textContent = "💥 Se estrelló · perdiste"; q.pay.textContent = "−" + fmt(mine.bet) + " fichas"; }
+        else { q.status.textContent = "💥 Crash"; q.pay.textContent = ""; }
+        if (S.lastVerifyRound && S.crashFxRound === S.lastVerifyRound) setFairVerify(S.lastVerifyRound);
       }
 
       // botón
-      if (S.phase === "betting") {
-        if (S.armed) { q.action.className = "dc-action armed"; q.action.innerHTML = "LISTO ✓<small>tocá para cancelar</small>"; }
-        else { q.action.className = "dc-action bet"; q.action.textContent = "APOSTAR"; }
-      } else if (S.phase === "opening") { q.action.className = "dc-action wait"; q.action.textContent = "…"; }
-      else if (S.phase === "running" && !S.spectator && S.cashAt === null) { q.action.className = "dc-action cash"; q.action.innerHTML = "RETIRAR ✋<small>" + fmt(S.mult * S.bet) + " fichas</small>"; }
-      else if (S.phase === "running" && !S.spectator) { q.action.className = "dc-action wait"; q.action.textContent = "RETIRANDO…"; }
+      if (S.phase === "betting" && !mine && !S.betPending) { q.action.className = "dc-action bet"; q.action.textContent = "APOSTAR"; }
+      else if (S.phase === "betting") { q.action.className = "dc-action armed"; q.action.innerHTML = "APOSTADO ✓<small>esperando…</small>"; }
+      else if (S.phase === "running" && mine?.status === "active" && !S.cashPending) { q.action.className = "dc-action cash"; q.action.innerHTML = "RETIRAR ✋<small>" + fmt(localMult() * mine.bet) + " fichas</small>"; }
+      else if (S.phase === "running" && mine?.status === "active") { q.action.className = "dc-action wait"; q.action.textContent = "RETIRANDO…"; }
+      else if (S.phase === "running" && mine?.status === "cashed") { q.action.className = "dc-action wait"; q.action.textContent = "✓ COBRADO"; }
       else if (S.phase === "running") { q.action.className = "dc-action wait"; q.action.textContent = "MIRANDO"; }
-      else { q.action.className = "dc-action wait"; q.action.innerHTML = S.phase === "cashed" ? "✓ COBRADO" : "💥 CRASH"; }
+      else { q.action.className = "dc-action wait"; q.action.innerHTML = mine?.status === "cashed" ? "✓ COBRADO" : "💥 CRASH"; }
     };
     let raf = 0;
-    const frame = (t: number) => {
-      update(t); ctx.save();
-      if (S.shake > 0) { const s = 8 * S.shake; ctx.translate((Math.random() - 0.5) * s, (Math.random() - 0.5) * s); S.shake = Math.max(0, S.shake - 0.05); }
-      drawScene(t); ctx.restore(); raf = requestAnimationFrame(frame);
-    };
+    const frame = (t: number) => { update(t); ctx.save(); if (S.shake > 0) { const s = 8 * S.shake; ctx.translate((Math.random() - 0.5) * s, (Math.random() - 0.5) * s); } drawScene(t); ctx.restore(); raf = requestAnimationFrame(frame); };
 
     let alive = true;
-    preload().then(() => {
+    preload().then(async () => {
       if (!alive) return;
       if (IMG.dino_badge) ($(".dc-logo") as HTMLImageElement).src = `${BASE}/dino_badge.webp`;
-      if (activa) resume(activa); else enterBetting();
+      await poll();
+      pollTimer = setInterval(poll, 450);
       raf = requestAnimationFrame(frame);
     });
 
     return () => {
-      alive = false; cancelAnimationFrame(raf); stopPolling();
+      alive = false; cancelAnimationFrame(raf); if (pollTimer) clearInterval(pollTimer);
       ro.disconnect(); q.action.removeEventListener("click", onAction); q.autobet.removeEventListener("click", onAutobet);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -371,7 +298,7 @@ export function DinoCrash({ config, saldoInicial, activa }: Props) {
         <div className="dc-brand">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <div className="dc-badge"><img className="dc-logo" alt="Dino Crash" /></div>
-          <div><h1>DINO CRASH</h1><p>El dino corre sin parar · retirá antes del meteorito</p></div>
+          <div><h1>DINO CRASH</h1><p>Ronda compartida · retirá antes del meteorito</p></div>
         </div>
         <div className="dc-balance"><div className="dc-lbl">Saldo</div><div className="dc-bal">0</div></div>
       </header>
@@ -381,7 +308,7 @@ export function DinoCrash({ config, saldoInicial, activa }: Props) {
         <div className="dc-hud">
           <div className="dc-row">
             <div className="dc-hist" />
-            <div className="dc-fair">provably fair</div>
+            <div className="dc-fair">cargando…</div>
           </div>
         </div>
         <div className="dc-center">
@@ -413,18 +340,18 @@ export function DinoCrash({ config, saldoInicial, activa }: Props) {
           </div>
         </div>
         <div className="dc-act-cell">
-          <button className="dc-autobet" title="Volver a apostar cada ronda automáticamente">Auto-apostar</button>
+          <button className="dc-autobet" title="Apostar solo en cada ronda">Auto-apostar</button>
           <button className="dc-action wait">CARGANDO…</button>
         </div>
       </div>
 
       <p className="dc-foot">
-        <b>Cómo se juega:</b> el dino corre sin parar. Cada ronda tenés <b>5 segundos</b> para apostar; después arranca,
-        el multiplicador sube y tocás <span className="dc-tag">RETIRAR</span> antes de que caiga el meteorito 💥 (cae de
-        golpe, sin aviso). Con <b>Auto-apostar</b> entrás solo en cada ronda. Las rondas en las que no apostás son de práctica.
+        <b>Ronda compartida:</b> todos juegan la misma ronda. Cada ronda tenés <b>5 segundos</b> para apostar; después
+        arranca, el multiplicador sube igual para todos y tocás <span className="dc-tag">RETIRAR</span> antes de que caiga el
+        meteorito 💥 (cae de golpe). Cuando te retirás, <b>no volvés a entrar solo</b> hasta que apuestes de nuevo (o usés Auto-apostar).
         <br />
-        <b>Provably fair · RTP 95%.</b> El crash sale de un seed comprometido (hash) antes de la ronda y revelado después —
-        verificable. Techo de premio: 200.000 fichas por ronda.
+        <b>Provably fair · RTP 95%.</b> El crash de cada ronda sale de un seed comprometido (hash) antes de arrancar y revelado
+        después. Techo de premio: 200.000 fichas por ronda.
       </p>
     </div>
   );
@@ -453,7 +380,6 @@ const CSS = `
 .dc-chip.lo{color:#ffb0a8;border-color:rgba(255,74,61,.4)}
 .dc-chip.mid{color:var(--dc-gold);border-color:rgba(255,202,68,.4)}
 .dc-chip.hi{color:#ffd9a1;border-color:rgba(255,106,26,.55)}
-.dc-chip.spec{opacity:.45}
 .dc-fair{font-family:ui-monospace,Menlo,monospace;font-size:10.5px;color:var(--dc-muted);text-align:right;background:rgba(10,6,20,.42);border:1px solid rgba(255,255,255,.07);border-radius:9px;padding:5px 8px;max-width:220px;pointer-events:auto}
 .dc-fair b{color:#e0d2f4;font-weight:700}
 .dc-verlink{cursor:pointer;color:#ffca44}
@@ -461,7 +387,6 @@ const CSS = `
 .dc-status{font-size:12px;letter-spacing:.2em;text-transform:uppercase;color:var(--dc-muted);margin-bottom:2px;min-height:15px;text-shadow:0 2px 8px rgba(0,0,0,.7)}
 .dc-mult{font-size:clamp(52px,11vw,104px);font-weight:800;line-height:.9;letter-spacing:-.03em;font-variant-numeric:tabular-nums;color:#fff;text-shadow:0 4px 26px rgba(0,0,0,.75)}
 .dc-mult.count{color:#ffe08a}
-.dc-mult.spec{color:#c9bce0;opacity:.8}
 .dc-mult.win{color:var(--dc-good);text-shadow:0 0 36px rgba(90,217,138,.6)}
 .dc-mult.bust{color:var(--dc-danger);text-shadow:0 0 36px rgba(255,74,61,.65)}
 .dc-pay{font-size:15px;font-weight:700;color:var(--dc-gold);min-height:20px;margin-top:4px;font-variant-numeric:tabular-nums;text-shadow:0 2px 8px rgba(0,0,0,.6)}
@@ -479,8 +404,8 @@ const CSS = `
 .dc-act-cell{display:flex;flex-direction:column;gap:8px}
 .dc-autobet{border:1px solid var(--dc-line);background:#241634;color:var(--dc-muted);border-radius:10px;padding:7px;font-size:12px;font-weight:700;cursor:pointer;letter-spacing:.02em}
 .dc-autobet.on{background:linear-gradient(180deg,#3a2a12,#2a1e0c);border-color:var(--dc-gold);color:var(--dc-gold)}
-.dc-autobet::before{content:"○ ";}
-.dc-autobet.on::before{content:"● ";}
+.dc-autobet::before{content:"○ "}
+.dc-autobet.on::before{content:"● "}
 .dc-action{flex:1;border:none;border-radius:14px;font-size:19px;font-weight:800;cursor:pointer;color:#12100a;font-variant-numeric:tabular-nums;padding:14px;transition:transform .08s,filter .15s;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;min-height:64px}
 .dc-action small{font-size:11px;font-weight:700;opacity:.78}
 .dc-action:active{transform:translateY(1px)}
