@@ -258,9 +258,12 @@ export function DinoCrash({ saldoInicial }: Props) {
         q.status.textContent = mine ? "Apostaste — arranca en " + Math.ceil(rem) + "s" : "Apuestas abiertas · " + Math.ceil(rem) + "s";
         q.pay.textContent = mine ? "Apostaste " + fmt(mine.bet) + " fichas" : "";
       } else if (S.phase === "running") {
-        // el número mostrado se acerca suave al último confirmado por el server,
-        // sin pasarlo nunca → no se pasa del crash ni salta para atrás.
-        S.dispMult += (Math.max(1, S.serverMult) - S.dispMult) * 0.2;
+        // Sube CONTINUO desde el ancla de la ronda (tiempo real) → fluido, no
+        // escalonado. Con un techo suave respecto al último valor confirmado por
+        // el server para no pasarse del crash entre consultas.
+        const trueM = Math.exp(S.cfg.K * Math.max(0, estNow() - S.runningStartedAt));
+        const cap = Math.max(1, S.serverMult) * Math.exp(S.cfg.K * 0.4);
+        S.dispMult = Math.max(1, Math.min(trueM, cap));
         const m = S.dispMult;
         // auto-retiro
         const at = parseFloat(q.auto.value);
