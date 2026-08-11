@@ -22,6 +22,7 @@ interface GameState {
   bettingEndsAt: number; runningStartedAt: number; crashPoint: number | null;
   myBet: MyBet | null; betPending: boolean; cashPending: boolean; auto: boolean;
   cfg: Cfg; balance: number; bet: number;
+  serverMult: number; dispMult: number; // dispMult = lo que se muestra; nunca pasa al server (sin overshoot)
   scroll: number; shake: number; dust: Dust[];
   crashFxRound: string | null; crashFxT: number; cashFxT: number;
   lastVerifyRound: string | null; lastVerifyNonce: number;
@@ -68,12 +69,11 @@ export function DinoCrash({ saldoInicial }: Props) {
       bettingEndsAt: 0, runningStartedAt: 0, crashPoint: null,
       myBet: null, betPending: false, cashPending: false, auto: false,
       cfg: { K: 0.14, maxWin: 200000, minBet: 10, maxBet: 10000, betOptions: [45, 100, 500], bettingSecs: 5, crashHold: 3 },
-      balance: saldoInicial, bet: 100, scroll: 0, shake: 0, dust: [],
+      balance: saldoInicial, bet: 100, serverMult: 1, dispMult: 1, scroll: 0, shake: 0, dust: [],
       crashFxRound: null, crashFxT: 0, cashFxT: 0, lastVerifyRound: null, lastVerifyNonce: 0,
     };
     q.bal.textContent = fmt(S.balance);
     const estNow = () => Date.now() / 1000 + S.offset;
-    const localMult = () => S.phase === "running" ? Math.max(1, Math.exp(S.cfg.K * Math.max(0, estNow() - S.runningStartedAt))) : 1;
 
     // ── audio ──
     let AC: AudioContext | null = null;
@@ -145,7 +145,7 @@ export function DinoCrash({ saldoInicial }: Props) {
     }
     async function cashOut() {
       if (S.phase !== "running" || S.myBet?.status !== "active" || S.cashPending) return;
-      S.cashPending = true; const m = localMult();
+      S.cashPending = true; const m = S.dispMult;
       const { ok, d } = await post("cashout", { mult: m });
       S.cashPending = false;
       if (!ok) { q.status.textContent = String(d.error ?? "No se pudo retirar."); return; }
@@ -179,8 +179,14 @@ export function DinoCrash({ saldoInicial }: Props) {
       S.myBet = d.my_bet ? (d.my_bet as MyBet) : null;
       S.phase = phase;
 
+      // Multiplicador AUTORITATIVO del server (sólo válido mientras corre). El
+      // display se suaviza hacia acá y nunca lo pasa → no hay overshoot ni salto.
+      if (phase === "running") S.serverMult = Math.max(1, Number(d.mult) || 1);
+
       if (roundChanged) {
-        // nueva ronda
+        // nueva ronda: reinicio el multiplicador mostrado
+        S.serverMult = phase === "running" ? Math.max(1, Number(d.mult) || 1) : 1;
+        S.dispMult = 1;
         if (phase === "betting") {
           S.crashFxRound = null; S.cashFxT = 0;
           setFairRunning();
@@ -192,12 +198,18 @@ export function DinoCrash({ saldoInicial }: Props) {
       if (phase === "crashed" && S.crashFxRound !== newRound) {
         S.crashFxRound = newRound; S.crashFxT = nowP(); S.shake = reduce ? 0 : 1;
         S.lastVerifyRound = newRound; S.lastVerifyNonce = S.nonce;
-        if (S.crashPoint != null) pushHistory(S.crashPoint);
+        if (S.crashPoint != null) { S.dispMult = S.crashPoint; pushHistory(S.crashPoint); }
         blip(150, 0.3, "sawtooth"); blip(80, 0.36, "sawtooth", 0.08);
       }
     }
-    let pollTimer: ReturnType<typeof setInterval> | null = null;
+    let pollTimer: ReturnType<typeof setTimeout> | null = null;
+    let polling = false;
     async function poll() { const { ok, d } = await post("tick"); if (ok) { applyTick(d); S.ready = true; } }
+    // Poll más rápido mientras la ronda corre (menos overshoot), más lento el resto.
+    function scheduleNextPoll() {
+      if (!polling) return;
+      pollTimer = setTimeout(async () => { await poll(); scheduleNextPoll(); }, S.phase === "running" ? 150 : 500);
+    }
 
     // ── dibujo ──
     const cover = (im: HTMLImageElement) => { const s = Math.max(W / im.width, H / im.height), w = im.width * s, h = im.height * s; ctx.drawImage(im, (W - w) / 2, (H - h) * 0.35, w, h); };
@@ -246,7 +258,10 @@ export function DinoCrash({ saldoInicial }: Props) {
         q.status.textContent = mine ? "Apostaste — arranca en " + Math.ceil(rem) + "s" : "Apuestas abiertas · " + Math.ceil(rem) + "s";
         q.pay.textContent = mine ? "Apostaste " + fmt(mine.bet) + " fichas" : "";
       } else if (S.phase === "running") {
-        const m = localMult();
+        // el número mostrado se acerca suave al último confirmado por el server,
+        // sin pasarlo nunca → no se pasa del crash ni salta para atrás.
+        S.dispMult += (Math.max(1, S.serverMult) - S.dispMult) * 0.2;
+        const m = S.dispMult;
         // auto-retiro
         const at = parseFloat(q.auto.value);
         if (mine?.status === "active" && !isNaN(at) && at > 1 && !S.cashPending && m >= at) cashOut();
@@ -266,7 +281,7 @@ export function DinoCrash({ saldoInicial }: Props) {
       // botón
       if (S.phase === "betting" && !mine && !S.betPending) { q.action.className = "dc-action bet"; q.action.textContent = "APOSTAR"; }
       else if (S.phase === "betting") { q.action.className = "dc-action armed"; q.action.innerHTML = "APOSTADO ✓<small>esperando…</small>"; }
-      else if (S.phase === "running" && mine?.status === "active" && !S.cashPending) { q.action.className = "dc-action cash"; q.action.innerHTML = "RETIRAR ✋<small>" + fmt(localMult() * mine.bet) + " fichas</small>"; }
+      else if (S.phase === "running" && mine?.status === "active" && !S.cashPending) { q.action.className = "dc-action cash"; q.action.innerHTML = "RETIRAR ✋<small>" + fmt(S.dispMult * mine.bet) + " fichas</small>"; }
       else if (S.phase === "running" && mine?.status === "active") { q.action.className = "dc-action wait"; q.action.textContent = "RETIRANDO…"; }
       else if (S.phase === "running" && mine?.status === "cashed") { q.action.className = "dc-action wait"; q.action.textContent = "✓ COBRADO"; }
       else if (S.phase === "running") { q.action.className = "dc-action wait"; q.action.textContent = "MIRANDO"; }
@@ -280,12 +295,12 @@ export function DinoCrash({ saldoInicial }: Props) {
       if (!alive) return;
       if (IMG.dino_badge) ($(".dc-logo") as HTMLImageElement).src = `${BASE}/dino_badge.webp`;
       await poll();
-      pollTimer = setInterval(poll, 450);
+      polling = true; scheduleNextPoll();
       raf = requestAnimationFrame(frame);
     });
 
     return () => {
-      alive = false; cancelAnimationFrame(raf); if (pollTimer) clearInterval(pollTimer);
+      alive = false; polling = false; cancelAnimationFrame(raf); if (pollTimer) clearTimeout(pollTimer);
       ro.disconnect(); q.action.removeEventListener("click", onAction); q.autobet.removeEventListener("click", onAutobet);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
