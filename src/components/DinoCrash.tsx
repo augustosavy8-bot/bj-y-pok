@@ -258,8 +258,8 @@ export function DinoCrash({ saldoInicial }: Props) {
       } else { // crashed
         q.mult.className = "dc-mult bust"; q.mult.textContent = (S.crashPoint ?? 1).toFixed(2) + "×";
         if (mine?.status === "cashed") { q.status.textContent = "✓ Cobraste a " + Number(mine.cashout_mult).toFixed(2) + "×"; q.pay.textContent = "+" + fmt((mine.win ?? 0) - mine.bet) + " fichas"; }
-        else if (mine) { q.status.textContent = "💥 Se estrelló · perdiste"; q.pay.textContent = "−" + fmt(mine.bet) + " fichas"; }
-        else { q.status.textContent = "💥 Crash"; q.pay.textContent = ""; }
+        else if (mine) { q.status.textContent = "💥 ¡Crash! El dino no la contó"; q.pay.textContent = "−" + fmt(mine.bet) + " fichas"; }
+        else { q.status.textContent = "💥 ¡Crash! El dino no la contó"; q.pay.textContent = ""; }
         if (S.lastVerifyRound && S.crashFxRound === S.lastVerifyRound) setFairVerify(S.lastVerifyRound);
       }
 
