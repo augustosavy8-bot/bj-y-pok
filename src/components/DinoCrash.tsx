@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { getSupabaseBrowser } from "@/lib/supabase/client";
 
 interface Props { saldoInicial: number }
 
@@ -149,18 +150,29 @@ export function DinoCrash({ saldoInicial }: Props) {
     }
     async function cashOut() {
       if (S.phase !== "running" || S.myBet?.status !== "active" || S.cashPending) return;
-      S.cashPending = true; const m = S.dispMult;
+      const betAmt = S.myBet.bet, m = S.dispMult;
+      // OPTIMISTA: mostrar el retiro AL INSTANTE (sin esperar al server) y
+      // reconciliar cuando llega la respuesta. Así "retirar" se siente inmediato.
+      S.cashPending = true;
+      S.myBet = { bet: betAmt, status: "cashed", cashout_mult: m, win: Math.round(betAmt * m) };
+      S.cashFxT = nowP();
+      S.auto = false; q.autobet.classList.remove("on"); // al retirar no vuelve a apostar solo
+      blip(660, 0.12, "sine"); blip(880, 0.14, "sine", 0.07); blip(1180, 0.12, "sine", 0.14);
+
       const { ok, d } = await post("cashout", { mult: m });
       S.cashPending = false;
-      if (!ok) { q.status.textContent = String(d.error ?? "No se pudo retirar."); return; }
-      // "cuando retiro que no vuelva a arrancar": apaga el auto-apostar.
-      S.auto = false; q.autobet.classList.remove("on");
+      if (!ok) {
+        // error de red: volver a activo para poder reintentar
+        S.myBet = { bet: betAmt, status: "active" }; S.cashFxT = 0;
+        q.status.textContent = String(d.error ?? "No se pudo retirar."); return;
+      }
       if (d.result === "cashed") {
-        S.myBet = { bet: S.myBet!.bet, status: "cashed", cashout_mult: Number(d.mult), win: Number(d.win) };
-        setBalance(Number(d.new_balance)); S.cashFxT = nowP();
-        blip(660, 0.12, "sine"); blip(880, 0.14, "sine", 0.07); blip(1180, 0.12, "sine", 0.14);
+        // confirmar con los valores exactos del server
+        S.myBet = { bet: betAmt, status: "cashed", cashout_mult: Number(d.mult), win: Number(d.win) };
+        setBalance(Number(d.new_balance));
       } else {
-        S.myBet = { bet: S.myBet!.bet, status: d.result === "lost" ? "lost" : "active" };
+        // tocaste justo en el crash: revertir a perdido (el meteorito llega por el poll)
+        S.myBet = { bet: betAmt, status: "lost" }; S.cashFxT = 0;
       }
     }
 
@@ -215,11 +227,17 @@ export function DinoCrash({ saldoInicial }: Props) {
     }
     let pollTimer: ReturnType<typeof setTimeout> | null = null;
     let polling = false;
-    async function poll() { const { ok, d } = await post("tick"); if (ok) { applyTick(d); S.ready = true; } }
+    // El poll de estado va DIRECTO a Supabase (sin el salto por la API de Vercel)
+    // → menor latencia, el crash/meteorito se detecta más rápido.
+    const sb = getSupabaseBrowser();
+    async function poll() {
+      const { data, error } = await sb.rpc("crash_tick");
+      if (!error && data) { applyTick(data as Record<string, unknown>); S.ready = true; }
+    }
     // Poll más rápido mientras la ronda corre (menos overshoot), más lento el resto.
     function scheduleNextPoll() {
       if (!polling) return;
-      pollTimer = setTimeout(async () => { await poll(); scheduleNextPoll(); }, S.phase === "running" ? 220 : 600);
+      pollTimer = setTimeout(async () => { await poll(); scheduleNextPoll(); }, S.phase === "running" ? 120 : 600);
     }
 
     // ── dibujo ──
