@@ -403,7 +403,7 @@ export default function HomePage() {
                       </>
                     )}
                   </div>
-                  <span className="mt-3 flex w-full items-center justify-center rounded-lg border border-accent py-2 text-[14px] text-ink-muted transition group-hover:bg-accent/10">
+                  <span className="mt-3 flex w-full items-center justify-center rounded-lg border border-accent py-2 text-[14px] text-ink-muted transition group-hover:bg-[color-mix(in_srgb,var(--nc-accent)_10%,transparent)]">
                     Jugar →
                   </span>
                 </div>

@@ -64,7 +64,7 @@ export function NocturneShell({ children }: { children: React.ReactNode }) {
                 {n.label}
                 {n.juego && estaOculto(n.juego) && (
                   <span
-                    className="h-1.5 w-1.5 rounded-full bg-gold/80"
+                    className="h-1.5 w-1.5 rounded-full bg-gold"
                     title="Oculto para los jugadores: sólo lo ves vos"
                     aria-label="oculto para los jugadores"
                   />
