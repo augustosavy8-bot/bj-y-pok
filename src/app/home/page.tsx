@@ -63,7 +63,7 @@ const NOMBRE_JUEGO: Record<Juego, string> = {
 const GLIFO: Record<Juego, string> = { poker_holdem: "♠", blackjack: "🂡" };
 const BANNER: Record<Juego, string> = {
   poker_holdem: "/juegos/poker.webp",
-  blackjack: "/juegos/blackjack.webp",
+  blackjack: "/juegos/blackjack-mesa.webp",
 };
 
 const REGLAS_CASA = [
