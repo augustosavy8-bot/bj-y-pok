@@ -4,7 +4,6 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getSupabaseBrowser, usuarioActualId } from "@/lib/supabase/client";
 import { NocturneShell } from "@/components/nocturne/NocturneShell";
-import { ChipsCanvas } from "@/components/nocturne/ChipsCanvas";
 import { AvisoJugadores } from "@/components/AvisoJugadores";
 import { estaOculto, puedeVerJuego } from "@/lib/juegos-visibles";
 import { TEMAS } from "@/lib/slots/themes";
@@ -17,11 +16,6 @@ const SLOTS_HOME = Object.values(TEMAS);
 const IcoRodillos = (
   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
     <rect x="3" y="6" width="18" height="12" rx="2" /><path d="M9 6v12M15 6v12" />
-  </svg>
-);
-const IcoLineas = (
-  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-    <rect x="3" y="4" width="18" height="16" rx="2" /><path d="M3 9.3h18M3 14.6h18" />
   </svg>
 );
 const IcoJugadores = (
@@ -80,6 +74,7 @@ export default function HomePage() {
   const [casa, setCasa] = useState<MesaCasa[]>([]);
   const [cat, setCat] = useState<Cat>("todas");
   const [error, setError] = useState<string | null>(null);
+  const [q, setQ] = useState("");
 
   useEffect(() => {
     (async () => {
@@ -133,456 +128,292 @@ export default function HomePage() {
     cargarMesas();
   }
 
+  // ── Búsqueda (filtra las filas de juegos en el cliente) ──
+  const ql = q.trim().toLowerCase();
+  const match = (s: string) => !ql || s.toLowerCase().includes(ql);
+  const slotsVisibles = puedeVerJuego("slots", esAdmin);
+  const dinoVisible = puedeVerJuego("dino-crash", esAdmin);
+  const slotsFiltrados = SLOTS_HOME.filter((t) => match(t.displayName) || match(t.tagline ?? ""));
+  const casaFiltrada = casa.filter((m) => match(NOMBRE_JUEGO[m.tipo_juego] ?? m.tipo_juego));
+  const dinoMatch = match("dino crash") || match("minijuegos") || match("crash");
+  const casaBJ = casa.find((m) => m.tipo_juego === "blackjack");
+
   return (
     <NocturneShell>
-      {/* Hero */}
-      <section
-        className="relative overflow-hidden"
-        style={{
-          backgroundImage:
-            "radial-gradient(110% 80% at 82% 0%, color-mix(in srgb, var(--nc-bg-2) 55%, transparent), transparent 62%), radial-gradient(65% 70% at 4% 100%, color-mix(in srgb, var(--nc-accent) 45%, transparent), transparent 70%)",
-        }}
-      >
-        <ChipsCanvas density={0.45} />
-        <div className="relative z-[2] mx-auto grid max-w-6xl grid-cols-1 items-start gap-10 px-4 py-16 sm:px-8 lg:py-20">
-          <div className="max-w-xl">
-            <span className="inline-flex items-center gap-2 text-[13px] uppercase tracking-[0.16em] text-ink-muted">
-              <span aria-hidden>✦</span> Blackjack · Póker · Slots
-            </span>
-            <h1 className="mt-2 font-serif text-[clamp(42px,5.4vw,66px)] font-semibold leading-[1.02] tracking-tight text-balance">
-              La mesa está <span className="text-ink">siempre servida.</span>
-            </h1>
-            <p className="mt-4 max-w-md text-[17px] leading-relaxed text-ink-muted">
-              Blackjack y póker con reglas publicadas por mesa y reparto RNG del lado del
-              servidor. Créditos internos, sin ruido, sin trucos.
-            </p>
-            <div className="mt-7 flex flex-wrap gap-2.5">
-              {casa.length > 0 ? (
-                <>
-                  <a href="#casa" className="nbtn nbtn-primary px-5 py-2.5 text-[15px]">
-                    Jugar ahora
-                  </a>
-                  <a href="#mesas" className="nbtn nbtn-secondary px-5 py-2.5 text-[15px]">
-                    Mis mesas
-                  </a>
-                </>
-              ) : (
-                <a href="#mesas" className="nbtn nbtn-primary px-5 py-2.5 text-[15px]">
-                  Ver mis mesas
-                </a>
-              )}
-              {esAdmin && (
-                <a href="#crear" className="nbtn nbtn-secondary px-5 py-2.5 text-[15px]">
-                  Crear una mesa
-                </a>
-              )}
-            </div>
-            <div className="mt-8 flex flex-wrap gap-x-6 gap-y-2 text-xs text-ink-muted">
-              <span className="inline-flex items-center gap-1.5">
-                <Escudo /> RNG del lado del servidor
-              </span>
-              <span className="inline-flex items-center gap-1.5">
-                <Reloj /> Reglas publicadas por mesa
-              </span>
-              <span className="inline-flex items-center gap-1.5">
-                <Prohibido /> +18 · juego responsable
-              </span>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* NOVEDAD: Dino Crash. La visibilidad sale de src/lib/juegos-visibles.ts */}
-      {puedeVerJuego("dino-crash", esAdmin) && (
-        <section id="dino-crash" className="mx-auto max-w-6xl px-4 pt-12 sm:px-8">
-          <a
-            href="/juegos/dino-crash"
-            className="group relative block overflow-hidden rounded-2xl border border-[#f0912a]/30 transition hover:-translate-y-0.5 hover:border-[#f0912a]/60 hover:shadow-2xl"
-          >
-            <div className="relative aspect-[16/6] overflow-hidden sm:aspect-[16/5]" style={{ background: "linear-gradient(120deg,#1a1140 0%,#3a1a55 45%,#7a2b53 100%)" }}>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/juegos/dino-crash/night_sky.webp" alt="" aria-hidden loading="lazy" className="absolute inset-0 h-full w-full object-cover opacity-60 transition duration-500 group-hover:scale-105" />
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/juegos/dino-crash/ground.webp" alt="" aria-hidden loading="lazy" className="pointer-events-none absolute inset-x-0 bottom-0 w-full" />
-              <div className="absolute inset-0" style={{ background: "linear-gradient(90deg, rgba(10,8,20,.8) 0%, rgba(10,8,20,.3) 48%, transparent 74%)" }} />
-              <span className="absolute left-4 top-4 z-20 inline-flex items-center gap-1.5 rounded-full border border-amber-300/40 bg-amber-400/15 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.16em] text-amber-200 backdrop-blur">
-                <span aria-hidden>✦</span> Novedad
-              </span>
-              {estaOculto("dino-crash") && esAdmin && (
-                <span className="absolute right-4 top-4 z-20 rounded bg-black/45 px-2 py-1 text-[10px] text-amber-300 backdrop-blur">
-                  oculto · sólo lo ves vos
-                </span>
-              )}
-              <div className="relative z-10 flex h-full items-center gap-3 px-5 sm:gap-5 sm:px-9">
+      <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8">
+        {/* ── Banners destacados ── */}
+        {!ql && (
+          <div className="grid gap-4 md:grid-cols-2">
+            {/* Blackjack en vivo */}
+            <a
+              href={casaBJ ? `/mesa/${casaBJ.codigo_sala}` : "#tus-mesas"}
+              className="group relative block overflow-hidden rounded-2xl border border-edge transition hover:-translate-y-0.5 hover:border-accent hover:shadow-2xl"
+            >
+              <div className="relative aspect-[16/8] overflow-hidden sm:aspect-[16/7]">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src="/juegos/dino-crash/dino_badge.webp" alt="Dino Crash" loading="lazy" className="h-[68%] w-auto drop-shadow-[0_6px_16px_rgba(240,145,42,.5)] sm:h-[74%]" />
-                <div className="min-w-0">
-                  <div className="font-serif text-[26px] font-semibold leading-none text-[#ffd98a] sm:text-[40px]">Dino Crash</div>
-                  <p className="mt-1.5 max-w-md text-[13px] text-ink sm:text-[15px]">
-                    Ronda compartida en vivo · el multiplicador sube, retirate antes de que caiga el meteorito.
-                  </p>
-                  <span className="mt-3 inline-flex items-center justify-center rounded-lg px-4 py-2 text-[14px] font-bold text-[#3a1400]" style={{ background: "linear-gradient(180deg,#ffd23f,#ff6a1a)" }}>
-                    Jugar ahora →
+                <img src="/juegos/blackjack-mesa.webp" alt="Blackjack" className="absolute inset-0 h-full w-full object-cover transition duration-500 group-hover:scale-105" />
+                <div className="absolute inset-0" style={{ background: "linear-gradient(90deg, rgba(6,20,14,.86) 0%, rgba(6,20,14,.45) 46%, transparent 78%)" }} />
+                <div className="relative z-10 flex h-full flex-col justify-end p-5">
+                  <span className="mb-1 inline-flex w-fit items-center gap-1.5 rounded-full bg-black/40 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-emerald-300 backdrop-blur">
+                    <span className="relative flex h-1.5 w-1.5"><span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" /><span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-400" /></span>
+                    En vivo
                   </span>
+                  <div className="font-serif text-[30px] font-semibold leading-none text-ink sm:text-[38px]">Blackjack</div>
+                  <div className="mt-1 text-[13px] text-ink-muted">
+                    Paño verde, paga 3:2 · {casaBJ ? `${casaBJ.jugadores} en la mesa` : "mesa abierta"}
+                  </div>
                 </div>
               </div>
-            </div>
-          </a>
-        </section>
-      )}
+            </a>
 
-      {/* Vigía de la mesa: herramienta de operador, sólo para el admin. */}
-      {esAdmin && (
-        <section className="mx-auto max-w-6xl px-4 pt-14 sm:px-8">
-          <AvisoJugadores />
-        </section>
-      )}
-
-      {/* Mesa de la casa: siempre abierta, sin código */}
-      {casa.length > 0 && (
-        <section id="casa" className="mx-auto max-w-6xl px-4 pt-14 sm:px-8">
-          <div className="mb-5">
-            <span className="text-[12px] uppercase tracking-[0.16em] text-ink-muted">
-              <span aria-hidden>✦</span> En vivo
-            </span>
-            <h2 className="font-serif text-[34px] font-semibold leading-tight">La mesa de la casa</h2>
-            <p className="m-0 text-[13px] text-ink-muted">
-              Abierta las 24 horas. Entrás y jugás: no hace falta ningún código.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
-            {casa.map((m) => (
-              <div
-                key={m.codigo_sala}
-                className="group overflow-hidden rounded-2xl border border-edge bg-surface-1 transition hover:-translate-y-0.5 hover:border-accent hover:shadow-2xl"
-              >
-                {/* Banner del juego */}
-                <div className="relative aspect-[16/9] w-full overflow-hidden">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={BANNER[m.tipo_juego] ?? BANNER.poker_holdem}
-                    alt={NOMBRE_JUEGO[m.tipo_juego] ?? m.tipo_juego}
-                    loading="lazy"
-                    className="absolute inset-0 h-full w-full object-cover transition duration-500 group-hover:scale-105"
-                  />
-                  <div
-                    className="absolute inset-0"
-                    style={{ background: "linear-gradient(180deg, rgba(5,9,11,.1) 55%, rgba(5,9,11,.72))" }}
-                  />
-                  <div className="absolute left-3 top-3 inline-flex items-center gap-2 rounded bg-black/45 px-2 py-1 backdrop-blur">
-                    <span className="relative flex h-2 w-2">
-                      <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
-                      <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-400" />
-                    </span>
-                    <span className="text-[10px] uppercase tracking-[0.14em] text-emerald-300">
-                      Abierta 24 hs
-                    </span>
-                  </div>
-                </div>
-
-                {/* Cuerpo: nombre serif + divisor + stats + botón */}
-                <div className="p-5 pt-4 text-center">
-                  <div className="font-serif text-[25px] font-semibold leading-tight text-ink-muted">
-                    {NOMBRE_JUEGO[m.tipo_juego] ?? m.tipo_juego}
-                  </div>
-                  <div className="mt-0.5 text-[13px] text-ink-muted">
-                    {m.jugadores === 0
-                      ? "Mesa libre · sos el primero"
-                      : `${m.jugadores} ${m.jugadores === 1 ? "jugador sentado" : "jugadores sentados"}`}
-                  </div>
-                  <div className="divider-diamante my-3" aria-hidden>◆</div>
-                  <div className="flex flex-wrap items-center justify-center gap-x-3.5 gap-y-1.5 text-[12.5px] text-ink-muted">
-                    {m.apuesta_min !== null && (
-                      <>
-                        <span className="inline-flex items-center gap-1.5 text-ink-muted">
-                          {IcoJugadores}
-                          <span className="text-ink-muted">Apuesta {m.apuesta_min}–{m.apuesta_max}</span>
-                        </span>
-                        <span className="h-4 w-px bg-white/15" />
-                      </>
-                    )}
-                    <span className="inline-flex items-center gap-1.5 text-ink-muted">
-                      <span className="text-ink-muted">{m.es_practica ? "Práctica" : `Entrada ${m.creditos_minimos}`}</span>
-                    </span>
-                    <span className="h-4 w-px bg-white/15" />
-                    <span className="inline-flex items-center gap-1.5 text-ink-muted">
-                      {IcoMazos}
-                      <span className="text-ink-muted">{m.cantidad_mazos} mazos · RNG</span>
-                    </span>
-                  </div>
-
-                  <button
-                    onClick={() =>
-                      router.push(`/mesa/${m.codigo_sala}${m.soy_crupier ? "/crupier" : ""}`)
-                    }
-                    disabled={!m.puedo_entrar && !m.ya_sentado && !m.soy_crupier}
-                    className="nbtn nbtn-primary mt-4 w-full py-2.5 text-[15px] disabled:opacity-40"
-                  >
-                    {m.soy_crupier
-                      ? "Abrir como crupier"
-                      : m.ya_sentado
-                      ? "Volver a la mesa"
-                      : !m.puedo_entrar
-                      ? `Necesitás ${m.creditos_minimos + m.costo_reingreso} créditos`
-                      : m.costo_reingreso > 0
-                      ? `Volver a entrar · ${m.costo_reingreso} créditos`
-                      : "Entrar a jugar"}
-                  </button>
-                  {m.costo_reingreso > 0 && !m.ya_sentado && !m.soy_crupier && (
-                    <p className="mt-2 mb-0 text-center text-[11px] leading-snug text-ink-dim">
-                      Ya te habías sentado en esta mesa: volver a entrar cuesta{" "}
-                      {m.costo_reingreso} créditos.
-                    </p>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
-
-      {/* Slots. La visibilidad sale de src/lib/juegos-visibles.ts */}
-      {puedeVerJuego("slots", esAdmin) && (
-      <section id="rapidos" className="mx-auto max-w-6xl px-4 pt-14 sm:px-8">
-        <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
-          <div>
-            <span className="inline-flex items-center gap-2 text-[12px] uppercase tracking-[0.16em] text-ink-muted">
-              <span aria-hidden>✦</span> Máquinas
-              {estaOculto("slots") && esAdmin && (
-                <span className="rounded bg-amber-400/15 px-2 py-0.5 text-[10px] normal-case tracking-normal text-amber-300">
-                  ocultas · sólo las ves vos
-                </span>
-              )}
-            </span>
-            <h2 className="font-serif text-[34px] font-semibold leading-tight">Slots</h2>
-            <p className="m-0 text-[13px] text-ink-muted">Cuatro máquinas temáticas · 5 rodillos · RNG del servidor.</p>
-          </div>
-          <a href="/slots" className="text-[14px] text-ink-muted hover:underline">Ver todas →</a>
-        </div>
-
-        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-          {SLOTS_HOME.map((t) => {
-            const stats = (t.tagline ?? "").split("·").map((x) => x.trim()).filter(Boolean);
-            return (
+            {/* Dino Crash */}
+            {dinoVisible && (
               <a
-                key={t.slug}
-                href={`/slots/${t.slug}`}
-                className="group overflow-hidden rounded-2xl border border-edge bg-surface-1 transition hover:-translate-y-0.5 hover:border-accent hover:shadow-2xl"
+                href="/juegos/dino-crash"
+                className="group relative block overflow-hidden rounded-2xl border border-[#f0912a]/30 transition hover:-translate-y-0.5 hover:border-[#f0912a]/60 hover:shadow-2xl"
               >
-                <div className="relative aspect-[16/9] overflow-hidden">
-                  {t.card && (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={t.card}
-                      alt={t.displayName}
-                      loading="lazy"
-                      className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
-                    />
-                  )}
-                  <div
-                    className="absolute inset-0"
-                    style={{ background: "linear-gradient(180deg, rgba(10,12,20,0) 55%, rgba(10,12,20,.85))" }}
-                  />
-                </div>
-                <div className="p-3.5 text-center">
-                  <div className="font-serif text-[20px] font-semibold leading-tight text-ink-muted">{t.displayName}</div>
-                  <div className="divider-diamante my-2" aria-hidden>◆</div>
-                  <div className="flex items-center justify-center gap-2.5 text-[11.5px] text-ink-muted">
-                    <span className="inline-flex items-center gap-1 text-ink-muted">
-                      {IcoRodillos}
-                      <span className="text-ink-muted">{stats[0] ?? "5 rodillos"}</span>
-                    </span>
-                    {stats[1] && (
-                      <>
-                        <span className="h-3.5 w-px bg-white/15" />
-                        <span className="inline-flex items-center gap-1 text-ink-muted">
-                          {IcoLineas}
-                          <span className="text-ink-muted">{stats[1]}</span>
-                        </span>
-                      </>
-                    )}
+                <div className="relative aspect-[16/8] overflow-hidden sm:aspect-[16/7]" style={{ background: "linear-gradient(120deg,#1a1140 0%,#3a1a55 45%,#7a2b53 100%)" }}>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src="/juegos/dino-crash/night_sky.webp" alt="" aria-hidden className="absolute inset-0 h-full w-full object-cover opacity-60 transition duration-500 group-hover:scale-105" />
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src="/juegos/dino-crash/ground.webp" alt="" aria-hidden className="pointer-events-none absolute inset-x-0 bottom-0 w-full" />
+                  <div className="absolute inset-0" style={{ background: "linear-gradient(90deg, rgba(10,8,20,.72) 0%, rgba(10,8,20,.25) 52%, transparent 80%)" }} />
+                  <div className="relative z-10 flex h-full items-center gap-3 p-5">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src="/juegos/dino-crash/dino_badge.webp" alt="Dino Crash" className="h-[74%] w-auto drop-shadow-[0_6px_16px_rgba(240,145,42,.5)]" />
+                    <div className="min-w-0">
+                      <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-300/40 bg-amber-400/15 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-[0.14em] text-amber-200">✦ Nuevo</span>
+                      <div className="mt-1 font-serif text-[30px] font-semibold leading-none text-[#ffd98a] sm:text-[38px]">Dino Crash</div>
+                      <div className="mt-1 text-[13px] text-ink-muted">Retirá antes del meteorito.</div>
+                    </div>
                   </div>
-                  <span className="mt-3 flex w-full items-center justify-center rounded-lg border border-accent py-2 text-[14px] text-ink-muted transition group-hover:bg-[color-mix(in_srgb,var(--nc-accent)_10%,transparent)]">
-                    Jugar →
-                  </span>
                 </div>
               </a>
-            );
-          })}
-        </div>
-      </section>
-      )}
-
-      {/* Dino Crash. La visibilidad sale de src/lib/juegos-visibles.ts */}
-      {puedeVerJuego("dino-crash", esAdmin) && (
-      <section id="dino-crash" className="mx-auto max-w-6xl px-4 pt-14 sm:px-8">
-        <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
-          <div>
-            <span className="inline-flex items-center gap-2 text-[12px] uppercase tracking-[0.16em] text-ink-muted">
-              <span aria-hidden>✦</span> Nuevo · Crash
-              {estaOculto("dino-crash") && esAdmin && (
-                <span className="rounded bg-amber-400/15 px-2 py-0.5 text-[10px] normal-case tracking-normal text-amber-300">
-                  oculto · sólo lo ves vos
-                </span>
-              )}
-            </span>
-            <h2 className="font-serif text-[34px] font-semibold leading-tight">Dino Crash</h2>
-            <p className="m-0 text-[13px] text-ink-muted">El dino corre sin parar · retirá antes del meteorito.</p>
+            )}
           </div>
-          <a href="/juegos/dino-crash" className="text-[14px] text-ink-muted hover:underline">Jugar →</a>
+        )}
+
+        {/* ── Buscador ── */}
+        <div className="relative mt-6">
+          <svg className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-dim" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><circle cx="11" cy="11" r="7" /><path d="M21 21l-4.3-4.3" /></svg>
+          <input
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="Buscar juegos…"
+            className="w-full rounded-xl border border-edge bg-surface-1 py-3 pl-10 pr-4 text-sm text-ink outline-none transition placeholder:text-ink-dim focus:border-accent"
+          />
         </div>
 
-        <a
-          href="/juegos/dino-crash"
-          className="group relative block overflow-hidden rounded-2xl border border-[#f0912a]/25 transition hover:-translate-y-0.5 hover:border-[#f0912a]/55 hover:shadow-2xl"
-        >
-          <div className="relative aspect-[16/6] overflow-hidden" style={{ background: "linear-gradient(120deg,#1a1140 0%,#3a1a55 45%,#7a2b53 100%)" }}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/juegos/dino-crash/night_sky.webp" alt="" aria-hidden loading="lazy" className="absolute inset-0 h-full w-full object-cover opacity-60 transition duration-500 group-hover:scale-105" />
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/juegos/dino-crash/ground.webp" alt="" aria-hidden loading="lazy" className="pointer-events-none absolute inset-x-0 bottom-0 w-full" />
-            <div className="absolute inset-0" style={{ background: "linear-gradient(90deg, rgba(10,8,20,.78) 0%, rgba(10,8,20,.3) 46%, transparent 72%)" }} />
-            <div className="relative z-10 flex h-full items-center gap-3 px-5 sm:gap-5 sm:px-9">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/juegos/dino-crash/dino_badge.webp" alt="Dino Crash" loading="lazy" className="h-[72%] w-auto drop-shadow-[0_6px_16px_rgba(240,145,42,.5)]" />
-              <div className="min-w-0">
-                <div className="font-serif text-[26px] font-semibold leading-none text-[#ffd98a] sm:text-[36px]">Dino Crash</div>
-                <p className="mt-1.5 hidden max-w-md text-[13px] text-ink-muted sm:block">
-                  Cada 5 segundos arranca una ronda. El multiplicador sube… hasta que cae el meteorito de golpe. Retirate a tiempo.
-                </p>
-                <span className="mt-3 inline-flex items-center justify-center rounded-lg px-4 py-2 text-[14px] font-bold text-[#3a1400]" style={{ background: "linear-gradient(180deg,#ffd23f,#ff6a1a)" }}>
-                  Jugar ahora →
-                </span>
-              </div>
-            </div>
-          </div>
-        </a>
-      </section>
-      )}
-
-      {/* Mesas */}
-      <section id="mesas" className="mx-auto max-w-6xl px-4 pt-14 sm:px-8">
-        <div className="mb-5">
-          <span className="text-[12px] uppercase tracking-[0.16em] text-ink-muted">
-            <span aria-hidden>✦</span> Tu juego
-          </span>
-          <h2 className="font-serif text-[34px] font-semibold leading-tight">Tus mesas</h2>
-          <p className="m-0 text-[13px] text-ink-muted">Las mesas donde estás sentado o que dirigís.</p>
-        </div>
-
-        {/* Chip bar de variante */}
-        <div className="mb-5 flex flex-wrap gap-2">
-          {(["todas", "poker_holdem", "blackjack"] as Cat[]).map((c) => {
-            const activo = cat === c;
-            return (
+        {/* ── La mesa de la casa ── */}
+        {casaFiltrada.length > 0 && (
+          <Fila titulo="La mesa de la casa" eyebrow="En vivo · sin código">
+            {casaFiltrada.map((m) => (
               <button
-                key={c}
-                onClick={() => setCat(c)}
-                className={`inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-sm transition ${
-                  activo ? "border-accent text-ink-muted" : "border-white/12 text-ink-muted hover:bg-white/5"
-                }`}
+                key={m.codigo_sala}
+                onClick={() => router.push(`/mesa/${m.codigo_sala}${m.soy_crupier ? "/crupier" : ""}`)}
+                disabled={!m.puedo_entrar && !m.ya_sentado && !m.soy_crupier}
+                className="group w-[272px] shrink-0 overflow-hidden rounded-2xl border border-edge bg-surface-1 text-left transition hover:-translate-y-0.5 hover:border-accent disabled:opacity-50"
               >
-                {activo && <span className="h-1.5 w-1.5 rounded-full bg-accent" />}
-                {c === "todas" ? "Todas" : NOMBRE_JUEGO[c]}
-              </button>
-            );
-          })}
-        </div>
-
-        {filtradas.length > 0 ? (
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {filtradas.map((m) => (
-              <div
-                key={m.id}
-                className="ncard group flex flex-col gap-3 border border-white/[0.06] p-4 transition hover:-translate-y-0.5 hover:border-accent"
-              >
-                <div className="flex items-start justify-between">
-                  <div>
-                    <div className="text-[10px] uppercase tracking-[0.1em] text-ink-muted">
-                      {NOMBRE_JUEGO[m.tipo_juego as Juego] ?? m.tipo_juego}
-                    </div>
-                    <div className="font-mono text-lg tracking-[0.25em] text-ink">{m.codigo_sala}</div>
+                <div className="relative aspect-[16/9] overflow-hidden">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={BANNER[m.tipo_juego] ?? BANNER.poker_holdem} alt={NOMBRE_JUEGO[m.tipo_juego] ?? m.tipo_juego} className="absolute inset-0 h-full w-full object-cover transition duration-500 group-hover:scale-105" />
+                  <div className="absolute inset-0" style={{ background: "linear-gradient(180deg, rgba(5,9,11,.08) 50%, rgba(5,9,11,.78))" }} />
+                  <span className="absolute left-2.5 top-2.5 inline-flex items-center gap-1.5 rounded bg-black/45 px-2 py-1 text-[10px] uppercase tracking-[0.12em] text-emerald-300 backdrop-blur">
+                    <span className="relative flex h-1.5 w-1.5"><span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" /><span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-400" /></span>
+                    24 hs
+                  </span>
+                </div>
+                <div className="p-3.5">
+                  <div className="font-serif text-[19px] font-semibold leading-tight text-ink">{NOMBRE_JUEGO[m.tipo_juego] ?? m.tipo_juego}</div>
+                  <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px] text-ink-muted">
+                    <span className="inline-flex items-center gap-1">{IcoJugadores}{m.jugadores === 0 ? "libre" : `${m.jugadores} jugando`}</span>
+                    <span className="inline-flex items-center gap-1">{IcoMazos}{m.es_practica ? "práctica" : `entrada ${m.creditos_minimos}`}</span>
                   </div>
-                  <span className="text-2xl text-white/15">{GLIFO[m.tipo_juego as Juego] ?? "♠"}</span>
-                </div>
-                <div className="flex flex-wrap gap-1.5 text-[11px]">
-                  <span className="rounded bg-white/[0.06] px-2 py-0.5 text-ink-muted">
-                    {m.soy_crupier ? "Dirigís" : "Jugás"}
-                  </span>
-                  <span className="rounded bg-white/[0.06] px-2 py-0.5 text-ink-muted">
-                    {m.es_practica ? "Práctica" : `Min ${m.creditos_minimos}`}
+                  <span className="mt-3 flex w-full items-center justify-center rounded-lg border border-accent py-1.5 text-[13px] text-ink transition group-hover:bg-[color-mix(in_srgb,var(--nc-accent)_12%,transparent)]">
+                    {m.soy_crupier ? "Abrir como crupier" : m.ya_sentado ? "Volver a la mesa" : "Entrar a jugar →"}
                   </span>
                 </div>
-                <div className="mt-1 flex gap-2">
-                  <button
-                    onClick={() => router.push(`/mesa/${m.codigo_sala}${m.soy_crupier ? "/crupier" : ""}`)}
-                    className="nbtn nbtn-primary flex-1"
-                  >
-                    Sentarse
-                  </button>
-                  {m.soy_crupier && (
-                    <button onClick={() => cerrarMesa(m.codigo_sala)} className="nbtn nbtn-danger">
-                      Cerrar
-                    </button>
-                  )}
+              </button>
+            ))}
+          </Fila>
+        )}
+
+        {/* ── Slots ── */}
+        {slotsVisibles && slotsFiltrados.length > 0 && (
+          <Fila
+            titulo="Slots"
+            eyebrow="Máquinas"
+            verTodo="/slots"
+            aviso={estaOculto("slots") && esAdmin ? "ocultas · sólo las ves vos" : undefined}
+          >
+            {slotsFiltrados.map((t) => {
+              const stats = (t.tagline ?? "").split("·").map((x) => x.trim()).filter(Boolean);
+              return (
+                <a
+                  key={t.slug}
+                  href={`/slots/${t.slug}`}
+                  className="group w-[172px] shrink-0 overflow-hidden rounded-2xl border border-edge bg-surface-1 transition hover:-translate-y-0.5 hover:border-accent"
+                >
+                  <div className="relative aspect-[3/4] overflow-hidden">
+                    {t.card && (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={t.card} alt={t.displayName} className="h-full w-full object-cover transition duration-500 group-hover:scale-105" />
+                    )}
+                    <div className="absolute inset-0" style={{ background: "linear-gradient(180deg, rgba(10,12,20,0) 52%, rgba(10,12,20,.9))" }} />
+                    <div className="absolute inset-x-0 bottom-0 p-2.5">
+                      <div className="font-serif text-[15px] font-semibold leading-tight text-ink">{t.displayName}</div>
+                      <div className="mt-0.5 inline-flex items-center gap-1 text-[10.5px] text-ink-muted">{IcoRodillos}{stats[0] ?? "5 rodillos"}</div>
+                    </div>
+                  </div>
+                </a>
+              );
+            })}
+          </Fila>
+        )}
+
+        {/* ── Minijuegos ── */}
+        {dinoVisible && dinoMatch && (
+          <Fila titulo="Minijuegos" eyebrow="Crash" verTodo="/juegos/dino-crash">
+            <a
+              href="/juegos/dino-crash"
+              className="group relative w-[300px] shrink-0 overflow-hidden rounded-2xl border border-[#f0912a]/30 transition hover:-translate-y-0.5 hover:border-[#f0912a]/60"
+            >
+              <div className="relative aspect-[16/10] overflow-hidden" style={{ background: "linear-gradient(120deg,#1a1140 0%,#3a1a55 45%,#7a2b53 100%)" }}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="/juegos/dino-crash/night_sky.webp" alt="" aria-hidden className="absolute inset-0 h-full w-full object-cover opacity-60 transition duration-500 group-hover:scale-105" />
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="/juegos/dino-crash/ground.webp" alt="" aria-hidden className="pointer-events-none absolute inset-x-0 bottom-0 w-full" />
+                <div className="absolute inset-0" style={{ background: "linear-gradient(0deg, rgba(10,8,20,.7), transparent 60%)" }} />
+                <div className="absolute inset-x-0 bottom-0 flex items-center gap-2 p-3">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src="/juegos/dino-crash/dino_badge.webp" alt="Dino Crash" className="h-11 w-auto drop-shadow-[0_4px_10px_rgba(240,145,42,.5)]" />
+                  <div>
+                    <div className="font-serif text-[18px] font-semibold leading-none text-[#ffd98a]">Dino Crash</div>
+                    <div className="text-[11px] text-ink-muted">Ronda compartida en vivo</div>
+                  </div>
                 </div>
               </div>
-            ))}
-          </div>
-        ) : (
-          <div className="ncard border border-white/[0.06] p-8 text-center text-sm text-ink-muted">
-            {mesas.length === 0
-              ? "Todavía no estás en ninguna mesa. Entrá a la mesa de la casa (siempre abierta) o pedile a un admin que cree una."
-              : "Sin mesas para ese filtro."}
-          </div>
+            </a>
+          </Fila>
         )}
 
-        {/* Crear mesa (solo admin) */}
-        {esAdmin && (
-          <div className="mt-8 grid gap-3 sm:grid-cols-2">
-            <CrearMesa router={router} onCreada={cargarMesas} cat={cat} />
+        {/* ── Tus mesas ── */}
+        <section id="tus-mesas" className="mt-10">
+          <div className="mb-3">
+            <span className="text-[11px] uppercase tracking-[0.16em] text-ink-muted"><span aria-hidden>✦</span> Tu juego</span>
+            <h2 className="font-serif text-[24px] font-semibold leading-tight">Tus mesas</h2>
           </div>
-        )}
-
-        {error && (
-          <div className="mt-4 rounded-md border border-red-500/40 bg-red-500/10 px-3 py-2 text-center text-sm text-red-200">
-            {error}
+          <div className="mb-4 flex flex-wrap gap-2">
+            {(["todas", "poker_holdem", "blackjack"] as Cat[]).map((c) => {
+              const activo = cat === c;
+              return (
+                <button
+                  key={c}
+                  onClick={() => setCat(c)}
+                  className={`inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-sm transition ${
+                    activo ? "border-accent text-ink" : "border-white/12 text-ink-muted hover:bg-white/5"
+                  }`}
+                >
+                  {activo && <span className="h-1.5 w-1.5 rounded-full bg-accent" />}
+                  {c === "todas" ? "Todas" : NOMBRE_JUEGO[c]}
+                </button>
+              );
+            })}
           </div>
-        )}
-      </section>
 
-      {/* Banda de confianza (único campo saturado de la página) */}
-      <section
-        className="mt-14 w-full"
-        style={{ background: "var(--nc-bg-2)" }}
-      >
-        <div className="mx-auto grid max-w-6xl grid-cols-2 gap-6 px-4 py-8 sm:px-8 md:grid-cols-4">
-          {[
-            { t: "RNG del lado del servidor", d: "El cliente nunca decide una carta." },
-            { t: "Reglas publicadas", d: "Pago y penetración visibles por mesa." },
-            { t: "Créditos internos", d: "Fichas de la casa, no dinero real." },
-            { t: "+18 · juego responsable", d: "Límites y autoexclusión en el perfil." },
-          ].map((c) => (
-            <div key={c.t} className="flex flex-col gap-1">
-              <span className="text-sm font-medium text-ink">{c.t}</span>
-              <span className="text-[12px] leading-snug text-ink-muted">{c.d}</span>
+          {filtradas.length > 0 ? (
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {filtradas.map((m) => (
+                <div key={m.id} className="ncard group flex flex-col gap-3 border border-white/[0.06] p-4 transition hover:-translate-y-0.5 hover:border-accent">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <div className="text-[10px] uppercase tracking-[0.1em] text-ink-muted">{NOMBRE_JUEGO[m.tipo_juego as Juego] ?? m.tipo_juego}</div>
+                      <div className="font-mono text-lg tracking-[0.25em] text-ink">{m.codigo_sala}</div>
+                    </div>
+                    <span className="text-2xl text-white/15">{GLIFO[m.tipo_juego as Juego] ?? "♠"}</span>
+                  </div>
+                  <div className="flex flex-wrap gap-1.5 text-[11px]">
+                    <span className="rounded bg-white/[0.06] px-2 py-0.5 text-ink-muted">{m.soy_crupier ? "Dirigís" : "Jugás"}</span>
+                    <span className="rounded bg-white/[0.06] px-2 py-0.5 text-ink-muted">{m.es_practica ? "Práctica" : `Min ${m.creditos_minimos}`}</span>
+                  </div>
+                  <div className="mt-1 flex gap-2">
+                    <button onClick={() => router.push(`/mesa/${m.codigo_sala}${m.soy_crupier ? "/crupier" : ""}`)} className="nbtn nbtn-primary flex-1">Sentarse</button>
+                    {m.soy_crupier && (
+                      <button onClick={() => cerrarMesa(m.codigo_sala)} className="nbtn nbtn-danger">Cerrar</button>
+                    )}
+                  </div>
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
-      </section>
+          ) : (
+            <div className="ncard border border-white/[0.06] p-8 text-center text-sm text-ink-muted">
+              {mesas.length === 0
+                ? "Todavía no estás en ninguna mesa. Entrá a la mesa de la casa (siempre abierta) o pedile a un admin que cree una."
+                : "Sin mesas para ese filtro."}
+            </div>
+          )}
 
-      {/* Reglas de la casa — texto plano, al fondo */}
-      <section className="mx-auto max-w-6xl px-4 py-10 sm:px-8">
-        <p className="text-[11px] uppercase tracking-[0.14em] text-ink-dim">Reglas de la casa</p>
-        <p className="mt-2 text-[13px] text-ink-muted">
-          {REGLAS_CASA.map((r) => `${r.label}: ${r.value}`).join("  ·  ")}
-        </p>
-        <p className="mt-1 text-[12px] text-ink-dim">
-          La ventaja de la casa y las reglas de cada mesa aparecen en su ficha, antes de sentarte.
-        </p>
-      </section>
+          {esAdmin && (
+            <div className="mt-6 grid gap-3 sm:grid-cols-2">
+              <CrearMesa router={router} onCreada={cargarMesas} cat={cat} />
+            </div>
+          )}
+
+          {error && (
+            <div className="mt-4 rounded-md border border-red-500/40 bg-red-500/10 px-3 py-2 text-center text-sm text-red-200">{error}</div>
+          )}
+        </section>
+
+        {/* Vigía de la mesa: herramienta de operador, sólo para el admin. */}
+        {esAdmin && (
+          <div className="mt-10">
+            <AvisoJugadores />
+          </div>
+        )}
+
+        {/* Reglas de la casa — texto plano, al fondo */}
+        <div className="mt-12 border-t border-edge pt-6">
+          <p className="text-[11px] uppercase tracking-[0.14em] text-ink-dim">Reglas de la casa</p>
+          <p className="mt-2 text-[13px] text-ink-muted">{REGLAS_CASA.map((r) => `${r.label}: ${r.value}`).join("  ·  ")}</p>
+          <p className="mt-1 text-[12px] text-ink-dim">La ventaja de la casa y las reglas de cada mesa aparecen en su ficha, antes de sentarte.</p>
+        </div>
+      </div>
     </NocturneShell>
+  );
+}
+
+// Fila horizontal de tarjetas (scroll lateral, estilo lobby).
+function Fila({
+  titulo,
+  eyebrow,
+  verTodo,
+  aviso,
+  children,
+}: {
+  titulo: string;
+  eyebrow?: string;
+  verTodo?: string;
+  aviso?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className="mt-8">
+      <div className="mb-3 flex items-end justify-between gap-3">
+        <div>
+          {eyebrow && (
+            <span className="inline-flex items-center gap-2 text-[11px] uppercase tracking-[0.16em] text-ink-muted">
+              <span aria-hidden>✦</span> {eyebrow}
+              {aviso && <span className="rounded bg-amber-400/15 px-2 py-0.5 text-[10px] normal-case tracking-normal text-amber-300">{aviso}</span>}
+            </span>
+          )}
+          <h2 className="font-serif text-[24px] font-semibold leading-tight">{titulo}</h2>
+        </div>
+        {verTodo && <a href={verTodo} className="shrink-0 text-[13px] text-ink-muted hover:text-ink">Ver todo →</a>}
+      </div>
+      <div className="flex gap-3 overflow-x-auto pb-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        {children}
+      </div>
+    </section>
   );
 }
 
@@ -646,7 +477,7 @@ function CrearMesa({
                 key={j}
                 onClick={() => setJuego(j)}
                 className={`flex-1 rounded-md border px-2 py-1.5 text-sm ${
-                  juego === j ? "border-accent text-ink-muted" : "border-white/12 text-ink-muted"
+                  juego === j ? "border-accent text-ink" : "border-white/12 text-ink-muted"
                 }`}
               >
                 {NOMBRE_JUEGO[j]}
@@ -682,28 +513,5 @@ function CrearMesa({
         </div>
       )}
     </div>
-  );
-}
-
-function Escudo() {
-  return (
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M12 3l7.5 2.8v5.9c0 4.6-3.1 7.6-7.5 9.1-4.4-1.5-7.5-4.5-7.5-9.1V5.8L12 3z" />
-      <path d="M8.9 12.1l2.2 2.2 4-4.3" />
-    </svg>
-  );
-}
-function Reloj() {
-  return (
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
-      <circle cx="12" cy="12" r="8.6" /><path d="M12 7.6V12l3.2 2.1" />
-    </svg>
-  );
-}
-function Prohibido() {
-  return (
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
-      <circle cx="12" cy="12" r="8.6" /><path d="M8.4 15.6l7.2-7.2" />
-    </svg>
   );
 }
