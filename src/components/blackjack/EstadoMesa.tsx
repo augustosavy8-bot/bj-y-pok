@@ -135,8 +135,8 @@ export function leerEstadoMesa(params: {
 }
 
 const COLOR: Record<TonoEstado, { punto: string; texto: string; borde: string }> = {
-  espera: { punto: "bg-tinta/45", texto: "text-tinta/75", borde: "border-white/10" },
-  accion: { punto: "bg-acento", texto: "text-acento-300", borde: "border-acento/35" },
+  espera: { punto: "bg-ink-dim", texto: "text-ink-muted", borde: "border-white/10" },
+  accion: { punto: "bg-accent", texto: "text-ink", borde: "border-[color-mix(in_srgb,var(--nc-accent)_40%,transparent)]" },
   vos: { punto: "bg-emerald-400", texto: "text-emerald-200", borde: "border-emerald-400/40" },
   problema: { punto: "bg-amber-400", texto: "text-amber-200", borde: "border-amber-400/40" },
 };
@@ -159,7 +159,7 @@ export function BannerEstadoMesa({ lectura }: { lectura: LecturaEstado }) {
       <div className="flex min-w-0 flex-wrap items-baseline gap-x-2">
         <span className={`text-[13px] font-medium ${c.texto}`}>{lectura.texto}</span>
         {lectura.detalle && (
-          <span className="text-[11px] text-tinta/45">{lectura.detalle}</span>
+          <span className="text-[11px] text-ink-dim">{lectura.detalle}</span>
         )}
       </div>
     </div>

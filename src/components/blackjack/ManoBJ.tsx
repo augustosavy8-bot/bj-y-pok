@@ -20,7 +20,7 @@ function etiquetaValor(cartas: { valor: BJCarta["valor"] }[], estado?: string): 
 // Pill con el valor de la mano (estilo Nocturne).
 function InsigniaValor({ children }: { children: React.ReactNode }) {
   return (
-    <span className="rounded bg-noche/80 px-2 py-0.5 text-xs font-medium tabular-nums text-tinta ring-1 ring-white/12">
+    <span className="rounded bg-[color-mix(in_srgb,var(--nc-bg-0)_82%,transparent)] px-2 py-0.5 text-xs font-medium tabular-nums text-ink ring-1 ring-white/12">
       {children}
     </span>
   );
@@ -48,7 +48,7 @@ export function ManoBJ({
         destacada ? "ring-2 ring-acento" : ""
       }`}
     >
-      {etiqueta && <div className="text-xs text-tinta/70">{etiqueta}</div>}
+      {etiqueta && <div className="text-xs text-ink-muted">{etiqueta}</div>}
       {val && <InsigniaValor>{val}</InsigniaValor>}
       <div className="flex gap-1.5">
         {orden.length > 0 ? (
@@ -69,7 +69,7 @@ export function ManoBJ({
         )}
       </div>
       {mano && mano.apuesta_fichas > 0 && (
-        <span className="text-xs text-tinta/60">
+        <span className="text-xs text-ink-muted">
           {mano.apuesta_fichas.toLocaleString("es")}
           {mano.doblada ? " (x2)" : ""}
         </span>
@@ -111,7 +111,7 @@ export function ManoDealer({
         destacada ? "ring-2 ring-acento" : ""
       }`}
     >
-      <div className="text-xs uppercase tracking-wide text-tinta/55">Crupier</div>
+      <div className="text-xs uppercase tracking-wide text-ink-dim">Crupier</div>
       {val && <InsigniaValor>{val}</InsigniaValor>}
       <div className="flex gap-1.5">
         {visibles.map((c, i) => (

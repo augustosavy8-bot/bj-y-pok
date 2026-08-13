@@ -19,8 +19,8 @@ const TIP: Record<string, string> = {
 function Campo({ label, tip, children }: { label: string; tip: string; children: React.ReactNode }) {
   return (
     <label className="text-sm">
-      <span className="flex items-center gap-1 text-tinta/80" title={tip}>
-        {label} <span className="text-tinta/40">ⓘ</span>
+      <span className="flex items-center gap-1 text-ink-muted" title={tip}>
+        {label} <span className="text-ink-dim">ⓘ</span>
       </span>
       <div className="mt-1">{children}</div>
     </label>
@@ -133,7 +133,7 @@ export function ConfigBlackjack({
         <button className="nbtn nbtn-primary" onClick={guardar} disabled={guardando}>
           {guardando ? "Guardando…" : "Guardar configuración"}
         </button>
-        {msg && <span className="text-sm text-tinta/70">{msg}</span>}
+        {msg && <span className="text-sm text-ink-muted">{msg}</span>}
       </div>
     </section>
   );
