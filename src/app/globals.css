@@ -18,6 +18,72 @@
   --color-section: #262a60;
 }
 
+/* ============================================================ */
+/*  Design tokens de color — "Speakeasy burdeos"  (NUEVO)        */
+/*  Sistema escalable de tokens. NO reemplaza los colores        */
+/*  existentes todavía: sólo deja el sistema listo. La migración  */
+/*  de componentes se hace después.                              */
+/*                                                               */
+/*  Reglas de uso:                                               */
+/*   · 60/30/10 — surface-0 domina; surface-1/2 estructuran;     */
+/*     `accent` sólo en ~10% de la UI (botón de apuesta, badges  */
+/*     activos, bordes activos).                                 */
+/*   · `gold` es EXCLUSIVO de dinero y premios (balance, payout, */
+/*     jackpot). Nunca en navegación, bordes decorativos ni      */
+/*     íconos genéricos.                                         */
+/*   · Texto siempre `ink` (crema), nunca blanco puro.           */
+/*   · `win`/`loss` sólo para deltas de balance y resultados, no */
+/*     para success/error genéricos de formularios.             */
+/*                                                               */
+/*  Variantes por juego (scoped): <div data-theme="mesa"> o      */
+/*  <div data-theme="crash"> en el layout del juego.            */
+/* ============================================================ */
+:root {
+  /* Fondos y superficies */
+  --nc-bg-0: #160a0d;        /* fondo de página */
+  --nc-bg-1: #241016;        /* superficie elevada (cards, modals) */
+  --nc-bg-2: #4a1220;        /* superficie destacada / hover */
+
+  /* Acentos */
+  --nc-accent: #8e2438;      /* burdeos — CTAs secundarios, bordes activos */
+  --nc-accent-hover: #a83249;
+  --nc-gold: #c98f3d;        /* SOLO dinero: balance, premios, jackpots */
+  --nc-gold-bright: #e6b35c; /* big win, highlights de premio */
+
+  /* Texto */
+  --nc-text: #efe2ce;        /* texto principal (crema, nunca #fff puro) */
+  --nc-text-muted: #b89f8a;  /* texto secundario */
+  --nc-text-dim: #7a6555;    /* hints, disabled */
+
+  /* Estados */
+  --nc-win: #3dbb6e;         /* ganancia */
+  --nc-loss: #e24b4a;        /* pérdida */
+  --nc-border: #3a1b22;      /* bordes sutiles */
+}
+
+/* Juegos de mesa: Truco, blackjack, póker */
+[data-theme="mesa"] {
+  --nc-bg-0: #0a1f14;
+  --nc-bg-1: #102e1d;
+  --nc-bg-2: #14532d;        /* paño */
+  --nc-accent: #1f8a50;
+  --nc-accent-hover: #27a862;
+  --nc-gold: #e6b31e;
+  --nc-border: #1a3826;
+}
+
+/* Crash games: Dino Nocturna */
+[data-theme="crash"] {
+  --nc-bg-0: #0b0e1a;
+  --nc-bg-1: #12162a;
+  --nc-bg-2: #161b33;
+  --nc-accent: #00e5c7;      /* multiplicador subiendo */
+  --nc-accent-hover: #2ef0d6;
+  --nc-loss: #ff2e7e;        /* momento del crash */
+  --nc-gold: #ffc93c;
+  --nc-border: #1e2440;
+}
+
 html,
 body {
   height: 100%;

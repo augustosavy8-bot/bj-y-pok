@@ -9,6 +9,29 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
+        // — Design tokens "Speakeasy burdeos" (nuevos; definidos en globals.css). —
+        //   Referencian CSS vars para que las variantes por data-theme
+        //   ("mesa"/"crash") funcionen sin clases extra. gold = SOLO dinero.
+        "surface-0": "var(--nc-bg-0)",
+        "surface-1": "var(--nc-bg-1)",
+        "surface-2": "var(--nc-bg-2)",
+        accent: {
+          DEFAULT: "var(--nc-accent)",
+          hover: "var(--nc-accent-hover)",
+        },
+        gold: {
+          DEFAULT: "var(--nc-gold)",
+          bright: "var(--nc-gold-bright)",
+        },
+        ink: {
+          DEFAULT: "var(--nc-text)",
+          muted: "var(--nc-text-muted)",
+          dim: "var(--nc-text-dim)",
+        },
+        win: "var(--nc-win)",
+        loss: "var(--nc-loss)",
+        edge: "var(--nc-border)",
+
         // — Nocturne (identidad nueva) —
         noche: "#161826", // fondo base
         superficie: "#232532", // surface
