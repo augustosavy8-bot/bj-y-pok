@@ -57,10 +57,10 @@ export default async function SlotsHub() {
           <span aria-hidden>✦</span> Máquinas
         </span>
         <h1 className="mt-1.5 font-serif text-5xl font-semibold leading-none">Slots</h1>
-        <p className="mt-3 max-w-xl text-[15px] text-tinta/60">Elegí una máquina. El saldo es el mismo de tus fichas.</p>
+        <p className="mt-3 max-w-xl text-[15px] text-ink-muted">Elegí una máquina. El saldo es el mismo de tus fichas.</p>
 
         {slots.length === 0 ? (
-          <p className="mt-10 text-tinta/60">No hay slots activos por ahora.</p>
+          <p className="mt-10 text-ink-muted">No hay slots activos por ahora.</p>
         ) : (
           <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
             {slots.map((s) => {
@@ -91,18 +91,18 @@ export default async function SlotsHub() {
                   <div className="p-4 text-center">
                     <div className="font-serif text-[23px] font-semibold leading-tight text-[#e7c477]">{s.name}</div>
                     <div className="divider-diamante my-2.5" aria-hidden>◆</div>
-                    <div className="flex items-center justify-center gap-3.5 text-[12.5px] text-tinta/70">
+                    <div className="flex items-center justify-center gap-3.5 text-[12.5px] text-ink-muted">
                       <span className="inline-flex items-center gap-1.5 text-[#e7c477]/85">
                         {IcoRodillos}
-                        <span className="text-tinta/75">{s.reels} rodillos</span>
+                        <span className="text-ink-muted">{s.reels} rodillos</span>
                       </span>
                       <span className="h-4 w-px bg-white/15" />
                       <span className="inline-flex items-center gap-1.5 text-[#e7c477]/85">
                         {IcoFilas}
-                        <span className="text-tinta/75">{s.rows} filas</span>
+                        <span className="text-ink-muted">{s.rows} filas</span>
                       </span>
                     </div>
-                    <span className="mt-4 flex w-full items-center justify-center rounded-lg border border-acento py-2.5 text-[15px] text-acento transition group-hover:bg-acento/10">
+                    <span className="mt-4 flex w-full items-center justify-center rounded-lg border border-accent py-2.5 text-[15px] text-ink transition group-hover:bg-[color-mix(in_srgb,var(--nc-accent)_10%,transparent)]">
                       Jugar →
                     </span>
                   </div>

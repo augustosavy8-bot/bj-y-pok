@@ -90,8 +90,8 @@ body {
 }
 
 body {
-  background: var(--color-bg);
-  color: var(--color-text);
+  background: var(--nc-bg-0);
+  color: var(--nc-text);
   -webkit-tap-highlight-color: transparent;
 }
 

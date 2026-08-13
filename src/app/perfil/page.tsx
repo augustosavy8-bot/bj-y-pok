@@ -77,12 +77,12 @@ export default function PerfilPage() {
 
         <section className="ncard flex items-center justify-between border border-white/[0.06] p-5 shadow-n-sm">
           <div>
-            <div className="text-[11px] uppercase tracking-[0.1em] text-tinta/55">Saldo de créditos</div>
-            <div className="text-3xl font-medium tabular-nums text-acento-300">{saldo.toLocaleString("es")}</div>
+            <div className="text-[11px] uppercase tracking-[0.1em] text-ink-muted">Saldo de créditos</div>
+            <div className="text-3xl font-medium tabular-nums text-gold">{saldo.toLocaleString("es")}</div>
           </div>
-          <div className="text-right text-sm text-tinta/60">
+          <div className="text-right text-sm text-ink-muted">
             <div className="text-[11px] uppercase tracking-[0.1em]">Disponible para retirar</div>
-            <div className="text-lg font-medium tabular-nums text-tinta">{disponible.toLocaleString("es")}</div>
+            <div className="text-lg font-medium tabular-nums text-ink">{disponible.toLocaleString("es")}</div>
           </div>
         </section>
 
@@ -116,7 +116,7 @@ export default function PerfilPage() {
                 <span>{new Date(s.created_at).toLocaleDateString("es")} · {s.monto_solicitado.toLocaleString("es")}</span>
                 <span className="flex items-center gap-2">
                   <EstadoRetiro estado={s.estado} />
-                  {s.notas_admin && <span className="text-tinta/50">{s.notas_admin}</span>}
+                  {s.notas_admin && <span className="text-ink-dim">{s.notas_admin}</span>}
                 </span>
               </div>
             ))}
@@ -128,7 +128,7 @@ export default function PerfilPage() {
           <h2 className="font-medium">Historial de movimientos</h2>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead className="text-left text-[11px] uppercase tracking-[0.08em] text-tinta/50">
+              <thead className="text-left text-[11px] uppercase tracking-[0.08em] text-ink-dim">
                 <tr>
                   <th className="py-1.5 pr-3 font-medium">Fecha</th>
                   <th className="py-1.5 pr-3 font-medium">Tipo</th>
@@ -139,7 +139,7 @@ export default function PerfilPage() {
               <tbody>
                 {movimientos.map((m) => (
                   <tr key={m.id} className="border-t border-white/[0.07]">
-                    <td className="py-2 pr-3 text-tinta/55">
+                    <td className="py-2 pr-3 text-ink-muted">
                       {new Date(m.created_at).toLocaleString("es", { dateStyle: "short", timeStyle: "short" })}
                     </td>
                     <td className="py-2 pr-3">{TIPO_LABEL[m.tipo]}</td>
@@ -150,7 +150,7 @@ export default function PerfilPage() {
                   </tr>
                 ))}
                 {movimientos.length === 0 && (
-                  <tr><td colSpan={4} className="py-4 text-center text-tinta/40">Sin movimientos todavía.</td></tr>
+                  <tr><td colSpan={4} className="py-4 text-center text-ink-dim">Sin movimientos todavía.</td></tr>
                 )}
               </tbody>
             </table>
@@ -163,7 +163,7 @@ export default function PerfilPage() {
 
 function EstadoRetiro({ estado }: { estado: string }) {
   const color: Record<string, string> = {
-    pendiente: "bg-acento-800 text-acento-100",
+    pendiente: "bg-surface-2 text-ink",
     aprobada: "bg-amber-500/20 text-amber-200",
     rechazada: "bg-red-500/20 text-red-200",
     pagada: "bg-emerald-500/20 text-emerald-200",
