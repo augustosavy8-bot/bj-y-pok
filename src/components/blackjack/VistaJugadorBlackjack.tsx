@@ -281,31 +281,31 @@ export function VistaJugadorBlackjack({
   });
 
   return (
-    <div className="flex min-h-screen flex-col bg-noche text-tinta">
+    <div data-theme="mesa" className="flex min-h-screen flex-col bg-surface-0 text-ink">
       {/* Header de mesa */}
       <header className="fade-b">
         <nav className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-5 gap-y-2 px-4 py-3 sm:px-7">
-          <button onClick={salirDeMesa} className="inline-flex items-center gap-1.5 text-[13px] text-tinta/65 hover:text-acento">
+          <button onClick={salirDeMesa} className="inline-flex items-center gap-1.5 text-[13px] text-ink-muted hover:text-ink">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M14.5 5.5L8 12l6.5 6.5" /></svg>
             Salir de la mesa
           </button>
           <div className="h-5 w-px bg-white/15" />
           <div className="mr-auto flex items-baseline gap-2.5">
             <span className="text-[15px]">Blackjack</span>
-            <span className="text-xs tabular-nums text-tinta/50">
+            <span className="text-xs tabular-nums text-ink-dim">
               {codigo}{config ? ` · ${config.apuesta_min}–${config.apuesta_max}` : ""}
               {ronda ? ` · ronda ${ronda.numero_ronda}` : ""}
             </span>
           </div>
           <div className="flex items-center gap-4">
             <div className="flex flex-col items-end leading-tight">
-              <span className="text-[10px] uppercase tracking-[0.1em] text-tinta/50">Saldo</span>
+              <span className="text-[10px] uppercase tracking-[0.1em] text-ink-dim">Saldo</span>
               <span className="text-sm tabular-nums">{yo.fichas.toLocaleString("es")}</span>
             </div>
             {manoBase && manoBase.apuesta_fichas > 0 && (
               <div className="flex flex-col items-end leading-tight">
-                <span className="text-[10px] uppercase tracking-[0.1em] text-tinta/50">Apuesta</span>
-                <span className="text-sm tabular-nums text-acento-300">{manoBase.apuesta_fichas}</span>
+                <span className="text-[10px] uppercase tracking-[0.1em] text-ink-dim">Apuesta</span>
+                <span className="text-sm tabular-nums text-gold">{manoBase.apuesta_fichas}</span>
               </div>
             )}
             <BotonSonido />
@@ -341,7 +341,7 @@ export function VistaJugadorBlackjack({
                     >
                       {/* Con split hay dos resultados: se numeran igual que en la mesa. */}
                       {misManos.length > 1 && (
-                        <span className="grid h-[14px] min-w-[14px] place-items-center rounded-full bg-white/15 text-[9px] font-bold text-tinta/80">
+                        <span className="grid h-[14px] min-w-[14px] place-items-center rounded-full bg-white/15 text-[9px] font-bold text-ink-muted">
                           {i + 1}
                         </span>
                       )}
@@ -370,13 +370,13 @@ export function VistaJugadorBlackjack({
             {ronda?.estado === "apuestas" && (
               <>
                 <div className="flex items-center justify-center gap-2 text-sm">
-                  <span className="text-tinta/70">Hacé tu apuesta</span>
+                  <span className="text-ink-muted">Hacé tu apuesta</span>
                   {segsApuestas != null && (
                     <span
                       className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 font-bold tabular-nums ${
                         segsApuestas <= 3
                           ? "animate-pulse border-red-400/50 bg-red-500/15 text-red-200"
-                          : "border-acento/40 bg-acento/10 text-acento-300"
+                          : "border-[color-mix(in_srgb,var(--nc-accent)_45%,transparent)] bg-[color-mix(in_srgb,var(--nc-accent)_14%,transparent)] text-ink"
                       }`}
                     >
                       cierra en {segsApuestas}s
@@ -388,7 +388,7 @@ export function VistaJugadorBlackjack({
                     <button
                       key={v}
                       onClick={() => agregarChip(v)}
-                      className="grid h-12 w-12 place-items-center rounded-full border border-white/15 bg-[#292b31] text-[12px] font-semibold tabular-nums text-tinta transition hover:-translate-y-0.5 hover:border-acento hover:text-acento-300 active:translate-y-0.5"
+                      className="grid h-12 w-12 place-items-center rounded-full border border-white/15 bg-[#123a29] text-[12px] font-semibold tabular-nums text-ink transition hover:-translate-y-0.5 hover:border-accent hover:text-gold active:translate-y-0.5"
                     >
                       {v >= 1000 ? `${v / 1000}k` : v}
                     </button>
@@ -446,7 +446,7 @@ export function VistaJugadorBlackjack({
             )}
 
             {ronda?.estado === "terminada" && (
-              <div className="ncard border border-white/[0.06] p-3 text-center text-sm text-tinta/60">
+              <div className="ncard border border-white/[0.06] p-3 text-center text-sm text-ink-muted">
                 Ronda terminada. Esperá a que el crupier inicie la próxima.
               </div>
             )}
@@ -460,7 +460,7 @@ export function VistaJugadorBlackjack({
         {/* Aside: reglas de la mesa */}
         <aside className="flex flex-col gap-3">
           <div className="ncard p-4 shadow-n-sm">
-            <span className="text-[10px] uppercase tracking-[0.1em] text-acento">Reglas de la mesa</span>
+            <span className="text-[10px] uppercase tracking-[0.1em] text-ink-muted">Reglas de la mesa</span>
             <div className="mt-2 flex flex-col gap-2">
               {[
                 { l: "Blackjack paga", v: config?.blackjack_pago === "6_a_5" ? "6 : 5" : "3 : 2" },
@@ -469,13 +469,13 @@ export function VistaJugadorBlackjack({
                 { l: "Límites", v: config ? `${config.apuesta_min} – ${config.apuesta_max}` : "—" },
               ].map((r) => (
                 <div key={r.l} className="flex items-baseline justify-between gap-3 text-[13px]">
-                  <span className="text-tinta/65">{r.l}</span>
+                  <span className="text-ink-muted">{r.l}</span>
                   <span className="font-medium tabular-nums">{r.v}</span>
                 </div>
               ))}
             </div>
           </div>
-          <p className="text-[11px] leading-relaxed text-tinta/40">
+          <p className="text-[11px] leading-relaxed text-ink-dim">
             Zapato de {config?.cantidad_mazos ?? 6} mazos, barajado con RNG del lado del servidor
             (se rebaraja al 75%). Jugás contra la casa. +18 · juego responsable.
           </p>
@@ -510,19 +510,19 @@ function ControlesBJ({
 }) {
   if (!esMia || !manoEnTurno || !config) {
     return (
-      <div className="ncard flex items-center justify-center gap-2 border border-white/[0.06] px-4 py-3 text-center text-sm text-tinta/60">
+      <div className="ncard flex items-center justify-center gap-2 border border-white/[0.06] px-4 py-3 text-center text-sm text-ink-muted">
         {esMia ? (
           "Preparando…"
         ) : (
           <>
             <span className="relative flex h-2 w-2">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-acento/70" />
-              <span className="relative inline-flex h-2 w-2 rounded-full bg-acento" />
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[color-mix(in_srgb,var(--nc-accent)_70%,transparent)]" />
+              <span className="relative inline-flex h-2 w-2 rounded-full bg-accent" />
             </span>
             <span>
-              Esperando a <b className="text-tinta/85">{nombreEnTurno ?? "otro jugador"}</b>
+              Esperando a <b className="text-ink-muted">{nombreEnTurno ?? "otro jugador"}</b>
               {restante != null && (
-                <span className="tabular-nums text-tinta/50"> · {restante}s</span>
+                <span className="tabular-nums text-ink-dim"> · {restante}s</span>
               )}
             </span>
           </>
@@ -556,14 +556,14 @@ function ControlesBJ({
     <div className="flex flex-col gap-2">
       <div className="flex items-center justify-center gap-2 text-sm">
         <TimerCircular restante={restante} total={config.segundos_por_turno} size={34}>
-          <span className={`text-[11px] font-bold tabular-nums ${restante !== null && restante <= 5 ? "text-red-300" : "text-tinta/70"}`}>
+          <span className={`text-[11px] font-bold tabular-nums ${restante !== null && restante <= 5 ? "text-red-300" : "text-ink-muted"}`}>
             {restante ?? "—"}
           </span>
         </TimerCircular>
-        <span className="font-medium text-acento-300">Tu turno</span>
+        <span className="font-medium text-gold">Tu turno</span>
         {partido && (
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-acento/50 bg-acento/15 px-2.5 py-0.5 text-[12px] text-acento-300">
-            <span className="grid h-[15px] min-w-[15px] place-items-center rounded-full bg-acento text-[9px] font-bold text-noche">
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-[color-mix(in_srgb,var(--nc-accent)_50%,transparent)] bg-[color-mix(in_srgb,var(--nc-accent)_18%,transparent)] px-2.5 py-0.5 text-[12px] text-ink">
+            <span className="grid h-[15px] min-w-[15px] place-items-center rounded-full bg-accent text-[9px] font-bold text-[#06231a]">
               {indiceMano}
             </span>
             jugando tu mano {indiceMano} de {manosDelAsiento}
@@ -571,7 +571,7 @@ function ControlesBJ({
         )}
       </div>
       {partido && (
-        <p className="m-0 text-center text-[11px] text-tinta/45">
+        <p className="m-0 text-center text-[11px] text-ink-dim">
           La otra mano queda apagada en la mesa hasta que te toque.
         </p>
       )}

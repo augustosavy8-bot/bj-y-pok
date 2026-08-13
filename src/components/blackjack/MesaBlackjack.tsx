@@ -417,23 +417,35 @@ export function MesaBlackjack({
         className="relative w-full"
         style={{ aspectRatio: compacto ? "39 / 44" : "98 / 56" }}
       >
-        {/* Fieltro navy en medio óvalo */}
+        {/* Marco de madera del óvalo (borde de la mesa real) */}
         <div
           className="absolute inset-0"
           style={{
             borderRadius: "18px 18px 50% 50% / 18px 18px 88% 88%",
-            backgroundColor: "#161826",
-            backgroundImage:
-              "radial-gradient(72% 92% at 50% 4%, color-mix(in srgb, #262a60 62%, transparent), transparent 72%), radial-gradient(120% 120% at 50% 120%, color-mix(in srgb, #2b2741 78%, transparent), transparent 70%)",
-            boxShadow: "0 0 0 1px #595d6c, 0 10px 30px rgba(0,0,0,0.55)",
+            background: "linear-gradient(155deg, #4a3524 0%, #2a1d12 48%, #160f08 100%)",
+            boxShadow:
+              "inset 0 1px 0 rgba(255,255,255,0.08), inset 0 -2px 8px rgba(0,0,0,0.55), 0 12px 34px rgba(0,0,0,0.6)",
           }}
         />
+        {/* Fieltro verde (paño de la mesa), embutido dentro del marco de madera */}
+        <div
+          className="absolute"
+          style={{
+            inset: 13,
+            borderRadius: "10px 10px 50% 50% / 10px 10px 86% 86%",
+            backgroundColor: "#0f3d2e",
+            backgroundImage:
+              "radial-gradient(72% 92% at 50% 4%, color-mix(in srgb, #1a6b44 55%, transparent), transparent 72%), radial-gradient(120% 120% at 50% 122%, color-mix(in srgb, #06231a 82%, transparent), transparent 70%)",
+            boxShadow: "inset 0 0 60px rgba(0,0,0,0.45)",
+          }}
+        />
+        {/* Arco dorado impreso (línea de la mesa) */}
         <div
           className="pointer-events-none absolute"
           style={{
-            inset: 12,
-            border: "1px solid color-mix(in srgb, #e9e9ed 12%, transparent)",
-            borderRadius: "10px 10px 50% 50% / 10px 10px 86% 86%",
+            inset: 26,
+            border: "1px solid color-mix(in srgb, #e0b64d 34%, transparent)",
+            borderRadius: "8px 8px 50% 50% / 8px 8px 84% 84%",
           }}
         />
 
@@ -448,7 +460,7 @@ export function MesaBlackjack({
               style={{
                 fontSize: "clamp(11px, 1.7vw, 18px)",
                 letterSpacing: "0.24em",
-                color: "color-mix(in srgb, #e9e9ed 32%, transparent)",
+                color: "color-mix(in srgb, #e0b64d 66%, transparent)",
               }}
             >
               {pagoLabel}
@@ -458,7 +470,7 @@ export function MesaBlackjack({
               style={{
                 fontSize: "clamp(8px, 1.1vw, 11px)",
                 letterSpacing: "0.2em",
-                color: "color-mix(in srgb, #e9e9ed 20%, transparent)",
+                color: "color-mix(in srgb, #f1ead9 30%, transparent)",
               }}
             >
               El crupier se planta en 17 · seguro 2 : 1
@@ -478,7 +490,7 @@ export function MesaBlackjack({
             background: "linear-gradient(#3f424d,#292b31)",
           }}
         >
-          <span className="text-[8px] uppercase tracking-[0.14em] text-tinta/45">Zapato</span>
+          <span className="text-[8px] uppercase tracking-[0.14em] text-ink-dim">Zapato</span>
         </div>
 
         {/* Etiqueta del crupier */}
@@ -490,7 +502,7 @@ export function MesaBlackjack({
             transform: "translate(-50%,-50%)",
           }}
         >
-          <span className="text-[9px] font-semibold uppercase tracking-[0.2em] text-tinta/45">Crupier</span>
+          <span className="text-[9px] font-semibold uppercase tracking-[0.2em] text-ink-dim">Crupier</span>
         </div>
 
         {/* Halo del asiento: glow fijo en el TUYO (para encontrarte) y aro
@@ -511,9 +523,9 @@ export function MesaBlackjack({
                 height: size,
                 zIndex: 2,
                 background: enTurno
-                  ? "radial-gradient(closest-side, color-mix(in srgb, #9184d9 30%, transparent), transparent 72%)"
-                  : "radial-gradient(closest-side, color-mix(in srgb, #9184d9 15%, transparent), transparent 70%)",
-                boxShadow: enTurno ? "0 0 0 1px color-mix(in srgb, #9184d9 55%, transparent)" : undefined,
+                  ? "radial-gradient(closest-side, color-mix(in srgb, #27a862 34%, transparent), transparent 72%)"
+                  : "radial-gradient(closest-side, color-mix(in srgb, #e0b64d 16%, transparent), transparent 70%)",
+                boxShadow: enTurno ? "0 0 0 1px color-mix(in srgb, #27a862 58%, transparent)" : undefined,
               }}
             />
           );
@@ -577,19 +589,19 @@ export function MesaBlackjack({
               }}
             >
               {apuesta > 0 && (
-                <div className="text-[11px] font-semibold tabular-nums text-acento-300">
+                <div className="text-[11px] font-semibold tabular-nums text-gold">
                   {apuesta.toLocaleString("es")}
                 </div>
               )}
               <div className="flex max-w-full items-center gap-1">
                 {asiento.esYo ? (
-                  <span className="rounded bg-acento px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white shadow-[0_0_10px_rgba(145,132,217,0.6)]">
+                  <span className="rounded bg-accent px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-ink shadow-[0_0_10px_rgba(39,168,98,0.55)]">
                     Vos
                   </span>
                 ) : (
                   <span
                     className={`truncate text-[11px] font-medium ${
-                      enTurno ? "font-semibold text-acento-300" : "text-tinta"
+                      enTurno ? "font-semibold text-ink" : "text-ink-muted"
                     }`}
                   >
                     {asiento.nombre}
@@ -597,12 +609,12 @@ export function MesaBlackjack({
                 )}
               </div>
               {enTurno && (
-                <span className="animate-pulse rounded-full border border-acento/50 bg-acento/15 px-2 py-0.5 text-[10px] font-bold tabular-nums text-acento-300">
+                <span className="animate-pulse rounded-full border border-accent/50 bg-[color-mix(in_srgb,var(--nc-accent)_15%,transparent)] px-2 py-0.5 text-[10px] font-bold tabular-nums text-ink">
                   {segsTurno != null ? `${segsTurno}s` : "turno"}
                 </span>
               )}
               {typeof asiento.fichas === "number" && (
-                <div className="text-[10px] tabular-nums text-tinta/50">
+                <div className="text-[10px] tabular-nums text-ink-dim">
                   {asiento.fichas.toLocaleString("es")}
                 </div>
               )}
@@ -695,15 +707,15 @@ export function MesaBlackjack({
               borderRadius: 6,
               opacity: p.apagada ? 0.45 : 1,
               background: p.enTurno && p.indice
-                ? "color-mix(in srgb, var(--color-accent) 26%, #161826)"
-                : "color-mix(in srgb, #161826 82%, transparent)",
+                ? "color-mix(in srgb, var(--nc-accent) 32%, #06231a)"
+                : "color-mix(in srgb, #06231a 82%, transparent)",
               border: p.enTurno && p.indice
-                ? "1px solid var(--color-accent)"
-                : "1px solid rgba(255,255,255,0.14)",
+                ? "1px solid var(--nc-accent)"
+                : "1px solid rgba(241,234,217,0.16)",
               boxShadow: p.enTurno && p.indice
-                ? "0 0 0 3px color-mix(in srgb, var(--color-accent) 22%, transparent)"
+                ? "0 0 0 3px color-mix(in srgb, var(--nc-accent) 24%, transparent)"
                 : undefined,
-              color: p.bust ? "#9aa0ad" : "#e9e9ed",
+              color: p.bust ? "#8aa39a" : "#f1ead9",
               transition: reduce ? "none" : "opacity 220ms linear",
             }}
           >
@@ -717,8 +729,8 @@ export function MesaBlackjack({
                   borderRadius: 999,
                   textAlign: "center",
                   fontWeight: 700,
-                  background: p.enTurno ? "var(--color-accent)" : "rgba(255,255,255,0.16)",
-                  color: p.enTurno ? "#161826" : "#c9c9d2",
+                  background: p.enTurno ? "var(--nc-accent)" : "rgba(241,234,217,0.18)",
+                  color: p.enTurno ? "#06231a" : "#e6dcc6",
                 }}
               >
                 {p.indice}

@@ -200,21 +200,21 @@ export function VistaCrupierBlackjack({
   if (!mesa) return null;
 
   return (
-    <div className="min-h-screen bg-noche text-tinta">
+    <div data-theme="mesa" className="min-h-screen bg-surface-0 text-ink">
       <header className="fade-b">
         <nav className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-5 gap-y-2 px-4 py-3 sm:px-7">
-          <a href="/home" className="inline-flex items-center gap-1.5 text-[13px] text-tinta/65 hover:text-acento">
+          <a href="/home" className="inline-flex items-center gap-1.5 text-[13px] text-ink-muted hover:text-ink">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M14.5 5.5L8 12l6.5 6.5" /></svg>
             Home
           </a>
           <div className="h-5 w-px bg-white/15" />
           <div className="mr-auto flex items-baseline gap-2.5">
             <span className="text-[15px]">Blackjack · Crupier</span>
-            <span className="font-mono text-xs tracking-[0.2em] text-acento-300">{codigo}</span>
+            <span className="font-mono text-xs tracking-[0.2em] text-ink-muted">{codigo}</span>
           </div>
           <div className="text-right text-sm leading-tight">
-            <div className="text-[10px] uppercase tracking-[0.1em] text-tinta/50">La casa</div>
-            <div className="font-medium text-acento-300">Vos (crupier + banca)</div>
+            <div className="text-[10px] uppercase tracking-[0.1em] text-ink-dim">La casa</div>
+            <div className="font-medium text-ink">Vos (crupier + banca)</div>
           </div>
         </nav>
       </header>
@@ -239,15 +239,15 @@ export function VistaCrupierBlackjack({
                     <button className="nbtn nbtn-primary" onClick={agregarJugador}>Agregar</button>
                   </div>
                 ) : (
-                  <p className="text-xs text-tinta/50">
+                  <p className="text-xs text-ink-dim">
                     Compartí el código con los jugadores; entran y hacen su buy-in de{" "}
                     {mesa.creditos_minimos} créditos.
                   </p>
                 )}
-                <div className="text-sm text-tinta/60">
+                <div className="text-sm text-ink-muted">
                   {players.map((j) => j.nombre).join(", ") || "todavía nadie"}
                 </div>
-                <p className="text-xs text-tinta/45">
+                <p className="text-xs text-ink-dim">
                   Vos sos la casa: repartís y jugás la mano del dealer. Los jugadores
                   juegan contra la casa (ilimitada), no entre ellos.
                 </p>
@@ -278,7 +278,7 @@ export function VistaCrupierBlackjack({
                     return (
                       <span
                         key={r.id}
-                        className={r.fichas_ganadas_o_perdidas >= 0 ? "text-emerald-300" : "text-red-300"}
+                        className={r.fichas_ganadas_o_perdidas >= 0 ? "text-win" : "text-loss"}
                       >
                         {jug?.nombre ?? "—"}: {r.fichas_ganadas_o_perdidas >= 0 ? "+" : ""}
                         {r.fichas_ganadas_o_perdidas}
@@ -299,7 +299,7 @@ export function VistaCrupierBlackjack({
               </span>
               <div className="flex flex-col leading-tight">
                 <span className="text-sm font-medium text-emerald-200">Mesa 24/7 · siempre activa</span>
-                <span className="text-[11px] text-tinta/50">
+                <span className="text-[11px] text-ink-dim">
                   El servidor la mantiene girando sola, aunque cierres esta pantalla. Podés
                   intervenir con los botones de abajo cuando quieras.
                 </span>
@@ -312,24 +312,24 @@ export function VistaCrupierBlackjack({
                 role="switch"
                 aria-checked={auto}
                 onClick={toggleAuto}
-                className={`relative h-6 w-11 shrink-0 rounded-full transition ${auto ? "bg-acento" : "bg-white/15"}`}
+                className={`relative h-6 w-11 shrink-0 rounded-full transition ${auto ? "bg-accent" : "bg-white/15"}`}
               >
                 <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition-all ${auto ? "left-[22px]" : "left-0.5"}`} />
               </button>
               <div className="flex flex-col leading-tight">
                 <span className="text-sm font-medium">Modo automático</span>
-                <span className="text-[11px] text-tinta/50">
+                <span className="text-[11px] text-ink-dim">
                   La mesa gira sola mientras tengas esta pantalla abierta. Los jugadores solo
                   apuestan y juegan su turno.
                 </span>
               </div>
               {auto && cuenta !== null && (
-                <span className="ml-auto rounded-md border border-acento/40 bg-acento/10 px-2.5 py-1 text-sm tabular-nums text-acento-300">
+                <span className="ml-auto rounded-md border border-[color-mix(in_srgb,var(--nc-accent)_45%,transparent)] bg-[color-mix(in_srgb,var(--nc-accent)_14%,transparent)] px-2.5 py-1 text-sm tabular-nums text-ink">
                   Próximo paso en {cuenta}s
                 </span>
               )}
               {auto && cuenta === null && ronda?.estado === "apuestas" && !hayApuesta && (
-                <span className="ml-auto text-[11px] text-tinta/50">Esperando la primera apuesta…</span>
+                <span className="ml-auto text-[11px] text-ink-dim">Esperando la primera apuesta…</span>
               )}
             </section>
           )}
@@ -352,8 +352,8 @@ export function VistaCrupierBlackjack({
               </button>
             )}
             {ronda && (
-              <span className="ml-auto text-sm text-tinta/55">
-                Estado: <b className="text-tinta/80">{ronda.estado}</b>
+              <span className="ml-auto text-sm text-ink-muted">
+                Estado: <b className="text-ink-muted">{ronda.estado}</b>
               </span>
             )}
             <button className={`nbtn nbtn-danger ${ronda ? "" : "ml-auto"}`} disabled={ocupado} onClick={cerrarMesa}>
@@ -368,11 +368,11 @@ export function VistaCrupierBlackjack({
         <div className="flex flex-col gap-4 lg:sticky lg:top-4 lg:h-fit">
           <section className="ncard flex flex-col gap-2 border border-white/[0.06] p-4">
             <h3 className="font-medium">Shoe digital (RNG)</h3>
-            <div className="text-sm text-tinta/70">
+            <div className="text-sm text-ink-muted">
               Cartas repartidas: <b>{shoe?.cartas_repartidas ?? 0}</b> / {totalShoe}{" "}
               ({shoe?.cantidad_mazos ?? 6} mazos)
             </div>
-            <p className="text-xs text-tinta/50">
+            <p className="text-xs text-ink-dim">
               Reparto 100% automático y aleatorio (RNG criptográfico). Rebaraja
               solo al llegar al 75%.
             </p>
@@ -424,7 +424,7 @@ function Liquidacion({ codigo }: { codigo: string }) {
               </span>
             ))}
           </div>
-          <div className="text-tinta/70">
+          <div className="text-ink-muted">
             {data.transacciones.length === 0 ? (
               <span>Todos a mano.</span>
             ) : (
