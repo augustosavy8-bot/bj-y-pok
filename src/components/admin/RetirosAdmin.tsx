@@ -50,12 +50,12 @@ export function RetirosAdmin() {
       <h2 className="font-medium">Solicitudes de retiro</h2>
       {error && <div className="rounded-md border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-200">{error}</div>}
 
-      {pendientes.length === 0 && <p className="text-sm text-tinta/50">No hay solicitudes activas.</p>}
+      {pendientes.length === 0 && <p className="text-sm text-ink-dim">No hay solicitudes activas.</p>}
       {pendientes.map((s) => (
         <div key={s.id} className="flex flex-wrap items-center justify-between gap-2 rounded-md bg-white/[0.04] p-3 text-sm">
           <div>
             <div className="font-medium">{s.solicitante?.nombre ?? "—"}</div>
-            <div className="text-xs text-tinta/50">
+            <div className="text-xs text-ink-dim">
               {s.monto_solicitado.toLocaleString("es")} créditos · {new Date(s.created_at).toLocaleDateString("es")}
             </div>
           </div>
@@ -79,7 +79,7 @@ export function RetirosAdmin() {
 
       {resto.length > 0 && (
         <details className="text-sm">
-          <summary className="cursor-pointer text-tinta/60">Historial ({resto.length})</summary>
+          <summary className="cursor-pointer text-ink-muted">Historial ({resto.length})</summary>
           <div className="mt-2 flex flex-col gap-1">
             {resto.map((s) => (
               <div key={s.id} className="flex items-center justify-between rounded bg-white/[0.03] px-3 py-1.5">

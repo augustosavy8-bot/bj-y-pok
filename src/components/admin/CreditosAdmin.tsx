@@ -117,10 +117,10 @@ export function CreditosAdmin() {
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="min-w-0">
                 <div className="font-medium">{u.nombre}</div>
-                <div className="text-xs text-tinta/50">{u.email}</div>
+                <div className="text-xs text-ink-dim">{u.email}</div>
               </div>
               <div className="flex items-center gap-2">
-                <span className="rounded bg-white/[0.06] px-2 py-1 text-sm font-medium tabular-nums text-acento-300">
+                <span className="rounded bg-white/[0.06] px-2 py-1 text-sm font-medium tabular-nums text-gold">
                   {(saldos[u.id] ?? 0).toLocaleString("es")}
                 </span>
                 <button className="nbtn nbtn-secondary !px-3 !py-1.5 text-xs" onClick={() => verMovimientos(u.id)}>
@@ -164,26 +164,26 @@ export function CreditosAdmin() {
             {expandido === u.id && (
               <div className="mt-2 overflow-x-auto">
                 <table className="w-full text-xs">
-                  <thead className="text-left text-tinta/40">
+                  <thead className="text-left text-ink-dim">
                     <tr><th className="py-1 pr-2 font-medium">Fecha</th><th className="py-1 pr-2 font-medium">Tipo</th><th className="py-1 pr-2 text-right font-medium">Monto</th><th className="py-1 text-right font-medium">Saldo</th></tr>
                   </thead>
                   <tbody>
                     {movimientos.map((m) => (
                       <tr key={m.id} className="border-t border-white/[0.07]">
-                        <td className="py-1 pr-2 text-tinta/50">{new Date(m.created_at).toLocaleString("es", { dateStyle: "short", timeStyle: "short" })}</td>
+                        <td className="py-1 pr-2 text-ink-dim">{new Date(m.created_at).toLocaleString("es", { dateStyle: "short", timeStyle: "short" })}</td>
                         <td className="py-1 pr-2">{TIPO_LABEL[m.tipo]}</td>
                         <td className={`py-1 pr-2 text-right tabular-nums ${m.monto >= 0 ? "text-emerald-300" : "text-red-300"}`}>{m.monto >= 0 ? "+" : ""}{m.monto}</td>
                         <td className="py-1 text-right tabular-nums">{m.saldo_resultante}</td>
                       </tr>
                     ))}
-                    {movimientos.length === 0 && <tr><td colSpan={4} className="py-2 text-center text-tinta/40">Sin movimientos.</td></tr>}
+                    {movimientos.length === 0 && <tr><td colSpan={4} className="py-2 text-center text-ink-dim">Sin movimientos.</td></tr>}
                   </tbody>
                 </table>
               </div>
             )}
           </div>
         ))}
-        {usuarios.length === 0 && <p className="text-sm text-tinta/45">No hay usuarios todavía.</p>}
+        {usuarios.length === 0 && <p className="text-sm text-ink-dim">No hay usuarios todavía.</p>}
       </div>
     </section>
   );

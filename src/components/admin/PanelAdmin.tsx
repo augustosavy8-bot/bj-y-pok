@@ -131,7 +131,7 @@ export function PanelAdmin({ miId }: { miId: string }) {
         <section className="ncard flex flex-wrap items-center justify-between gap-3 border border-white/[0.06] p-4">
           <div>
             <h2 className="font-medium">Herramientas</h2>
-            <p className="text-xs text-tinta/50">Utilidades internas para administradores.</p>
+            <p className="text-xs text-ink-dim">Utilidades internas para administradores.</p>
           </div>
           <a
             href="/comanda"
@@ -151,7 +151,7 @@ export function PanelAdmin({ miId }: { miId: string }) {
         <section className="ncard flex flex-col gap-3 border border-white/[0.06] p-4">
           <div>
             <h2 className="font-medium">Crear usuario</h2>
-            <p className="text-xs text-tinta/50">
+            <p className="text-xs text-ink-dim">
               Alta directa: la cuenta queda lista al instante. Pasale el email y la contraseña a la persona.
             </p>
           </div>
@@ -161,7 +161,7 @@ export function PanelAdmin({ miId }: { miId: string }) {
             </div>
           )}
           <div className="grid gap-2 sm:grid-cols-2">
-            <label className="text-xs text-tinta/70">
+            <label className="text-xs text-ink-muted">
               Nombre
               <input
                 value={nuevo.nombre}
@@ -170,7 +170,7 @@ export function PanelAdmin({ miId }: { miId: string }) {
                 placeholder="Juan Pérez"
               />
             </label>
-            <label className="text-xs text-tinta/70">
+            <label className="text-xs text-ink-muted">
               Email
               <input
                 type="email"
@@ -181,7 +181,7 @@ export function PanelAdmin({ miId }: { miId: string }) {
                 autoComplete="off"
               />
             </label>
-            <label className="text-xs text-tinta/70">
+            <label className="text-xs text-ink-muted">
               Contraseña (mín. 8)
               <input
                 type="text"
@@ -192,7 +192,7 @@ export function PanelAdmin({ miId }: { miId: string }) {
                 autoComplete="off"
               />
             </label>
-            <label className="text-xs text-tinta/70">
+            <label className="text-xs text-ink-muted">
               Rol
               <select
                 value={nuevo.rol}
@@ -218,7 +218,7 @@ export function PanelAdmin({ miId }: { miId: string }) {
         {/* Invitaciones (alternativa: link para que la persona se dé de alta sola) */}
         <section className="ncard flex flex-col gap-3 border border-white/[0.06] p-4">
           <h2 className="font-medium">Invitaciones</h2>
-          <p className="text-xs text-tinta/50">
+          <p className="text-xs text-ink-dim">
             Alternativa al alta directa: generás un link y la persona elige su propia contraseña.
           </p>
           <div className="flex gap-2">
@@ -232,7 +232,7 @@ export function PanelAdmin({ miId }: { miId: string }) {
           </div>
           <div className="flex flex-col gap-2">
             {invitaciones.length === 0 && (
-              <p className="text-sm text-tinta/50">Todavía no generaste invitaciones.</p>
+              <p className="text-sm text-ink-dim">Todavía no generaste invitaciones.</p>
             )}
             {invitaciones.map((inv) => {
               const expirada = estaExpirada(inv);
@@ -242,8 +242,8 @@ export function PanelAdmin({ miId }: { miId: string }) {
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <span className="flex items-center gap-2">
                       <EstadoBadge estado={estado} />
-                      {inv.email && <span className="text-tinta/70">{inv.email}</span>}
-                      <span className="text-tinta/40">
+                      {inv.email && <span className="text-ink-muted">{inv.email}</span>}
+                      <span className="text-ink-dim">
                         vence {new Date(inv.expires_at).toLocaleDateString("es")}
                       </span>
                     </span>
@@ -266,7 +266,7 @@ export function PanelAdmin({ miId }: { miId: string }) {
                     )}
                   </div>
                   {inv.estado === "pendiente" && !expirada && (
-                    <div className="mt-1 break-all font-mono text-xs text-tinta/45">{linkDe(inv.token)}</div>
+                    <div className="mt-1 break-all font-mono text-xs text-ink-dim">{linkDe(inv.token)}</div>
                   )}
                 </div>
               );
@@ -279,7 +279,7 @@ export function PanelAdmin({ miId }: { miId: string }) {
           <h2 className="font-medium">Usuarios</h2>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead className="text-left text-[11px] uppercase tracking-[0.08em] text-tinta/50">
+              <thead className="text-left text-[11px] uppercase tracking-[0.08em] text-ink-dim">
                 <tr>
                   <th className="py-1.5 pr-3 font-medium">Nombre</th>
                   <th className="py-1.5 pr-3 font-medium">Email</th>
@@ -293,11 +293,11 @@ export function PanelAdmin({ miId }: { miId: string }) {
                 {usuarios.map((u) => (
                   <tr key={u.id} className="border-t border-white/[0.07]">
                     <td className="py-2 pr-3">{u.nombre}{u.id === miId && " (vos)"}</td>
-                    <td className="py-2 pr-3 text-tinta/70">{u.email}</td>
+                    <td className="py-2 pr-3 text-ink-muted">{u.email}</td>
                     <td className="py-2 pr-3">
-                      {u.rol === "admin" ? <span className="text-acento-300">admin</span> : "jugador"}
+                      {u.rol === "admin" ? <span className="text-ink">admin</span> : "jugador"}
                     </td>
-                    <td className="py-2 pr-3 text-tinta/50">{new Date(u.created_at).toLocaleDateString("es")}</td>
+                    <td className="py-2 pr-3 text-ink-dim">{new Date(u.created_at).toLocaleDateString("es")}</td>
                     <td className="py-2 pr-3">
                       {u.activo ? (
                         <span className="text-emerald-300">activo</span>
@@ -328,9 +328,9 @@ export function PanelAdmin({ miId }: { miId: string }) {
 
 function EstadoBadge({ estado }: { estado: string }) {
   const color: Record<string, string> = {
-    pendiente: "bg-acento-800 text-acento-100",
+    pendiente: "bg-surface-2 text-ink",
     usada: "bg-emerald-500/20 text-emerald-200",
-    expirada: "bg-white/10 text-tinta/50",
+    expirada: "bg-white/10 text-ink-dim",
     revocada: "bg-red-500/20 text-red-200",
   };
   return (

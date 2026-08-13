@@ -108,7 +108,7 @@ export function CasaAdmin() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="font-medium">La casa</h2>
-          <p className="m-0 text-[12px] text-tinta/50">
+          <p className="m-0 text-[12px] text-ink-dim">
             Cuánto deja el blackjack, quién te gana y quién te pierde.
           </p>
         </div>
@@ -119,8 +119,8 @@ export function CasaAdmin() {
               onClick={() => setDias(x.dias)}
               className={`rounded-md border px-2.5 py-1 text-[13px] transition ${
                 dias === x.dias
-                  ? "border-acento text-acento"
-                  : "border-white/12 text-tinta/70 hover:bg-white/5"
+                  ? "border-accent text-ink"
+                  : "border-white/12 text-ink-muted hover:bg-white/5"
               }`}
             >
               {x.label}
@@ -129,7 +129,7 @@ export function CasaAdmin() {
         </div>
       </div>
 
-      {cargando && !datos && <p className="text-sm text-tinta/50">Cargando…</p>}
+      {cargando && !datos && <p className="text-sm text-ink-dim">Cargando…</p>}
       {error && (
         <div className="rounded-md border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-200">
           {error}
@@ -141,7 +141,7 @@ export function CasaAdmin() {
           {/* Hero: el número con el que se lee el tablero */}
           <div className="flex flex-wrap items-end gap-x-8 gap-y-4">
             <div>
-              <div className="text-[10px] uppercase tracking-[0.12em] text-tinta/50">
+              <div className="text-[10px] uppercase tracking-[0.12em] text-ink-dim">
                 Resultado de la casa
               </div>
               <div
@@ -150,9 +150,9 @@ export function CasaAdmin() {
               >
                 {fmtFirmado(r.neto_casa)}
               </div>
-              <div className="mt-1.5 text-[12px] text-tinta/55">
+              <div className="mt-1.5 text-[12px] text-ink-muted">
                 {gana ? "a favor de la casa" : "a favor de los jugadores"} · margen{" "}
-                <b className="tabular-nums text-tinta/80">{r.margen_pct}%</b> sobre lo apostado
+                <b className="tabular-nums text-ink-muted">{r.margen_pct}%</b> sobre lo apostado
               </div>
             </div>
 
@@ -177,12 +177,12 @@ export function CasaAdmin() {
           <div>
             <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
               <h3 className="m-0 text-[14px] font-medium">Resultado por día</h3>
-              <div className="flex items-center gap-3 text-[11px] text-tinta/60">
+              <div className="flex items-center gap-3 text-[11px] text-ink-muted">
                 <Leyenda color={C_GANA} texto="Gana la casa" />
                 <Leyenda color={C_PIERDE} texto="Pierde la casa" />
                 <button
                   onClick={() => setTabla((v) => !v)}
-                  className="underline decoration-dotted underline-offset-2 hover:text-tinta"
+                  className="underline decoration-dotted underline-offset-2 hover:text-ink"
                 >
                   {tabla ? "Ver gráfico" : "Ver tabla"}
                 </button>
@@ -202,7 +202,7 @@ export function CasaAdmin() {
             <h3 className="m-0 mb-2 text-[14px] font-medium">Por jugador</h3>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
-                <thead className="text-left text-[11px] uppercase tracking-[0.08em] text-tinta/50">
+                <thead className="text-left text-[11px] uppercase tracking-[0.08em] text-ink-dim">
                   <tr>
                     <th className="py-1.5 pr-3 font-normal">Jugador</th>
                     <th className="py-1.5 pr-3 text-right font-normal">Manos</th>
@@ -214,10 +214,10 @@ export function CasaAdmin() {
                   {datos.por_jugador.map((j) => (
                     <tr key={j.nombre} className="border-t border-white/[0.06]">
                       <td className="py-1.5 pr-3">{j.nombre}</td>
-                      <td className="py-1.5 pr-3 text-right tabular-nums text-tinta/70">
+                      <td className="py-1.5 pr-3 text-right tabular-nums text-ink-muted">
                         {fmt(j.manos)}
                       </td>
-                      <td className="py-1.5 pr-3 text-right tabular-nums text-tinta/70">
+                      <td className="py-1.5 pr-3 text-right tabular-nums text-ink-muted">
                         {fmt(j.volumen)}
                       </td>
                       <td
@@ -230,7 +230,7 @@ export function CasaAdmin() {
                   ))}
                   {datos.por_jugador.length === 0 && (
                     <tr>
-                      <td colSpan={4} className="py-4 text-center text-tinta/45">
+                      <td colSpan={4} className="py-4 text-center text-ink-dim">
                         Sin manos jugadas en este período.
                       </td>
                     </tr>
@@ -253,7 +253,7 @@ export function CasaAdmin() {
                   </span>
                 )}
               </div>
-              <span className="text-[11px] text-tinta/45">
+              <span className="text-[11px] text-ink-dim">
                 margen teórico {MARGEN_TEORICO_SLOTS}%
               </span>
             </div>
@@ -262,7 +262,7 @@ export function CasaAdmin() {
               <>
                 <div className="flex flex-wrap items-end gap-x-7 gap-y-3">
                   <div>
-                    <span className="text-[10px] uppercase tracking-[0.1em] text-tinta/50">
+                    <span className="text-[10px] uppercase tracking-[0.1em] text-ink-dim">
                       Deja a la casa
                     </span>
                     <div
@@ -271,9 +271,9 @@ export function CasaAdmin() {
                     >
                       {fmtFirmado(datos.slots.neto_casa)}
                     </div>
-                    <span className="text-[11px] text-tinta/50">
+                    <span className="text-[11px] text-ink-dim">
                       margen real{" "}
-                      <b className="tabular-nums text-tinta/75">{datos.slots.margen_pct}%</b>
+                      <b className="tabular-nums text-ink-muted">{datos.slots.margen_pct}%</b>
                     </span>
                   </div>
                   <Tile label="Giros" valor={fmt(datos.slots.giros)} />
@@ -292,7 +292,7 @@ export function CasaAdmin() {
                 </div>
 
                 {datos.slots.giros < 5000 && (
-                  <p className="m-0 mt-2 text-[11px] leading-relaxed text-tinta/45">
+                  <p className="m-0 mt-2 text-[11px] leading-relaxed text-ink-dim">
                     Con {fmt(datos.slots.giros)} giros el margen todavía es ruido: hacen falta
                     varios miles para que se acerque al {MARGEN_TEORICO_SLOTS}% teórico. Un solo
                     jackpot mueve el número decenas de puntos.
@@ -302,7 +302,7 @@ export function CasaAdmin() {
                 {datos.slots_por_jugador?.length > 0 && (
                   <div className="mt-3 overflow-x-auto">
                     <table className="w-full text-sm">
-                      <thead className="text-left text-[11px] uppercase tracking-[0.08em] text-tinta/50">
+                      <thead className="text-left text-[11px] uppercase tracking-[0.08em] text-ink-dim">
                         <tr>
                           <th className="py-1.5 pr-3 font-normal">Jugador</th>
                           <th className="py-1.5 pr-3 text-right font-normal">Giros</th>
@@ -314,10 +314,10 @@ export function CasaAdmin() {
                         {datos.slots_por_jugador.map((j) => (
                           <tr key={j.nombre} className="border-t border-white/[0.06]">
                             <td className="py-1.5 pr-3">{j.nombre}</td>
-                            <td className="py-1.5 pr-3 text-right tabular-nums text-tinta/70">
+                            <td className="py-1.5 pr-3 text-right tabular-nums text-ink-muted">
                               {fmt(j.giros)}
                             </td>
-                            <td className="py-1.5 pr-3 text-right tabular-nums text-tinta/70">
+                            <td className="py-1.5 pr-3 text-right tabular-nums text-ink-muted">
                               {fmt(j.apostado)}
                             </td>
                             <td
@@ -334,7 +334,7 @@ export function CasaAdmin() {
                 )}
               </>
             ) : (
-              <p className="m-0 text-[13px] text-tinta/45">
+              <p className="m-0 text-[13px] text-ink-dim">
                 Nadie giró todavía en este período.
               </p>
             )}
@@ -368,9 +368,9 @@ export function CasaAdmin() {
 function Tile({ label, valor, nota }: { label: string; valor: string; nota?: string }) {
   return (
     <div className="flex flex-col leading-tight">
-      <span className="text-[10px] uppercase tracking-[0.1em] text-tinta/50">{label}</span>
+      <span className="text-[10px] uppercase tracking-[0.1em] text-ink-dim">{label}</span>
       <span className="mt-0.5 text-[20px] font-medium tabular-nums">{valor}</span>
-      {nota && <span className="text-[10px] text-tinta/40">{nota}</span>}
+      {nota && <span className="text-[10px] text-ink-dim">{nota}</span>}
     </div>
   );
 }
@@ -396,7 +396,7 @@ function GraficoDias({ dias }: { dias: Dia[] }) {
 
   if (dias.length === 0) {
     return (
-      <p className="py-6 text-center text-sm text-tinta/45">
+      <p className="py-6 text-center text-sm text-ink-dim">
         Todavía no hay manos en este período.
       </p>
     );
@@ -493,11 +493,11 @@ function GraficoDias({ dias }: { dias: Dia[] }) {
           >
             {fmtFirmado(d.neto_casa)}
           </span>
-          <span className="text-tinta/55">
+          <span className="text-ink-muted">
             {fmt(d.manos)} manos · {fmt(d.volumen)} apostado
           </span>
           {activo === null && (
-            <span className="text-[10px] text-tinta/35">(tocá una barra para ver otro día)</span>
+            <span className="text-[10px] text-ink-dim">(tocá una barra para ver otro día)</span>
           )}
         </div>
       )}
@@ -509,7 +509,7 @@ function TablaDias({ dias }: { dias: Dia[] }) {
   return (
     <div className="overflow-x-auto">
       <table className="w-full text-sm">
-        <thead className="text-left text-[11px] uppercase tracking-[0.08em] text-tinta/50">
+        <thead className="text-left text-[11px] uppercase tracking-[0.08em] text-ink-dim">
           <tr>
             <th className="py-1.5 pr-3 font-normal">Día</th>
             <th className="py-1.5 pr-3 text-right font-normal">Manos</th>
@@ -521,8 +521,8 @@ function TablaDias({ dias }: { dias: Dia[] }) {
           {dias.map((d) => (
             <tr key={d.dia} className="border-t border-white/[0.06]">
               <td className="py-1.5 pr-3 tabular-nums">{d.dia}</td>
-              <td className="py-1.5 pr-3 text-right tabular-nums text-tinta/70">{fmt(d.manos)}</td>
-              <td className="py-1.5 pr-3 text-right tabular-nums text-tinta/70">
+              <td className="py-1.5 pr-3 text-right tabular-nums text-ink-muted">{fmt(d.manos)}</td>
+              <td className="py-1.5 pr-3 text-right tabular-nums text-ink-muted">
                 {fmt(d.volumen)}
               </td>
               <td
