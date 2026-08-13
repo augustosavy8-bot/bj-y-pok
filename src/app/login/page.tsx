@@ -54,13 +54,13 @@ function LoginInner() {
     <main className="mx-auto flex min-h-screen max-w-sm flex-col justify-center gap-6 p-6">
       <div className="text-center">
         <div className="mb-2 flex items-center justify-center gap-2">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--color-accent)" strokeWidth="1.5" strokeLinecap="round"><circle cx="12" cy="12" r="9.3" /><circle cx="12" cy="12" r="4.3" /><path d="M12 2.7V7.2M12 16.8v4.5M2.7 12h4.5M16.8 12h4.5" /></svg>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--nc-accent)" strokeWidth="1.5" strokeLinecap="round"><circle cx="12" cy="12" r="9.3" /><circle cx="12" cy="12" r="4.3" /><path d="M12 2.7V7.2M12 16.8v4.5M2.7 12h4.5M16.8 12h4.5" /></svg>
           <span className="text-lg font-medium tracking-[0.24em]">NOCTURNA</span>
         </div>
-        <p className="text-sm text-tinta/60">Ingresá con tu cuenta</p>
+        <p className="text-sm text-ink-muted">Ingresá con tu cuenta</p>
       </div>
       <form onSubmit={entrar} className="ncard flex flex-col gap-3 border border-white/[0.06] p-5 shadow-n-md">
-        <label className="text-xs text-tinta/70">
+        <label className="text-xs text-ink-muted">
           Email
           <input
             type="email"
@@ -71,7 +71,7 @@ function LoginInner() {
             autoComplete="email"
           />
         </label>
-        <label className="text-xs text-tinta/70">
+        <label className="text-xs text-ink-muted">
           Contraseña
           <input
             type="password"
@@ -91,7 +91,7 @@ function LoginInner() {
           </div>
         )}
       </form>
-      <p className="text-center text-xs text-tinta/40">
+      <p className="text-center text-xs text-ink-dim">
         ¿No tenés cuenta? El acceso es solo por invitación de un administrador.
       </p>
     </main>
