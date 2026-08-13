@@ -219,7 +219,7 @@ export function DinoCrash({ saldoInicial }: Props) {
     // Poll más rápido mientras la ronda corre (menos overshoot), más lento el resto.
     function scheduleNextPoll() {
       if (!polling) return;
-      pollTimer = setTimeout(async () => { await poll(); scheduleNextPoll(); }, S.phase === "running" ? 150 : 500);
+      pollTimer = setTimeout(async () => { await poll(); scheduleNextPoll(); }, S.phase === "running" ? 220 : 600);
     }
 
     // ── dibujo ──
@@ -303,13 +303,14 @@ export function DinoCrash({ saldoInicial }: Props) {
     const frame = (t: number) => { update(t); ctx.save(); if (S.shake > 0) { const s = 8 * S.shake; ctx.translate((Math.random() - 0.5) * s, (Math.random() - 0.5) * s); } drawScene(t); ctx.restore(); raf = requestAnimationFrame(frame); };
 
     let alive = true;
-    preload().then(async () => {
+    ($(".dc-logo") as HTMLImageElement).src = `${BASE}/dino_badge.webp`;
+    preload();                          // carga en segundo plano; el loop dibuja lo que ya esté listo
+    raf = requestAnimationFrame(frame); // arranca a dibujar ya (los fondos aparecen al cargar)
+    (async () => {
+      await poll();                     // primer estado de la ronda
       if (!alive) return;
-      if (IMG.dino_badge) ($(".dc-logo") as HTMLImageElement).src = `${BASE}/dino_badge.webp`;
-      await poll();
       polling = true; scheduleNextPoll();
-      raf = requestAnimationFrame(frame);
-    });
+    })();
 
     return () => {
       alive = false; polling = false; cancelAnimationFrame(raf); if (pollTimer) clearTimeout(pollTimer);

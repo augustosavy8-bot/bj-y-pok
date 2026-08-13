@@ -9,7 +9,7 @@ import type { SlotTheme } from "./types";
 // ============================================================
 
 const img = (name: string) =>
-  `<img src="/slots/clandestino/${name}.webp" alt="" loading="lazy" style="width:100%;height:100%;object-fit:cover;display:block">`;
+  `<img src="/slots/clandestino/${name}.webp" alt="" decoding="async" style="width:100%;height:100%;object-fit:cover;display:block">`;
 
 export const clandestino: SlotTheme = {
   slug: "clandestino",

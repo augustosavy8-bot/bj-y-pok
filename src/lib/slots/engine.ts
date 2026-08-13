@@ -57,7 +57,7 @@ export class SlotEngine {
     this.o = {
       cell: 76,
       cellPad: 6,
-      baseMs: 800,
+      baseMs: 500,
       ...opts,
     };
   }
@@ -141,7 +141,9 @@ export class SlotEngine {
 
     // Parada escalonada: los rodillos de la derecha giran MÁS (más vueltas),
     // no más lento. La distancia escala con el factor → velocidad constante.
-    const factor = 1 + Math.pow(reel / 2, 2);
+    // Factor LINEAL (antes cuadrático): con 7 rodillos el cuadrático hacía que
+    // el último tardara ~8s. Lineal y suave: giros de ~1.2–1.6s.
+    const factor = 1 + reel * 0.36;
     // La velocidad comprime también el escalonado entre rodillos: a mayor
     // velocidad, el último rodillo (factor alto) frena mucho antes, no sólo el
     // primero. speed=1 deja el comportamiento original (duration = baseMs*factor).

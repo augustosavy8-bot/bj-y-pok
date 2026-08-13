@@ -9,7 +9,7 @@ import type { SlotTheme } from "./types";
 // ============================================================
 
 const img = (name: string) =>
-  `<img src="/slots/cowboy/${name}.webp" alt="" loading="lazy" style="width:100%;height:100%;object-fit:contain;filter:drop-shadow(0 2px 5px rgba(0,0,0,.6))">`;
+  `<img src="/slots/cowboy/${name}.webp" alt="" decoding="async" style="width:100%;height:100%;object-fit:contain;filter:drop-shadow(0 2px 5px rgba(0,0,0,.6))">`;
 
 export const cowboy: SlotTheme = {
   slug: "cowboy",
