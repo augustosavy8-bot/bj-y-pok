@@ -39,36 +39,37 @@
 /*  <div data-theme="crash"> en el layout del juego.            */
 /* ============================================================ */
 :root {
-  /* Fondos y superficies */
-  --nc-bg-0: #160a0d;        /* fondo de página */
-  --nc-bg-1: #241016;        /* superficie elevada (cards, modals) */
-  --nc-bg-2: #4a1220;        /* superficie destacada / hover */
+  /* — Identidad "paño de mesa": verde fieltro + dorado, colores mate — */
+  /* Fondos y superficies (verde fieltro, desaturado/mate) */
+  --nc-bg-0: #0d1d15;        /* fondo de página (fieltro oscuro) */
+  --nc-bg-1: #13271c;        /* superficie elevada (cards, modals) */
+  --nc-bg-2: #1c3a29;        /* superficie destacada / hover / banda */
 
-  /* Acentos */
-  --nc-accent: #8e2438;      /* burdeos — CTAs secundarios, bordes activos */
-  --nc-accent-hover: #a83249;
-  --nc-gold: #c98f3d;        /* SOLO dinero: balance, premios, jackpots */
-  --nc-gold-bright: #e6b35c; /* big win, highlights de premio */
+  /* Acentos (dorado antiguo, mate) */
+  --nc-accent: #b08a43;      /* dorado mate — CTAs, bordes activos */
+  --nc-accent-hover: #c6a052;
+  --nc-gold: #d4af5c;        /* SOLO dinero: balance, premios, jackpots */
+  --nc-gold-bright: #ecd08a; /* big win, highlights de premio */
 
-  /* Texto */
-  --nc-text: #efe2ce;        /* texto principal (crema, nunca #fff puro) */
-  --nc-text-muted: #b89f8a;  /* texto secundario */
-  --nc-text-dim: #7a6555;    /* hints, disabled */
+  /* Texto (crema cálida, nunca #fff puro) */
+  --nc-text: #ece3cf;        /* texto principal */
+  --nc-text-muted: #b3ad92;  /* texto secundario (crema apagada) */
+  --nc-text-dim: #7e846b;    /* hints, disabled */
 
   /* Estados */
-  --nc-win: #3dbb6e;         /* ganancia */
-  --nc-loss: #e24b4a;        /* pérdida */
-  --nc-border: #3a1b22;      /* bordes sutiles */
+  --nc-win: #5bbd7a;         /* ganancia */
+  --nc-loss: #d75f54;        /* pérdida */
+  --nc-border: #294636;      /* bordes sutiles (verde fieltro) */
 }
 
-/* Juegos de mesa: Truco, blackjack, póker */
+/* Juegos de mesa: Truco, blackjack, póker (paño verde + dorado) */
 [data-theme="mesa"] {
   --nc-bg-0: #0a1f14;
   --nc-bg-1: #102e1d;
   --nc-bg-2: #14532d;        /* paño */
-  --nc-accent: #1f8a50;
-  --nc-accent-hover: #27a862;
-  --nc-gold: #e6b31e;
+  --nc-accent: #c1974a;      /* dorado mate — bordes/turnos sobre el paño */
+  --nc-accent-hover: #d6ab5b;
+  --nc-gold: #e6c063;
   --nc-border: #1a3826;
 }
 
@@ -154,12 +155,13 @@ body {
 
 /* — Inputs Nocturne — */
 .ninput {
-  @apply w-full rounded-md border border-white/15 bg-superficie px-2.5 py-2 text-sm text-tinta caret-acento outline-none placeholder:text-white/35 hover:border-white/40 focus-visible:border-acento;
+  @apply w-full rounded-md border border-white/15 bg-surface-1 px-2.5 py-2 text-sm text-ink outline-none placeholder:text-ink-dim hover:border-white/40 focus-visible:border-accent;
+  caret-color: var(--nc-accent);
 }
 
 /* — Tarjeta Nocturne — */
 .ncard {
-  @apply rounded-md bg-superficie;
+  @apply rounded-md bg-surface-1;
 }
 
 /* — Estética "salón": divisor con diamante dorado y líneas que se desvanecen. — */
