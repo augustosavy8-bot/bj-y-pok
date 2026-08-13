@@ -140,19 +140,19 @@ export default function HomePage() {
         className="relative overflow-hidden"
         style={{
           backgroundImage:
-            "radial-gradient(110% 80% at 82% 0%, color-mix(in srgb, var(--color-section) 48%, transparent), transparent 62%), radial-gradient(65% 70% at 4% 100%, color-mix(in srgb, var(--color-accent-900) 70%, transparent), transparent 70%)",
+            "radial-gradient(110% 80% at 82% 0%, color-mix(in srgb, var(--nc-bg-2) 55%, transparent), transparent 62%), radial-gradient(65% 70% at 4% 100%, color-mix(in srgb, var(--nc-accent) 45%, transparent), transparent 70%)",
         }}
       >
         <ChipsCanvas density={0.45} />
         <div className="relative z-[2] mx-auto grid max-w-6xl grid-cols-1 items-start gap-10 px-4 py-16 sm:px-8 lg:py-20">
           <div className="max-w-xl">
-            <span className="inline-flex items-center gap-2 text-[13px] uppercase tracking-[0.16em] text-[#e7c477]">
+            <span className="inline-flex items-center gap-2 text-[13px] uppercase tracking-[0.16em] text-ink-muted">
               <span aria-hidden>✦</span> Blackjack · Póker · Slots
             </span>
             <h1 className="mt-2 font-serif text-[clamp(42px,5.4vw,66px)] font-semibold leading-[1.02] tracking-tight text-balance">
-              La mesa está <span className="text-acento-300">siempre servida.</span>
+              La mesa está <span className="text-ink">siempre servida.</span>
             </h1>
-            <p className="mt-4 max-w-md text-[17px] leading-relaxed text-tinta/75">
+            <p className="mt-4 max-w-md text-[17px] leading-relaxed text-ink-muted">
               Blackjack y póker con reglas publicadas por mesa y reparto RNG del lado del
               servidor. Créditos internos, sin ruido, sin trucos.
             </p>
@@ -177,7 +177,7 @@ export default function HomePage() {
                 </a>
               )}
             </div>
-            <div className="mt-8 flex flex-wrap gap-x-6 gap-y-2 text-xs text-tinta/55">
+            <div className="mt-8 flex flex-wrap gap-x-6 gap-y-2 text-xs text-ink-muted">
               <span className="inline-flex items-center gap-1.5">
                 <Escudo /> RNG del lado del servidor
               </span>
@@ -218,7 +218,7 @@ export default function HomePage() {
                 <img src="/juegos/dino-crash/dino_badge.webp" alt="Dino Crash" loading="lazy" className="h-[68%] w-auto drop-shadow-[0_6px_16px_rgba(240,145,42,.5)] sm:h-[74%]" />
                 <div className="min-w-0">
                   <div className="font-serif text-[26px] font-semibold leading-none text-[#ffd98a] sm:text-[40px]">Dino Crash</div>
-                  <p className="mt-1.5 max-w-md text-[13px] text-tinta/80 sm:text-[15px]">
+                  <p className="mt-1.5 max-w-md text-[13px] text-ink sm:text-[15px]">
                     Ronda compartida en vivo · el multiplicador sube, retirate antes de que caiga el meteorito.
                   </p>
                   <span className="mt-3 inline-flex items-center justify-center rounded-lg px-4 py-2 text-[14px] font-bold text-[#3a1400]" style={{ background: "linear-gradient(180deg,#ffd23f,#ff6a1a)" }}>
@@ -242,11 +242,11 @@ export default function HomePage() {
       {casa.length > 0 && (
         <section id="casa" className="mx-auto max-w-6xl px-4 pt-14 sm:px-8">
           <div className="mb-5">
-            <span className="text-[12px] uppercase tracking-[0.16em] text-[#e7c477]">
+            <span className="text-[12px] uppercase tracking-[0.16em] text-ink-muted">
               <span aria-hidden>✦</span> En vivo
             </span>
             <h2 className="font-serif text-[34px] font-semibold leading-tight">La mesa de la casa</h2>
-            <p className="m-0 text-[13px] text-tinta/55">
+            <p className="m-0 text-[13px] text-ink-muted">
               Abierta las 24 horas. Entrás y jugás: no hace falta ningún código.
             </p>
           </div>
@@ -255,7 +255,7 @@ export default function HomePage() {
             {casa.map((m) => (
               <div
                 key={m.codigo_sala}
-                className="group overflow-hidden rounded-2xl border border-[#d8b46a]/18 bg-gradient-to-b from-[#1b1d2c] to-[#15161f] transition hover:-translate-y-0.5 hover:border-[#d8b46a]/45 hover:shadow-2xl"
+                className="group overflow-hidden rounded-2xl border border-edge bg-surface-1 transition hover:-translate-y-0.5 hover:border-accent hover:shadow-2xl"
               >
                 {/* Banner del juego */}
                 <div className="relative aspect-[16/9] w-full overflow-hidden">
@@ -283,32 +283,32 @@ export default function HomePage() {
 
                 {/* Cuerpo: nombre serif + divisor + stats + botón */}
                 <div className="p-5 pt-4 text-center">
-                  <div className="font-serif text-[25px] font-semibold leading-tight text-[#e7c477]">
+                  <div className="font-serif text-[25px] font-semibold leading-tight text-ink-muted">
                     {NOMBRE_JUEGO[m.tipo_juego] ?? m.tipo_juego}
                   </div>
-                  <div className="mt-0.5 text-[13px] text-tinta/55">
+                  <div className="mt-0.5 text-[13px] text-ink-muted">
                     {m.jugadores === 0
                       ? "Mesa libre · sos el primero"
                       : `${m.jugadores} ${m.jugadores === 1 ? "jugador sentado" : "jugadores sentados"}`}
                   </div>
                   <div className="divider-diamante my-3" aria-hidden>◆</div>
-                  <div className="flex flex-wrap items-center justify-center gap-x-3.5 gap-y-1.5 text-[12.5px] text-tinta/72">
+                  <div className="flex flex-wrap items-center justify-center gap-x-3.5 gap-y-1.5 text-[12.5px] text-ink-muted">
                     {m.apuesta_min !== null && (
                       <>
-                        <span className="inline-flex items-center gap-1.5 text-[#e7c477]/85">
+                        <span className="inline-flex items-center gap-1.5 text-ink-muted">
                           {IcoJugadores}
-                          <span className="text-tinta/75">Apuesta {m.apuesta_min}–{m.apuesta_max}</span>
+                          <span className="text-ink-muted">Apuesta {m.apuesta_min}–{m.apuesta_max}</span>
                         </span>
                         <span className="h-4 w-px bg-white/15" />
                       </>
                     )}
-                    <span className="inline-flex items-center gap-1.5 text-[#e7c477]/85">
-                      <span className="text-tinta/75">{m.es_practica ? "Práctica" : `Entrada ${m.creditos_minimos}`}</span>
+                    <span className="inline-flex items-center gap-1.5 text-ink-muted">
+                      <span className="text-ink-muted">{m.es_practica ? "Práctica" : `Entrada ${m.creditos_minimos}`}</span>
                     </span>
                     <span className="h-4 w-px bg-white/15" />
-                    <span className="inline-flex items-center gap-1.5 text-[#e7c477]/85">
+                    <span className="inline-flex items-center gap-1.5 text-ink-muted">
                       {IcoMazos}
-                      <span className="text-tinta/75">{m.cantidad_mazos} mazos · RNG</span>
+                      <span className="text-ink-muted">{m.cantidad_mazos} mazos · RNG</span>
                     </span>
                   </div>
 
@@ -330,7 +330,7 @@ export default function HomePage() {
                       : "Entrar a jugar"}
                   </button>
                   {m.costo_reingreso > 0 && !m.ya_sentado && !m.soy_crupier && (
-                    <p className="mt-2 mb-0 text-center text-[11px] leading-snug text-tinta/45">
+                    <p className="mt-2 mb-0 text-center text-[11px] leading-snug text-ink-dim">
                       Ya te habías sentado en esta mesa: volver a entrar cuesta{" "}
                       {m.costo_reingreso} créditos.
                     </p>
@@ -347,7 +347,7 @@ export default function HomePage() {
       <section id="rapidos" className="mx-auto max-w-6xl px-4 pt-14 sm:px-8">
         <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
           <div>
-            <span className="inline-flex items-center gap-2 text-[12px] uppercase tracking-[0.16em] text-[#e7c477]">
+            <span className="inline-flex items-center gap-2 text-[12px] uppercase tracking-[0.16em] text-ink-muted">
               <span aria-hidden>✦</span> Máquinas
               {estaOculto("slots") && esAdmin && (
                 <span className="rounded bg-amber-400/15 px-2 py-0.5 text-[10px] normal-case tracking-normal text-amber-300">
@@ -356,9 +356,9 @@ export default function HomePage() {
               )}
             </span>
             <h2 className="font-serif text-[34px] font-semibold leading-tight">Slots</h2>
-            <p className="m-0 text-[13px] text-tinta/55">Cuatro máquinas temáticas · 5 rodillos · RNG del servidor.</p>
+            <p className="m-0 text-[13px] text-ink-muted">Cuatro máquinas temáticas · 5 rodillos · RNG del servidor.</p>
           </div>
-          <a href="/slots" className="text-[14px] text-acento hover:underline">Ver todas →</a>
+          <a href="/slots" className="text-[14px] text-ink-muted hover:underline">Ver todas →</a>
         </div>
 
         <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
@@ -368,7 +368,7 @@ export default function HomePage() {
               <a
                 key={t.slug}
                 href={`/slots/${t.slug}`}
-                className="group overflow-hidden rounded-2xl border border-[#d8b46a]/18 bg-gradient-to-b from-[#1b1d2c] to-[#15161f] transition hover:-translate-y-0.5 hover:border-[#d8b46a]/45 hover:shadow-2xl"
+                className="group overflow-hidden rounded-2xl border border-edge bg-surface-1 transition hover:-translate-y-0.5 hover:border-accent hover:shadow-2xl"
               >
                 <div className="relative aspect-[16/9] overflow-hidden">
                   {t.card && (
@@ -386,24 +386,24 @@ export default function HomePage() {
                   />
                 </div>
                 <div className="p-3.5 text-center">
-                  <div className="font-serif text-[20px] font-semibold leading-tight text-[#e7c477]">{t.displayName}</div>
+                  <div className="font-serif text-[20px] font-semibold leading-tight text-ink-muted">{t.displayName}</div>
                   <div className="divider-diamante my-2" aria-hidden>◆</div>
-                  <div className="flex items-center justify-center gap-2.5 text-[11.5px] text-tinta/70">
-                    <span className="inline-flex items-center gap-1 text-[#e7c477]/85">
+                  <div className="flex items-center justify-center gap-2.5 text-[11.5px] text-ink-muted">
+                    <span className="inline-flex items-center gap-1 text-ink-muted">
                       {IcoRodillos}
-                      <span className="text-tinta/75">{stats[0] ?? "5 rodillos"}</span>
+                      <span className="text-ink-muted">{stats[0] ?? "5 rodillos"}</span>
                     </span>
                     {stats[1] && (
                       <>
                         <span className="h-3.5 w-px bg-white/15" />
-                        <span className="inline-flex items-center gap-1 text-[#e7c477]/85">
+                        <span className="inline-flex items-center gap-1 text-ink-muted">
                           {IcoLineas}
-                          <span className="text-tinta/75">{stats[1]}</span>
+                          <span className="text-ink-muted">{stats[1]}</span>
                         </span>
                       </>
                     )}
                   </div>
-                  <span className="mt-3 flex w-full items-center justify-center rounded-lg border border-acento py-2 text-[14px] text-acento transition group-hover:bg-acento/10">
+                  <span className="mt-3 flex w-full items-center justify-center rounded-lg border border-accent py-2 text-[14px] text-ink-muted transition group-hover:bg-accent/10">
                     Jugar →
                   </span>
                 </div>
@@ -419,7 +419,7 @@ export default function HomePage() {
       <section id="dino-crash" className="mx-auto max-w-6xl px-4 pt-14 sm:px-8">
         <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
           <div>
-            <span className="inline-flex items-center gap-2 text-[12px] uppercase tracking-[0.16em] text-[#e7c477]">
+            <span className="inline-flex items-center gap-2 text-[12px] uppercase tracking-[0.16em] text-ink-muted">
               <span aria-hidden>✦</span> Nuevo · Crash
               {estaOculto("dino-crash") && esAdmin && (
                 <span className="rounded bg-amber-400/15 px-2 py-0.5 text-[10px] normal-case tracking-normal text-amber-300">
@@ -428,9 +428,9 @@ export default function HomePage() {
               )}
             </span>
             <h2 className="font-serif text-[34px] font-semibold leading-tight">Dino Crash</h2>
-            <p className="m-0 text-[13px] text-tinta/55">El dino corre sin parar · retirá antes del meteorito.</p>
+            <p className="m-0 text-[13px] text-ink-muted">El dino corre sin parar · retirá antes del meteorito.</p>
           </div>
-          <a href="/juegos/dino-crash" className="text-[14px] text-acento hover:underline">Jugar →</a>
+          <a href="/juegos/dino-crash" className="text-[14px] text-ink-muted hover:underline">Jugar →</a>
         </div>
 
         <a
@@ -448,7 +448,7 @@ export default function HomePage() {
               <img src="/juegos/dino-crash/dino_badge.webp" alt="Dino Crash" loading="lazy" className="h-[72%] w-auto drop-shadow-[0_6px_16px_rgba(240,145,42,.5)]" />
               <div className="min-w-0">
                 <div className="font-serif text-[26px] font-semibold leading-none text-[#ffd98a] sm:text-[36px]">Dino Crash</div>
-                <p className="mt-1.5 hidden max-w-md text-[13px] text-tinta/75 sm:block">
+                <p className="mt-1.5 hidden max-w-md text-[13px] text-ink-muted sm:block">
                   Cada 5 segundos arranca una ronda. El multiplicador sube… hasta que cae el meteorito de golpe. Retirate a tiempo.
                 </p>
                 <span className="mt-3 inline-flex items-center justify-center rounded-lg px-4 py-2 text-[14px] font-bold text-[#3a1400]" style={{ background: "linear-gradient(180deg,#ffd23f,#ff6a1a)" }}>
@@ -464,11 +464,11 @@ export default function HomePage() {
       {/* Mesas */}
       <section id="mesas" className="mx-auto max-w-6xl px-4 pt-14 sm:px-8">
         <div className="mb-5">
-          <span className="text-[12px] uppercase tracking-[0.16em] text-[#e7c477]">
+          <span className="text-[12px] uppercase tracking-[0.16em] text-ink-muted">
             <span aria-hidden>✦</span> Tu juego
           </span>
           <h2 className="font-serif text-[34px] font-semibold leading-tight">Tus mesas</h2>
-          <p className="m-0 text-[13px] text-tinta/55">Las mesas donde estás sentado o que dirigís.</p>
+          <p className="m-0 text-[13px] text-ink-muted">Las mesas donde estás sentado o que dirigís.</p>
         </div>
 
         {/* Chip bar de variante */}
@@ -480,10 +480,10 @@ export default function HomePage() {
                 key={c}
                 onClick={() => setCat(c)}
                 className={`inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-sm transition ${
-                  activo ? "border-acento text-acento" : "border-white/12 text-tinta/70 hover:bg-white/5"
+                  activo ? "border-accent text-ink-muted" : "border-white/12 text-ink-muted hover:bg-white/5"
                 }`}
               >
-                {activo && <span className="h-1.5 w-1.5 rounded-full bg-acento" />}
+                {activo && <span className="h-1.5 w-1.5 rounded-full bg-accent" />}
                 {c === "todas" ? "Todas" : NOMBRE_JUEGO[c]}
               </button>
             );
@@ -495,22 +495,22 @@ export default function HomePage() {
             {filtradas.map((m) => (
               <div
                 key={m.id}
-                className="ncard group flex flex-col gap-3 border border-white/[0.06] p-4 transition hover:-translate-y-0.5 hover:border-acento/60"
+                className="ncard group flex flex-col gap-3 border border-white/[0.06] p-4 transition hover:-translate-y-0.5 hover:border-accent"
               >
                 <div className="flex items-start justify-between">
                   <div>
-                    <div className="text-[10px] uppercase tracking-[0.1em] text-acento">
+                    <div className="text-[10px] uppercase tracking-[0.1em] text-ink-muted">
                       {NOMBRE_JUEGO[m.tipo_juego as Juego] ?? m.tipo_juego}
                     </div>
-                    <div className="font-mono text-lg tracking-[0.25em] text-tinta">{m.codigo_sala}</div>
+                    <div className="font-mono text-lg tracking-[0.25em] text-ink">{m.codigo_sala}</div>
                   </div>
                   <span className="text-2xl text-white/15">{GLIFO[m.tipo_juego as Juego] ?? "♠"}</span>
                 </div>
                 <div className="flex flex-wrap gap-1.5 text-[11px]">
-                  <span className="rounded bg-white/[0.06] px-2 py-0.5 text-tinta/70">
+                  <span className="rounded bg-white/[0.06] px-2 py-0.5 text-ink-muted">
                     {m.soy_crupier ? "Dirigís" : "Jugás"}
                   </span>
-                  <span className="rounded bg-white/[0.06] px-2 py-0.5 text-tinta/70">
+                  <span className="rounded bg-white/[0.06] px-2 py-0.5 text-ink-muted">
                     {m.es_practica ? "Práctica" : `Min ${m.creditos_minimos}`}
                   </span>
                 </div>
@@ -531,7 +531,7 @@ export default function HomePage() {
             ))}
           </div>
         ) : (
-          <div className="ncard border border-white/[0.06] p-8 text-center text-sm text-tinta/55">
+          <div className="ncard border border-white/[0.06] p-8 text-center text-sm text-ink-muted">
             {mesas.length === 0
               ? "Todavía no estás en ninguna mesa. Entrá a la mesa de la casa (siempre abierta) o pedile a un admin que cree una."
               : "Sin mesas para ese filtro."}
@@ -555,7 +555,7 @@ export default function HomePage() {
       {/* Banda de confianza (único campo saturado de la página) */}
       <section
         className="mt-14 w-full"
-        style={{ background: "var(--color-section)" }}
+        style={{ background: "var(--nc-bg-2)" }}
       >
         <div className="mx-auto grid max-w-6xl grid-cols-2 gap-6 px-4 py-8 sm:px-8 md:grid-cols-4">
           {[
@@ -565,8 +565,8 @@ export default function HomePage() {
             { t: "+18 · juego responsable", d: "Límites y autoexclusión en el perfil." },
           ].map((c) => (
             <div key={c.t} className="flex flex-col gap-1">
-              <span className="text-sm font-medium text-tinta">{c.t}</span>
-              <span className="text-[12px] leading-snug text-tinta/60">{c.d}</span>
+              <span className="text-sm font-medium text-ink">{c.t}</span>
+              <span className="text-[12px] leading-snug text-ink-muted">{c.d}</span>
             </div>
           ))}
         </div>
@@ -574,11 +574,11 @@ export default function HomePage() {
 
       {/* Reglas de la casa — texto plano, al fondo */}
       <section className="mx-auto max-w-6xl px-4 py-10 sm:px-8">
-        <p className="text-[11px] uppercase tracking-[0.14em] text-tinta/40">Reglas de la casa</p>
-        <p className="mt-2 text-[13px] text-tinta/60">
+        <p className="text-[11px] uppercase tracking-[0.14em] text-ink-dim">Reglas de la casa</p>
+        <p className="mt-2 text-[13px] text-ink-muted">
           {REGLAS_CASA.map((r) => `${r.label}: ${r.value}`).join("  ·  ")}
         </p>
-        <p className="mt-1 text-[12px] text-tinta/40">
+        <p className="mt-1 text-[12px] text-ink-dim">
           La ventaja de la casa y las reglas de cada mesa aparecen en su ficha, antes de sentarte.
         </p>
       </section>
@@ -632,7 +632,7 @@ function CrearMesa({
     <div id="crear" className="ncard flex flex-col gap-2 border border-white/[0.06] p-4">
       <div className="flex items-center justify-between">
         <h3 className="text-[15px] font-medium">Crear una mesa</h3>
-        <span className="text-[10px] uppercase tracking-wide text-acento">solo admin</span>
+        <span className="text-[10px] uppercase tracking-wide text-ink-muted">solo admin</span>
       </div>
       {!abierto ? (
         <button className="nbtn nbtn-primary" onClick={() => setAbierto(true)}>
@@ -646,15 +646,15 @@ function CrearMesa({
                 key={j}
                 onClick={() => setJuego(j)}
                 className={`flex-1 rounded-md border px-2 py-1.5 text-sm ${
-                  juego === j ? "border-acento text-acento" : "border-white/12 text-tinta/70"
+                  juego === j ? "border-accent text-ink-muted" : "border-white/12 text-ink-muted"
                 }`}
               >
                 {NOMBRE_JUEGO[j]}
               </button>
             ))}
           </div>
-          <label className="text-sm text-tinta/80">
-            <span className="text-tinta/70">Créditos mínimos para sentarse</span>
+          <label className="text-sm text-ink">
+            <span className="text-ink-muted">Créditos mínimos para sentarse</span>
             <input
               type="number"
               min={1}

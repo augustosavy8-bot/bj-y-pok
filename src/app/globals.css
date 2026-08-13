@@ -121,18 +121,21 @@ body {
   background-size: 100% 1px;
 }
 
-/* — Botones Nocturne: con borde, nunca rellenos. El acento es línea, no fondo. — */
+/* — Botones Nocturne: con borde, nunca rellenos. El acento es línea, no fondo. —
+   Migrado a los design tokens "Speakeasy": el burdeos (#8e2438) es muy oscuro
+   como texto (falla contraste), así que el CTA lleva borde `accent` con texto
+   `ink`; el fondo tenue de acento aparece en hover/active. */
 .nbtn {
-  @apply inline-flex select-none items-center justify-center gap-1.5 rounded-md border border-transparent px-3.5 py-2 text-sm font-medium text-tinta transition disabled:cursor-not-allowed disabled:opacity-45;
+  @apply inline-flex select-none items-center justify-center gap-1.5 rounded-md border border-transparent px-3.5 py-2 text-sm font-medium text-ink transition disabled:cursor-not-allowed disabled:opacity-45;
 }
 .nbtn-primary {
-  @apply border-acento text-acento hover:bg-acento/10 active:bg-acento/20;
+  @apply border-accent text-ink hover:bg-accent/15 active:bg-accent/25;
 }
 .nbtn-secondary {
   @apply border-white/15 hover:bg-white/[0.06] active:bg-white/[0.12];
 }
 .nbtn-ghost {
-  @apply px-1.5 text-acento hover:bg-acento/10;
+  @apply px-1.5 text-ink-muted hover:bg-accent/10 hover:text-ink;
 }
 .nbtn-danger {
   @apply border-red-500/50 text-red-300 hover:bg-red-500/10;
